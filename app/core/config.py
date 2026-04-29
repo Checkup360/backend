@@ -40,7 +40,7 @@ def get_settings() -> Settings:
             "http://localhost:5173,http://localhost:5174,http://localhost:5175",
         ),
         frontend_post_login_url=os.getenv(
-            "FRONTEND_POST_LOGIN_URL", "http://localhost:5173"
+            "FRONTEND_POST_LOGIN_URL", "http://localhost:5173/"
         ),
     )
 

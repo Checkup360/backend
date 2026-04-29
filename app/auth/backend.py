@@ -3,18 +3,10 @@ from fastapi_users.authentication import (
     CookieTransport,
     JWTStrategy,
 )
-from starlette.responses import RedirectResponse
 
 from app.core import settings
 
-
-class RedirectCookieTransport(CookieTransport):
-    async def get_login_response(self, token: str):
-        response = RedirectResponse(settings.frontend_post_login_url, status_code=303)
-        return self._set_login_cookie(response, token)
-
-
-cookie_transport = RedirectCookieTransport(
+cookie_transport = CookieTransport(
     cookie_name="auth",
     cookie_max_age=3600,
     cookie_secure=False,

@@ -5,6 +5,7 @@ from app.auth.google_oauth import google_oauth_client
 from app.auth.users import current_active_user, fastapi_users
 from app.core import settings
 from app.models import User
+from app.schemas import AuthMeResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -25,6 +26,8 @@ router.include_router(
 )
 
 
-@router.get("/me")
-def get_me(user: User = Depends(current_active_user)):
-    return {"email": user.email}
+@router.get("/me", response_model=AuthMeResponse)
+def get_me(user: User = Depends(current_active_user)) -> AuthMeResponse:
+    return AuthMeResponse(email=user.email)
+
+
