@@ -8,6 +8,7 @@ migrate:
 	uv run alembic upgrade head
 
 revision:
+	@test -n "$(m)" || (echo 'Uso: make revision m="mensaje"' && exit 1)
 	uv run alembic revision --autogenerate -m "$(m)"
 
 downgrade:
