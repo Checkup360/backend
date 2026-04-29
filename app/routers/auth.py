@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.auth.backend import auth_backend
 from app.auth.google_oauth import google_oauth_client
-from app.auth.users import fastapi_users
+from app.auth.users import current_active_user, fastapi_users
 from app.core import settings
+from app.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -22,3 +23,8 @@ router.include_router(
     ),
     prefix="/google",
 )
+
+
+@router.get("/me")
+def get_me(user: User = Depends(current_active_user)):
+    return {"email": user.email}
