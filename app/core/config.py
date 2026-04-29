@@ -13,6 +13,7 @@ class Settings:
     auth_secret: str
     cors_allowed_origins: list[str]
     frontend_post_login_url: str
+    frontend_url: str
 
 
 def _require_env(key: str) -> str:
@@ -42,6 +43,7 @@ def get_settings() -> Settings:
         frontend_post_login_url=os.getenv(
             "FRONTEND_POST_LOGIN_URL", "http://localhost:5173/login/complete"
         ),
+        frontend_url=os.getenv("FRONTEND_URL", "http://localhost:5173"),
     )
 
 

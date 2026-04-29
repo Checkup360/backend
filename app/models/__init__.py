@@ -1,1 +1,1 @@
-from .user import OAuthAccount, User
+from .user import OAuthAccount, User, InviteToken
