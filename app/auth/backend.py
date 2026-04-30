@@ -17,7 +17,7 @@ class RedirectCookieTransport(CookieTransport):
 cookie_transport = RedirectCookieTransport(
     cookie_name="auth",
     cookie_max_age=3600,
-    cookie_secure=False,
+    cookie_secure=settings.cookie_secure,
     cookie_httponly=True,
     cookie_samesite="lax",
 )

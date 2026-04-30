@@ -14,6 +14,7 @@ class Settings:
     cors_allowed_origins: list[str]
     frontend_post_login_url: str
     frontend_url: str
+    cookie_secure: bool
 
 
 def _require_env(key: str) -> str:
@@ -28,22 +29,45 @@ def _parse_csv_env(key: str, default: str) -> list[str]:
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
+def _normalize_origin(url: str) -> str:
+    return url.rstrip("/")
+
+
+def _default_cors_origins_csv(web_origin: str) -> str:
+    """When the web app runs on localhost, dev typically uses three Vite ports."""
+    if web_origin.startswith("http://localhost:") or web_origin.startswith(
+        "http://127.0.0.1:"
+    ):
+        return "http://localhost:5173,http://localhost:5174,http://localhost:5175"
+    return web_origin
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     load_dotenv()
+    web_origin = _normalize_origin(
+        os.getenv("PUBLIC_WEB_ORIGIN")
+        or os.getenv("FRONTEND_URL")
+        or "http://localhost:5173"
+    )
+    cors_allowed_origins = _parse_csv_env(
+        "CORS_ALLOWED_ORIGINS",
+        _default_cors_origins_csv(web_origin),
+    )
+
     return Settings(
         database_url=_require_env("DATABASE_URL"),
         google_client_id=_require_env("GOOGLE_CLIENT_ID"),
         google_client_secret=_require_env("GOOGLE_CLIENT_SECRET"),
         auth_secret=_require_env("AUTH_SECRET"),
-        cors_allowed_origins=_parse_csv_env(
-            "CORS_ALLOWED_ORIGINS",
-            "http://localhost:5173,http://localhost:5174,http://localhost:5175",
+        cors_allowed_origins=cors_allowed_origins,
+        frontend_post_login_url=f"{web_origin}/login/complete",
+        frontend_url=web_origin,
+        cookie_secure=os.getenv("AUTH_COOKIE_SECURE", "false").lower() in (
+            "1",
+            "true",
+            "yes",
         ),
-        frontend_post_login_url=os.getenv(
-            "FRONTEND_POST_LOGIN_URL", "http://localhost:5173/login/complete"
-        ),
-        frontend_url=os.getenv("FRONTEND_URL", "http://localhost:5173"),
     )
 
 

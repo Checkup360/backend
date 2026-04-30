@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import NoReturn, Optional
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy import select
@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_user_db
 from app.core import settings
-from app.models import User, InviteToken
+from app.invites.cookies import clear_pending_invite_cookie
+from app.models import User
+from app.models.invite import InviteToken
+from app.schemas.invite import InviteRejected
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -22,118 +25,152 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     ) -> None:
         print(f"User {user.id} has registered.")
 
+    async def on_after_login(
+        self,
+        user: User,
+        request: Optional[Request] = None,
+        response: Optional[Response] = None,
+    ) -> None:
+        if not request or not response:
+            return
+        if request.cookies.get("pending_invite"):
+            clear_pending_invite_cookie(response)
+
     async def oauth_callback(
         self,
         oauth_name: str,
         access_token: str,
         account_id: str,
         account_email: str,
-        account_data: dict,
+        expires_at: int | None = None,
+        refresh_token: str | None = None,
         request: Optional[Request] = None,
-        *args,
-        **kwargs,
+        *,
+        associate_by_email: bool = False,
+        is_verified_by_default: bool = False,
     ) -> User:
         """
-        Override de oauth_callback para validar invite en nuevos usuarios.
-        Si el usuario ya existe (login), deja pasar.
-        Si es nuevo (registro), valida que tenga un invite válido.
+        Usuario existente: sin invite.
+        Usuario nuevo: valida invite (sin consumir); el consumo ocurre al crear el usuario en create().
         """
-        # Primero, chequear si el usuario YA existe (por OAuth account)
         existing_user = await self.user_db.get_by_oauth_account(oauth_name, account_id)
 
         if existing_user:
-            # Usuario ya registrado → dejalo pasar sin invite
-            pos_args = (oauth_name, access_token, account_id, account_email, account_data, request) + args
-            return await super().oauth_callback(*pos_args, **kwargs)
+            return await super().oauth_callback(
+                oauth_name,
+                access_token,
+                account_id,
+                account_email,
+                expires_at,
+                refresh_token,
+                request,
+                associate_by_email=associate_by_email,
+                is_verified_by_default=is_verified_by_default,
+            )
 
-        # Usuario nuevo → necesita invite válido
-        await self._validate_and_consume_invite(request, account_email)
-
-        # Marcar que ya validamos para que create() no lo haga de nuevo
+        invite = await self._assert_invite_valid_for_email(request, account_email)
         if request:
+            request.state.invite_pending_consumption_id = invite.id
             request.state.invite_already_validated = True
 
-        pos_args = (oauth_name, access_token, account_id, account_email, account_data, request) + args
-        return await super().oauth_callback(*pos_args, **kwargs)
+        return await super().oauth_callback(
+            oauth_name,
+            access_token,
+            account_id,
+            account_email,
+            expires_at,
+            refresh_token,
+            request,
+            associate_by_email=associate_by_email,
+            is_verified_by_default=is_verified_by_default,
+        )
 
     async def create(
         self, user_create, safe: bool = False, request: Optional[Request] = None
     ) -> User:
-        """
-        Override de create para validar invite en registro con email/password.
-        Salta validación si oauth_callback ya la hizo.
-        """
         already_validated = (
             getattr(request.state, "invite_already_validated", False) if request else False
         )
 
         if not already_validated:
-            await self._validate_and_consume_invite(request, user_create.email)
+            invite = await self._assert_invite_valid_for_email(request, user_create.email)
+            if request:
+                request.state.invite_pending_consumption_id = invite.id
 
-        return await super().create(user_create, safe=safe, request=request)
+        try:
+            user = await super().create(user_create, safe=safe, request=request)
+        except Exception:
+            if request:
+                request.state.invite_pending_consumption_id = None
+            raise
 
-    async def _validate_and_consume_invite(
-        self, request: Optional[Request], email: str
-    ) -> None:
-        """
-        Valida y consume un invite token. Levanta HTTPException si falla.
-        Lee el token de:
-        1. request.state.invite_token_override (para registro email/password)
-        2. request.cookies.get("pending_invite") (para OAuth)
-        """
-        # request may be None in some fastapi-users callbacks; treat that as "no invite provided"
-        invite_token = None
+        pending_id = getattr(request.state, "invite_pending_consumption_id", None) if request else None
+        if request and pending_id:
+            await self._consume_invite_by_id(request, pending_id, user.email)
+            request.state.invite_pending_consumption_id = None
+
+        return user
+
+    def _invite_fail(self, request: Optional[Request], reason: str) -> NoReturn:
         if request:
-            invite_token = (
-                getattr(request.state, "invite_token_override", None)
-                or request.cookies.get("pending_invite")
-            )
-
-        if not invite_token:
-            # No token available (either no cookie or no override)
+            request.state.clear_pending_invite_cookie = True
+        use_json = bool(
+            request and getattr(request.state, "invite_validation_error_as_json", False)
+        )
+        if use_json:
             raise HTTPException(
-                status_code=303,
-                headers={"Location": f"{settings.frontend_url}/auth/error?reason=no_invite"},
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=InviteRejected(code=reason).model_dump(),
             )
-
-        db: AsyncSession = request.state.db
-        invite = await db.scalar(
-            select(InviteToken).where(InviteToken.token == invite_token)
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": f"{settings.frontend_url}/auth/error?reason={reason}"},
         )
 
+    def _invite_token_from_request(self, request: Optional[Request]) -> str:
+        if not request:
+            self._invite_fail(request, "no_invite")
+        token = (
+            getattr(request.state, "invite_token_override", None)
+            or request.cookies.get("pending_invite")
+        )
+        if not token:
+            self._invite_fail(request, "no_invite")
+        return token
+
+    async def _assert_invite_valid_for_email(
+        self, request: Optional[Request], email: str
+    ) -> InviteToken:
+        """Comprueba el invite; no lo marca como usado."""
+        token = self._invite_token_from_request(request)
+        assert request is not None
+        db: AsyncSession = request.state.db
+        invite = await db.scalar(select(InviteToken).where(InviteToken.token == token))
+
         if not invite:
-            raise HTTPException(
-                status_code=303,
-                headers={
-                    "Location": f"{settings.frontend_url}/auth/error?reason=invalid_invite"
-                },
-            )
+            self._invite_fail(request, "invalid_invite")
 
         if invite.used:
-            raise HTTPException(
-                status_code=303,
-                headers={"Location": f"{settings.frontend_url}/auth/error?reason=invite_used"},
-            )
+            self._invite_fail(request, "invite_used")
 
         if invite.expires_at < datetime.utcnow():
-            raise HTTPException(
-                status_code=303,
-                headers={
-                    "Location": f"{settings.frontend_url}/auth/error?reason=invite_expired"
-                },
-            )
+            self._invite_fail(request, "invite_expired")
 
         if invite.email and invite.email != email:
-            raise HTTPException(
-                status_code=303,
-                headers={
-                    "Location": f"{settings.frontend_url}/auth/error?reason=email_mismatch"
-                },
-            )
+            self._invite_fail(request, "email_mismatch")
 
-        # Consumir invite
+        return invite
+
+    async def _consume_invite_by_id(
+        self, request: Request, invite_id: uuid.UUID, used_by_email: str
+    ) -> None:
+        """Marca el invite como usado solo después de que el usuario se creó bien."""
+        db: AsyncSession = request.state.db
+        invite = await db.get(InviteToken, invite_id)
+        if invite is None or invite.used:
+            return
         invite.used = True
-        invite.used_by = email
+        invite.used_by = used_by_email
         await db.commit()
 
 
@@ -141,4 +178,3 @@ async def get_user_manager(
     user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
 ):
     yield UserManager(user_db)
-

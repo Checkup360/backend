@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import settings
 from app.database import get_db
 from app.models import InviteToken
 
@@ -43,7 +44,6 @@ async def create_invite(
     db.add(invite)
     await db.commit()
 
-    # Magic link: /invite/[token] redirige a /auth/google/authorize?invite_token=xxx
-    invite_url = f"http://localhost:5173/invite/{token}"
+    invite_url = f"{settings.frontend_url.rstrip('/')}/invite/{token}"
 
     return CreateInviteResponse(token=token, invite_url=invite_url)
