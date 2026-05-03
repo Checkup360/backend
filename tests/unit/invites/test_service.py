@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.invites import service as invites_service
 
@@ -51,11 +51,9 @@ async def test_fetch_usable_invite_valid(mock_db, make_invite_token):
 async def test_fetch_usable_invite_edge_expiry_just_now(mock_db):
     """Test invite that expires exactly now (should be expired)."""
     now_utc = datetime.now(timezone.utc)
-    token = mock_db.scalar.return_value = type('Token', (), {
-        'token': 'edge-token',
-        'used': False,
-        'expires_at': now_utc
-    })()
+    mock_db.scalar.return_value = type(
+        "Token", (), {"token": "edge-token", "used": False, "expires_at": now_utc}
+    )()
 
     invite, code = await invites_service.fetch_usable_invite(mock_db, "edge-token")
 

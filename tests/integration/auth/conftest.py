@@ -28,7 +28,9 @@ def make_invite(db_session_maker):
         invite.token = token
         invite.email = email
         invite.used = used
-        invite.expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
+        invite.expires_at = datetime.now(timezone.utc) + timedelta(
+            hours=expires_in_hours
+        )
 
         async with db_session_maker() as session:
             session.add(invite)

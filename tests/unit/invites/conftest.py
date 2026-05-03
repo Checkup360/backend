@@ -16,7 +16,9 @@ def make_invite_token():
         invite.token = token
         invite.email = email
         invite.used = used
-        invite.expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
+        invite.expires_at = datetime.now(timezone.utc) + timedelta(
+            hours=expires_in_hours
+        )
         return invite
 
     return _make_invite

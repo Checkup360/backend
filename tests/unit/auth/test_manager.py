@@ -1,12 +1,8 @@
 import pytest
 from fastapi import HTTPException
-from types import SimpleNamespace
-
-from app.auth.manager import UserManager
 
 
 class TestInviteTokenFromRequest:
-
     def test_token_from_override(self, user_manager, request_mock):
         request_mock.state.invite_token_override = "override-token"
 
@@ -33,7 +29,6 @@ class TestInviteTokenFromRequest:
 
 
 class TestInviteFail:
-
     def test_invite_fail_redirect_by_default(self, user_manager, request_mock):
         with pytest.raises(HTTPException) as exc_info:
             user_manager._invite_fail(request_mock, "invite_expired")
@@ -48,7 +43,9 @@ class TestInviteFail:
             user_manager._invite_fail(request_mock, "invite_used")
 
         assert exc_info.value.status_code == 400
-        assert "code" in exc_info.value.detail or isinstance(exc_info.value.detail, dict)
+        assert "code" in exc_info.value.detail or isinstance(
+            exc_info.value.detail, dict
+        )
 
     def test_invite_fail_sets_clear_cookie_flag(self, user_manager, request_mock):
         try:

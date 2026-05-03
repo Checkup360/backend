@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 
 from app.invites.cookies import apply_pending_invite_cookie, clear_pending_invite_cookie
