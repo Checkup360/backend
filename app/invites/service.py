@@ -1,6 +1,6 @@
 """Lógica compartida para tokens de invitación (sin consumir)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,10 @@ async def fetch_usable_invite(
         return None, "invalid_invite"
     if invite.used:
         return None, "invite_used"
-    if invite.expires_at < datetime.utcnow():
+    expires_at = invite.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
         return None, "invite_expired"
     return invite, None

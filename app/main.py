@@ -30,4 +30,3 @@ app.include_router(admin.router)
 @app.get("/")
 def root():
     return {"ok": True}
-

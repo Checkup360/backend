@@ -1,0 +1,44 @@
+name: Lint, Check & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-check:
+    name: Lint, Format, Type Check, Test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install / Sync environment with uv
+        run: |
+          uv sync --locked
+
+      - name: Lint (ruff)
+        run: |
+          uv run ruff check . --fix --extend-exclude alembic/versions
+
+      - name: Format (ruff format)
+        run: |
+          uv run ruff format . --extend-exclude alembic/versions
+
+      - name: Type check (pyright)
+        run: |
+          uv run pyright
+
+      - name: Run pre-commit (via uv)
+        run: |
+          uv run pre-commit run --all-files || true
+
+      - name: Run unit tests
+        run: |
+          uv run pytest -q

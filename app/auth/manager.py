@@ -89,11 +89,15 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self, user_create, safe: bool = False, request: Optional[Request] = None
     ) -> User:
         already_validated = (
-            getattr(request.state, "invite_already_validated", False) if request else False
+            getattr(request.state, "invite_already_validated", False)
+            if request
+            else False
         )
 
         if not already_validated:
-            invite = await self._assert_invite_valid_for_email(request, user_create.email)
+            invite = await self._assert_invite_valid_for_email(
+                request, user_create.email
+            )
             if request:
                 request.state.invite_pending_consumption_id = invite.id
 
@@ -104,7 +108,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 request.state.invite_pending_consumption_id = None
             raise
 
-        pending_id = getattr(request.state, "invite_pending_consumption_id", None) if request else None
+        pending_id = (
+            getattr(request.state, "invite_pending_consumption_id", None)
+            if request
+            else None
+        )
         if request and pending_id:
             await self._consume_invite_by_id(request, pending_id, user.email)
             request.state.invite_pending_consumption_id = None
@@ -130,10 +138,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     def _invite_token_from_request(self, request: Optional[Request]) -> str:
         if not request:
             self._invite_fail(request, "no_invite")
-        token = (
-            getattr(request.state, "invite_token_override", None)
-            or request.cookies.get("pending_invite")
-        )
+        token = getattr(
+            request.state, "invite_token_override", None
+        ) or request.cookies.get("pending_invite")
         if not token:
             self._invite_fail(request, "no_invite")
         return token

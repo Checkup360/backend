@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 from app.invites import service as invites_service
@@ -22,7 +22,7 @@ async def test_fetch_usable_invite_used():
     token = InviteToken()
     token.token = "used-token"
     token.used = True
-    token.expires_at = datetime.utcnow() + timedelta(hours=1)
+    token.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
     db = AsyncMock()
     db.scalar = AsyncMock(return_value=token)
@@ -38,7 +38,7 @@ async def test_fetch_usable_invite_expired():
     token = InviteToken()
     token.token = "expired-token"
     token.used = False
-    token.expires_at = datetime.utcnow() - timedelta(seconds=1)
+    token.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
 
     db = AsyncMock()
     db.scalar = AsyncMock(return_value=token)
@@ -54,7 +54,7 @@ async def test_fetch_usable_invite_valid():
     token = InviteToken()
     token.token = "valid-token"
     token.used = False
-    token.expires_at = datetime.utcnow() + timedelta(hours=1)
+    token.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
     db = AsyncMock()
     db.scalar = AsyncMock(return_value=token)

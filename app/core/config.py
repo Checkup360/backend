@@ -63,7 +63,8 @@ def get_settings() -> Settings:
         cors_allowed_origins=cors_allowed_origins,
         frontend_post_login_url=f"{web_origin}/login/complete",
         frontend_url=web_origin,
-        cookie_secure=os.getenv("AUTH_COOKIE_SECURE", "false").lower() in (
+        cookie_secure=os.getenv("AUTH_COOKIE_SECURE", "false").lower()
+        in (
             "1",
             "true",
             "yes",

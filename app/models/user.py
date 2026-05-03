@@ -12,4 +12,6 @@ class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
-    oauth_accounts: Mapped[list[OAuthAccount]] = relationship("OAuthAccount", lazy="joined")
+    oauth_accounts: Mapped[list[OAuthAccount]] = relationship(
+        "OAuthAccount", lazy="joined"
+    )

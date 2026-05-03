@@ -3,7 +3,6 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 
 from alembic import context
@@ -76,18 +75,15 @@ async def run_async_migrations():
     )
 
     async with connectable.connect() as connection:
-        await connection.run_sync(
-            do_run_migrations
-        )
+        await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
 
 
 def run_migrations_online():
     import asyncio
-    asyncio.run(
-        run_async_migrations()
-    )
+
+    asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

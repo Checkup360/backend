@@ -1,5 +1,4 @@
 from fastapi import Request
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.database import async_session_maker
