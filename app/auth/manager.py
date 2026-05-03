@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import NoReturn, Optional
 
 from fastapi import Depends, HTTPException, Request, Response, status
@@ -23,7 +23,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_register(
         self, user: User, request: Optional[Request] = None
     ) -> None:
-        print(f"User {user.id} has registered.")
+        pass
 
     async def on_after_login(
         self,
@@ -160,7 +160,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         if invite.used:
             self._invite_fail(request, "invite_used")
 
-        if invite.expires_at < datetime.utcnow():
+        expires_at = invite.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at < datetime.now(timezone.utc):
             self._invite_fail(request, "invite_expired")
 
         if invite.email and invite.email != email:

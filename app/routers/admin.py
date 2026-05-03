@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -33,7 +33,7 @@ async def create_invite(
     El token expira en `expires_in_hours` horas.
     """
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=request.expires_in_hours)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=request.expires_in_hours)
 
     invite = InviteToken(
         token=token,
