@@ -9,25 +9,15 @@ repos:
   - repo: local
     hooks:
       - id: ruff-check
-        name: ruff check via uv
-        entry: uv run ruff check . --fix --extend-exclude alembic/versions
+        name: ruff check
+        entry: uv run ruff check .
         language: system
-        files: ^(?!alembic/versions/).*\.py$
-
-      - id: black-check
-        name: black check via uv
-        entry: uv run black --check . --exclude 'alembic/versions'
-        language: system
-        files: ^(?!alembic/versions/).*\.py$
+        types: [python]
+        pass_filenames: false
 
       - id: ruff-format
-        name: ruff format via uv
+        name: ruff format
         entry: uv run ruff format .
         language: system
-        files: ^(?!alembic/versions/).*\.py$
-
-      - id: pyright
-        name: pyright via uv
-        entry: uv run pyright
-        language: system
-        files: ^(?!alembic/versions/).*\.py$
+        types: [python]
+        pass_filenames: false

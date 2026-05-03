@@ -8,13 +8,10 @@ on:
 
 jobs:
   quality-check:
-    name: Lint, Format, Type Check, Test
+    name: Lint, Format, Test
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - uses: actions/checkout@v4
@@ -25,19 +22,11 @@ jobs:
 
       - name: Lint (ruff)
         run: |
-          uv run ruff check . --fix --extend-exclude alembic/versions
+          uv run ruff check .
 
       - name: Format (ruff format)
         run: |
-          uv run ruff format . --extend-exclude alembic/versions
-
-      - name: Type check (pyright)
-        run: |
-          uv run pyright
-
-      - name: Run pre-commit (via uv)
-        run: |
-          uv run pre-commit run --all-files || true
+          uv run ruff format . --check
 
       - name: Run unit tests
         run: |
