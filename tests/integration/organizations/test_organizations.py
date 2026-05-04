@@ -8,10 +8,12 @@ from app.models import Organization
 class TestOrganizations:
     @pytest.mark.asyncio
     async def test_superuser_can_create_organization(
-        self, client, db_session_maker, make_user, override_current_user
+        self, client, db_session_maker, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-create-org@example.com",
+            is_superuser=True,
+        )
 
         response = client.post(
             "/organizations/",
@@ -29,10 +31,12 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_non_superuser_cannot_create_organization(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=False)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="regular-create-org@example.com",
+            is_superuser=False,
+        )
 
         response = client.post(
             "/organizations/",
@@ -43,11 +47,13 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_used_slug_returns_conflict(
-        self, client, make_user, make_organization, override_current_user
+        self, client, make_organization, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
+        await auth_scenario.register_and_login(
+            email="superuser-used-slug@example.com",
+            is_superuser=True,
+        )
         await make_organization(slug="used-slug")
-        override_current_user(user)
 
         response = client.post(
             "/organizations/",
@@ -59,10 +65,12 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_empty_slug_returns_422(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-empty-slug@example.com",
+            is_superuser=True,
+        )
 
         response = client.post(
             "/organizations/",
@@ -73,10 +81,12 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_empty_name_returns_422(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-empty-name@example.com",
+            is_superuser=True,
+        )
 
         response = client.post(
             "/organizations/",
@@ -87,10 +97,12 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_invalid_slug_format_returns_422(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-invalid-slug@example.com",
+            is_superuser=True,
+        )
 
         invalid_slugs = [
             "Acme-Inc",  # uppercase
@@ -111,10 +123,12 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_valid_slug_formats(
-        self, client, make_user, override_current_user, db_session_maker
+        self, client, auth_scenario, db_session_maker
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-valid-slug@example.com",
+            is_superuser=True,
+        )
 
         valid_slugs = [
             "acme",
@@ -134,12 +148,14 @@ class TestOrganizations:
 
     @pytest.mark.asyncio
     async def test_superuser_can_list_organizations(
-        self, client, make_user, make_organization, override_current_user
+        self, client, make_organization, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
+        await auth_scenario.register_and_login(
+            email="superuser-list-orgs@example.com",
+            is_superuser=True,
+        )
         await make_organization(name="Org 1", slug="org-1")
         await make_organization(name="Org 2", slug="org-2")
-        override_current_user(user)
 
         response = client.get("/organizations/")
 
@@ -150,11 +166,11 @@ class TestOrganizations:
         assert any(o["slug"] == "org-2" for o in data)
 
     @pytest.mark.asyncio
-    async def test_non_superuser_cannot_list_organizations(
-        self, client, make_user, override_current_user
-    ):
-        user = await make_user(is_superuser=False)
-        override_current_user(user)
+    async def test_non_superuser_cannot_list_organizations(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="regular-list-orgs@example.com",
+            is_superuser=False,
+        )
 
         response = client.get("/organizations/")
 

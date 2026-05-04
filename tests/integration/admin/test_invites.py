@@ -8,10 +8,12 @@ from app.models.membership import OrgRole
 class TestAdminInvites:
     @pytest.mark.asyncio
     async def test_superuser_can_create_sysadmin_invite(
-        self, client, db_session_maker, make_user, override_current_user
+        self, client, db_session_maker, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-admin-invites@example.com",
+            is_superuser=True,
+        )
 
         response = client.post(
             "/admin/invites",
@@ -33,13 +35,14 @@ class TestAdminInvites:
         self,
         client,
         db_session_maker,
-        make_user,
         make_organization,
-        override_current_user,
+        auth_scenario,
     ):
-        user = await make_user(is_superuser=True)
+        await auth_scenario.register_and_login(
+            email="superuser-org-invites@example.com",
+            is_superuser=True,
+        )
         organization = await make_organization(slug="super-org-invite")
-        override_current_user(user)
 
         response = client.post(
             "/admin/invites",
@@ -62,10 +65,12 @@ class TestAdminInvites:
 
     @pytest.mark.asyncio
     async def test_non_superuser_cannot_create_admin_invite(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=False)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="regular-admin-invites@example.com",
+            is_superuser=False,
+        )
 
         response = client.post(
             "/admin/invites",
@@ -75,11 +80,11 @@ class TestAdminInvites:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_admin_invite_role_requires_organization(
-        self, client, make_user, override_current_user
-    ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+    async def test_admin_invite_role_requires_organization(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="superuser-role-check@example.com",
+            is_superuser=True,
+        )
 
         response = client.post("/admin/invites", json={"role": "admin"})
 
@@ -88,10 +93,12 @@ class TestAdminInvites:
 
     @pytest.mark.asyncio
     async def test_admin_invite_invalid_role_returns_validation_error(
-        self, client, make_user, override_current_user
+        self, client, auth_scenario
     ):
-        user = await make_user(is_superuser=True)
-        override_current_user(user)
+        await auth_scenario.register_and_login(
+            email="superuser-invalid-role@example.com",
+            is_superuser=True,
+        )
 
         response = client.post("/admin/invites", json={"role": "owner"})
 

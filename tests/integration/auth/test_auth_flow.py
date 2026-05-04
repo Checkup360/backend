@@ -1,7 +1,9 @@
 import pytest
-from types import SimpleNamespace
+from sqlalchemy import select
 
 from app.core import settings
+from app.models import Membership, Organization, User
+from app.models.membership import OrgRole
 
 
 def register(client, token: str, email: str, password: str = "SuperSecure123!"):
@@ -54,7 +56,7 @@ class TestRegister:
         invite = await make_invite(
             token="used-invite",
             email="juan@example.com",
-            used=False,
+            uses=1,
         )
 
         register(client, invite.token, "juan@example.com")
@@ -86,14 +88,14 @@ class TestMeEndpoint:
         response = client.get("/auth/me")
         assert response.status_code == 401
 
-    def test_with_auth_returns_expanded_response(self, client, override_current_user):
-        user = SimpleNamespace(
+    @pytest.mark.asyncio
+    async def test_with_auth_returns_expanded_response(self, client, make_invite):
+        invite = await make_invite(
+            token="me-basic-invite",
             email="juan@example.com",
-            is_superuser=False,
-            memberships=[],
+            expires_in_hours=1,
         )
-        override_current_user(user)
-
+        register(client, invite.token, "juan@example.com")
         response = client.get("/auth/me")
         assert response.status_code == 200
         data = response.json()
@@ -101,42 +103,59 @@ class TestMeEndpoint:
         assert data["is_sysadmin"] is False
         assert data["memberships"] == []
 
-    def test_sysadmin_returns_is_sysadmin_true(self, client, override_current_user):
-        user = SimpleNamespace(
+    @pytest.mark.asyncio
+    async def test_sysadmin_returns_is_sysadmin_true(
+        self, client, make_invite, db_session_maker
+    ):
+        invite = await make_invite(
+            token="me-sysadmin-invite",
             email="admin@example.com",
-            is_superuser=True,
-            memberships=[],
+            expires_in_hours=1,
         )
-        override_current_user(user)
-
+        register(client, invite.token, "admin@example.com")
+        async with db_session_maker() as session:
+            user = await session.scalar(
+                select(User).where(User.email == "admin@example.com")
+            )
+            user.is_superuser = True
+            await session.commit()
         response = client.get("/auth/me")
         assert response.status_code == 200
         data = response.json()
         assert data["is_sysadmin"] is True
 
-    def test_user_with_org_membership_returns_memberships(
-        self, client, override_current_user
+    @pytest.mark.asyncio
+    async def test_user_with_org_membership_returns_memberships(
+        self, client, make_invite, db_session_maker
     ):
-        membership = SimpleNamespace(
-            organization_id="550e8400-e29b-41d4-a716-446655440000",
-            organization=SimpleNamespace(name="Test Org"),
-            role=SimpleNamespace(value="admin"),
-        )
-        user = SimpleNamespace(
+        invite = await make_invite(
+            token="me-membership-invite",
             email="user@example.com",
-            is_superuser=False,
-            memberships=[membership],
+            expires_in_hours=1,
         )
-        override_current_user(user)
+        register(client, invite.token, "user@example.com")
+
+        async with db_session_maker() as session:
+            user = await session.scalar(
+                select(User).where(User.email == "user@example.com")
+            )
+            org = Organization(name="Test Org", slug="test-org-me")
+            session.add(org)
+            await session.flush()
+            session.add(
+                Membership(
+                    user_id=user.id,
+                    organization_id=org.id,
+                    role=OrgRole.ADMIN,
+                )
+            )
+            await session.commit()
 
         response = client.get("/auth/me")
         assert response.status_code == 200
         data = response.json()
         assert len(data["memberships"]) == 1
-        assert (
-            data["memberships"][0]["organization_id"]
-            == "550e8400-e29b-41d4-a716-446655440000"
-        )
+        assert data["memberships"][0]["organization_id"] == str(org.id)
         assert data["memberships"][0]["organization_name"] == "Test Org"
         assert data["memberships"][0]["role"] == "admin"
 

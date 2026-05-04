@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models import InviteToken, Membership
+from app.models import InviteToken, Organization
 from app.models.membership import OrgRole
 
 
@@ -11,22 +11,16 @@ class TestOrgInvites:
         self,
         client,
         db_session_maker,
-        make_user,
-        make_organization,
-        override_current_user,
+        auth_scenario,
     ):
-        user = await make_user()
-        organization = await make_organization(slug="member-invite")
+        await auth_scenario.register_and_login(
+            email="org-admin-member-invite@example.com",
+            memberships=[("member-invite", OrgRole.ADMIN)],
+        )
         async with db_session_maker() as session:
-            session.add(
-                Membership(
-                    user_id=user.id,
-                    organization_id=organization.id,
-                    role=OrgRole.ADMIN,
-                )
+            organization = await session.scalar(
+                select(Organization).where(Organization.slug == "member-invite")
             )
-            await session.commit()
-        override_current_user(user)
 
         response = client.post(
             "/invites/organization",
@@ -53,22 +47,16 @@ class TestOrgInvites:
         self,
         client,
         db_session_maker,
-        make_user,
-        make_organization,
-        override_current_user,
+        auth_scenario,
     ):
-        user = await make_user()
-        organization = await make_organization(slug="admin-invite")
+        await auth_scenario.register_and_login(
+            email="org-admin-admin-invite@example.com",
+            memberships=[("admin-invite", OrgRole.ADMIN)],
+        )
         async with db_session_maker() as session:
-            session.add(
-                Membership(
-                    user_id=user.id,
-                    organization_id=organization.id,
-                    role=OrgRole.ADMIN,
-                )
+            organization = await session.scalar(
+                select(Organization).where(Organization.slug == "admin-invite")
             )
-            await session.commit()
-        override_current_user(user)
 
         response = client.post(
             "/invites/organization",
@@ -90,22 +78,16 @@ class TestOrgInvites:
         self,
         client,
         db_session_maker,
-        make_user,
-        make_organization,
-        override_current_user,
+        auth_scenario,
     ):
-        user = await make_user()
-        organization = await make_organization(slug="member-denied")
+        await auth_scenario.register_and_login(
+            email="org-member-denied@example.com",
+            memberships=[("member-denied", OrgRole.MEMBER)],
+        )
         async with db_session_maker() as session:
-            session.add(
-                Membership(
-                    user_id=user.id,
-                    organization_id=organization.id,
-                    role=OrgRole.MEMBER,
-                )
+            organization = await session.scalar(
+                select(Organization).where(Organization.slug == "member-denied")
             )
-            await session.commit()
-        override_current_user(user)
 
         response = client.post(
             "/invites/organization",
@@ -122,22 +104,16 @@ class TestOrgInvites:
         self,
         client,
         db_session_maker,
-        make_user,
-        make_organization,
-        override_current_user,
+        auth_scenario,
     ):
-        user = await make_user()
-        organization = await make_organization(slug="invalid-org-role")
+        await auth_scenario.register_and_login(
+            email="org-invalid-role@example.com",
+            memberships=[("invalid-org-role", OrgRole.ADMIN)],
+        )
         async with db_session_maker() as session:
-            session.add(
-                Membership(
-                    user_id=user.id,
-                    organization_id=organization.id,
-                    role=OrgRole.ADMIN,
-                )
+            organization = await session.scalar(
+                select(Organization).where(Organization.slug == "invalid-org-role")
             )
-            await session.commit()
-        override_current_user(user)
 
         response = client.post(
             "/invites/organization",
