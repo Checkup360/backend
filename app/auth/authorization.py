@@ -18,6 +18,20 @@ def require_superuser(
     return current_user
 
 
+async def require_org_admin_any(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(current_active_user),
+) -> User:
+    membership = await db.scalar(
+        select(Membership).where(
+            (Membership.user_id == current_user.id) & (Membership.role == OrgRole.ADMIN)
+        )
+    )
+    if not membership:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    return current_user
+
+
 async def require_organization_admin(
     request: Request,
     db: AsyncSession = Depends(get_db),

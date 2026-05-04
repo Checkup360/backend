@@ -7,7 +7,8 @@ from sqlalchemy.pool import StaticPool
 from app.auth.users import current_active_user
 from app.database import Base
 from app.main import app
-from app.models import Organization, User
+from app.models import Organization, User, Membership
+from app.models.membership import OrgRole
 
 
 @pytest_asyncio.fixture()
@@ -58,12 +59,12 @@ def override_current_user():
 
 @pytest_asyncio.fixture()
 async def make_user(db_session_maker):
-    async def _make_user(*, is_superuser: bool = False) -> User:
+    async def _make_user(*, email: str = None, is_superuser: bool = False) -> User:
         import uuid
 
         user = User(
             id=uuid.uuid4(),
-            email=f"{uuid.uuid4()}@example.com",
+            email=email or f"{uuid.uuid4()}@example.com",
             hashed_password="not-used",
             is_active=True,
             is_superuser=is_superuser,
@@ -79,8 +80,10 @@ async def make_user(db_session_maker):
 
 @pytest_asyncio.fixture()
 async def make_organization(db_session_maker):
-    async def _make_organization(*, slug: str = "test-org") -> Organization:
-        organization = Organization(name="Test Org", slug=slug)
+    async def _make_organization(
+        *, name: str = "Test Org", slug: str = "test-org"
+    ) -> Organization:
+        organization = Organization(name=name, slug=slug)
         async with db_session_maker() as session:
             session.add(organization)
             await session.commit()
@@ -88,3 +91,25 @@ async def make_organization(db_session_maker):
         return organization
 
     return _make_organization
+
+
+@pytest_asyncio.fixture()
+async def make_membership(db_session_maker):
+    async def _make_membership(
+        *,
+        user_id,
+        organization_id,
+        role: str = "member",
+    ) -> Membership:
+        membership = Membership(
+            user_id=user_id,
+            organization_id=organization_id,
+            role=OrgRole(role),
+        )
+        async with db_session_maker() as session:
+            session.add(membership)
+            await session.commit()
+            await session.refresh(membership)
+        return membership
+
+    return _make_membership

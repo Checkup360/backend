@@ -32,7 +32,10 @@ class TestRegister:
 
         me_response = client.get("/auth/me")
         assert me_response.status_code == 200
-        assert me_response.json() == {"email": "juan@example.com"}
+        data = me_response.json()
+        assert data["email"] == "juan@example.com"
+        assert data["is_sysadmin"] is False
+        assert data["memberships"] == []
 
     @pytest.mark.asyncio
     async def test_with_expired_invite(self, client, make_invite):
@@ -83,12 +86,59 @@ class TestMeEndpoint:
         response = client.get("/auth/me")
         assert response.status_code == 401
 
-    def test_with_auth(self, client, override_current_user):
-        override_current_user(SimpleNamespace(email="juan@example.com"))
+    def test_with_auth_returns_expanded_response(self, client, override_current_user):
+        user = SimpleNamespace(
+            email="juan@example.com",
+            is_superuser=False,
+            memberships=[],
+        )
+        override_current_user(user)
 
         response = client.get("/auth/me")
         assert response.status_code == 200
-        assert response.json() == {"email": "juan@example.com"}
+        data = response.json()
+        assert data["email"] == "juan@example.com"
+        assert data["is_sysadmin"] is False
+        assert data["memberships"] == []
+
+    def test_sysadmin_returns_is_sysadmin_true(self, client, override_current_user):
+        user = SimpleNamespace(
+            email="admin@example.com",
+            is_superuser=True,
+            memberships=[],
+        )
+        override_current_user(user)
+
+        response = client.get("/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_sysadmin"] is True
+
+    def test_user_with_org_membership_returns_memberships(
+        self, client, override_current_user
+    ):
+        membership = SimpleNamespace(
+            organization_id="550e8400-e29b-41d4-a716-446655440000",
+            organization=SimpleNamespace(name="Test Org"),
+            role=SimpleNamespace(value="admin"),
+        )
+        user = SimpleNamespace(
+            email="user@example.com",
+            is_superuser=False,
+            memberships=[membership],
+        )
+        override_current_user(user)
+
+        response = client.get("/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["memberships"]) == 1
+        assert (
+            data["memberships"][0]["organization_id"]
+            == "550e8400-e29b-41d4-a716-446655440000"
+        )
+        assert data["memberships"][0]["organization_name"] == "Test Org"
+        assert data["memberships"][0]["role"] == "admin"
 
 
 class TestLoginEndpoint:
@@ -114,4 +164,7 @@ class TestLoginEndpoint:
 
         me_response = client.get("/auth/me")
         assert me_response.status_code == 200
-        assert me_response.json() == {"email": "juan@example.com"}
+        data = me_response.json()
+        assert data["email"] == "juan@example.com"
+        assert data["is_sysadmin"] is False
+        assert data["memberships"] == []

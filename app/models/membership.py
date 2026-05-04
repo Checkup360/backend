@@ -30,11 +30,11 @@ class Membership(Base):
         Enum(OrgRole), default=OrgRole.MEMBER, nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     organization: Mapped["Organization"] = relationship(
-        "Organization", back_populates="memberships"
+        "Organization", back_populates="memberships", lazy="joined"
     )
     user: Mapped["User"] = relationship("User", back_populates="memberships")
     __table_args__ = (Index("ix_user_org_organization_id", "organization_id"),)

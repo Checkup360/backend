@@ -1,7 +1,8 @@
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,23 @@ class CreateOrganizationRequest(BaseModel):
     name: str
     slug: str
 
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("slug_required")
+        v = v.strip()
+        if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", v):
+            raise ValueError("invalid_slug_format")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("name_required")
+        return v.strip()
+
 
 class OrganizationResponse(BaseModel):
     id: uuid.UUID
@@ -24,9 +42,14 @@ class OrganizationResponse(BaseModel):
     slug: str
 
 
-@router.get("/")
-def list_orgs():
-    return {"orgs": "no orgs"}
+@router.get("/", response_model=list[OrganizationResponse])
+async def list_organizations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+):
+    query = select(Organization)
+    organizations = await db.scalars(query)
+    return list(organizations)
 
 
 @router.post(
@@ -55,6 +78,12 @@ async def create_organization(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="organization_slug_already_exists",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="unknown_error",
         )
     await db.refresh(organization)
 

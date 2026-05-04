@@ -15,7 +15,7 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     memberships: Mapped[list["Membership"]] = relationship(

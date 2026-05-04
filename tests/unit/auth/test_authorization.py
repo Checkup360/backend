@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.auth.authorization import require_organization_admin, require_superuser
+from app.auth.authorization import (
+    require_organization_admin,
+    require_superuser,
+    require_org_admin_any,
+)
 from app.models.membership import OrgRole
 
 
@@ -91,6 +95,31 @@ async def test_require_organization_admin_rejects_non_admin_membership():
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(request, db, SimpleNamespace(id=uuid.uuid4()))
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "forbidden"
+
+
+@pytest.mark.asyncio
+async def test_require_org_admin_any_returns_user_with_admin_membership():
+    user = SimpleNamespace(id=uuid.uuid4())
+    db = AsyncMock()
+    db.scalar.return_value = SimpleNamespace(role=OrgRole.ADMIN)
+
+    result = await require_org_admin_any(db, user)
+
+    assert result is user
+    db.scalar.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_require_org_admin_any_rejects_user_without_admin_membership():
+    user = SimpleNamespace(id=uuid.uuid4())
+    db = AsyncMock()
+    db.scalar.return_value = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_org_admin_any(db, user)
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "forbidden"
