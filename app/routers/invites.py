@@ -1,11 +1,23 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
+from app.auth.authorization import require_organization_admin
 from app.auth.backend import auth_backend
 from app.auth.manager import UserManager, get_user_manager
+from app.database import get_db
 from app.invites.cookies import apply_pending_invite_cookie
 from app.invites.json_response import response_json
-from app.invites.service import fetch_usable_invite
+from app.invites.service import (
+    build_invite_token,
+    build_invite_url,
+    fetch_usable_invite,
+)
+from app.models import Membership
+from app.models.membership import OrgRole
 from app.schemas.invite import (
     InvitePasswordRegisterBody,
     InviteRejected,
@@ -17,6 +29,42 @@ from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
 
 router = APIRouter(prefix="/invites", tags=["invites"])
+
+
+class CreateOrganizationInviteRequest(BaseModel):
+    email: str | None = None
+    expires_in_hours: int = 24
+    max_uses: int = 1
+    organization_id: uuid.UUID
+    role: OrgRole
+
+
+class CreateInviteResponse(BaseModel):
+    token: str
+    invite_url: str
+
+
+@router.post("/organization", response_model=CreateInviteResponse)
+async def create_organization_invite(
+    body: CreateOrganizationInviteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: Membership = Depends(require_organization_admin),
+):
+    invite = build_invite_token(
+        email=body.email,
+        max_uses=body.max_uses,
+        expires_in_hours=body.expires_in_hours,
+        organization_id=body.organization_id,
+        role=body.role,
+        is_sysadmin=False,
+    )
+    db.add(invite)
+    await db.commit()
+
+    return CreateInviteResponse(
+        token=invite.token,
+        invite_url=build_invite_url(invite.token),
+    )
 
 
 @router.post(

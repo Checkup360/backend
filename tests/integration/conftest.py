@@ -4,8 +4,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.auth.users import current_active_user
 from app.database import Base
 from app.main import app
+from app.models import Organization, User
 
 
 @pytest_asyncio.fixture()
@@ -43,3 +45,46 @@ async def db_session_maker(monkeypatch):
 def client(db_session_maker):
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def override_current_user():
+    def _override(user):
+        app.dependency_overrides[current_active_user] = lambda: user
+
+    yield _override
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def make_user(db_session_maker):
+    async def _make_user(*, is_superuser: bool = False) -> User:
+        import uuid
+
+        user = User(
+            id=uuid.uuid4(),
+            email=f"{uuid.uuid4()}@example.com",
+            hashed_password="not-used",
+            is_active=True,
+            is_superuser=is_superuser,
+            is_verified=False,
+        )
+        async with db_session_maker() as session:
+            session.add(user)
+            await session.commit()
+        return user
+
+    return _make_user
+
+
+@pytest_asyncio.fixture()
+async def make_organization(db_session_maker):
+    async def _make_organization(*, slug: str = "test-org") -> Organization:
+        organization = Organization(name="Test Org", slug=slug)
+        async with db_session_maker() as session:
+            session.add(organization)
+            await session.commit()
+            await session.refresh(organization)
+        return organization
+
+    return _make_organization
