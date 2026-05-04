@@ -18,7 +18,7 @@ async def fetch_usable_invite(
     invite = await db.scalar(select(InviteToken).where(InviteToken.token == token))
     if not invite:
         return None, "invalid_invite"
-    if invite.used:
+    if invite.is_exhausted:
         return None, "invite_used"
     expires_at = invite.expires_at
     if expires_at.tzinfo is None:

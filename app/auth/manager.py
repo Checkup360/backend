@@ -13,17 +13,13 @@ from app.core import settings
 from app.invites.cookies import clear_pending_invite_cookie
 from app.models import User
 from app.models.invite import InviteToken
+from app.models.membership import Membership, OrgRole
 from app.schemas.invite import InviteRejected
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = settings.auth_secret
     verification_token_secret = settings.auth_secret
-
-    async def on_after_register(
-        self, user: User, request: Optional[Request] = None
-    ) -> None:
-        pass
 
     async def on_after_login(
         self,
@@ -33,6 +29,13 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     ) -> None:
         if not request or not response:
             return
+
+        if hasattr(request.state, "invite_pending_consumption_id"):
+            pending_id = getattr(request.state, "invite_pending_consumption_id", None)
+            if pending_id:
+                await self._consume_invite_by_id(request, pending_id, user)
+                request.state.invite_pending_consumption_id = None
+
         if request.cookies.get("pending_invite"):
             clear_pending_invite_cookie(response)
 
@@ -49,29 +52,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         associate_by_email: bool = False,
         is_verified_by_default: bool = False,
     ) -> User:
-        """
-        Usuario existente: sin invite.
-        Usuario nuevo: valida invite (sin consumir); el consumo ocurre al crear el usuario en create().
-        """
         existing_user = await self.user_db.get_by_oauth_account(oauth_name, account_id)
 
         if existing_user:
-            return await super().oauth_callback(
-                oauth_name,
-                access_token,
-                account_id,
-                account_email,
-                expires_at,
-                refresh_token,
-                request,
-                associate_by_email=associate_by_email,
-                is_verified_by_default=is_verified_by_default,
-            )
-
-        invite = await self._assert_invite_valid_for_email(request, account_email)
-        if request:
-            request.state.invite_pending_consumption_id = invite.id
-            request.state.invite_already_validated = True
+            if request and self._has_invite_token(request):
+                invite = await self._assert_invite_valid_for_email(
+                    request, account_email
+                )
+                if request:
+                    request.state.invite_pending_consumption_id = invite.id
+        else:
+            invite = await self._assert_invite_valid_for_email(request, account_email)
+            if request:
+                request.state.invite_pending_consumption_id = invite.id
+                request.state.invite_already_validated = True
 
         return await super().oauth_callback(
             oauth_name,
@@ -114,7 +108,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             else None
         )
         if request and pending_id:
-            await self._consume_invite_by_id(request, pending_id, user.email)
+            await self._consume_invite_by_id(request, pending_id, user)
             request.state.invite_pending_consumption_id = None
 
         return user
@@ -145,10 +139,18 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             self._invite_fail(request, "no_invite")
         return token
 
+    def _has_invite_token(self, request: Optional[Request]) -> bool:
+        if not request:
+            return False
+        return bool(
+            getattr(request.state, "invite_token_override", None)
+            or request.cookies.get("pending_invite")
+        )
+
     async def _assert_invite_valid_for_email(
         self, request: Optional[Request], email: str
     ) -> InviteToken:
-        """Comprueba el invite; no lo marca como usado."""
+        """Checks the invite; does not mark it as used."""
         token = self._invite_token_from_request(request)
         assert request is not None
         db: AsyncSession = request.state.db
@@ -157,7 +159,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         if not invite:
             self._invite_fail(request, "invalid_invite")
 
-        if invite.used:
+        if invite.is_exhausted:
             self._invite_fail(request, "invite_used")
 
         expires_at = invite.expires_at
@@ -173,15 +175,41 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return invite
 
     async def _consume_invite_by_id(
-        self, request: Request, invite_id: uuid.UUID, used_by_email: str
+        self, request: Request, invite_id: uuid.UUID, user: User
     ) -> None:
-        """Marca el invite como usado solo después de que el usuario se creó bien."""
         db: AsyncSession = request.state.db
         invite = await db.get(InviteToken, invite_id)
-        if invite is None or invite.used:
+        if invite is None or invite.is_exhausted:
             return
-        invite.used = True
-        invite.used_by = used_by_email
+
+        if invite.is_sysadmin:
+            user.is_superuser = True
+        elif invite.organization_id:
+            existing_membership = await db.scalar(
+                select(Membership).where(
+                    (Membership.user_id == user.id)
+                    & (Membership.organization_id == invite.organization_id)
+                )
+            )
+
+            if not existing_membership:
+                membership = Membership(
+                    user_id=user.id,
+                    organization_id=invite.organization_id,
+                    role=invite.role or OrgRole.MEMBER,
+                )
+                db.add(membership)
+            else:
+                if (
+                    invite.role
+                    and invite.role == OrgRole.ADMIN
+                    and existing_membership.role != OrgRole.ADMIN
+                ):
+                    existing_membership.role = invite.role
+                else:
+                    return
+
+        invite.uses += 1
         await db.commit()
 
 
