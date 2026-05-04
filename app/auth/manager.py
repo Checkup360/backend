@@ -182,19 +182,23 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         if invite is None or invite.is_exhausted:
             return
 
+        db_user = await db.get(User, user.id)
+        if db_user is None:
+            return
+
         if invite.is_sysadmin:
-            user.is_superuser = True
+            db_user.is_superuser = True
         elif invite.organization_id:
             existing_membership = await db.scalar(
                 select(Membership).where(
-                    (Membership.user_id == user.id)
+                    (Membership.user_id == db_user.id)
                     & (Membership.organization_id == invite.organization_id)
                 )
             )
 
             if not existing_membership:
                 membership = Membership(
-                    user_id=user.id,
+                    user_id=db_user.id,
                     organization_id=invite.organization_id,
                     role=invite.role or OrgRole.MEMBER,
                 )

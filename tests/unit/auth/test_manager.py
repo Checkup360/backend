@@ -120,7 +120,9 @@ class TestConsumeInviteByID:
     ):
         """New user: create membership with the invite role."""
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_org, sample_user]
+        )
         request_mock.state.db.scalar = AsyncMock(return_value=None)
         request_mock.state.db.add = MagicMock()
         request_mock.state.db.commit = AsyncMock()
@@ -159,7 +161,9 @@ class TestConsumeInviteByID:
         sample_invite_org.role = OrgRole.MEMBER
 
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_org, sample_user]
+        )
         request_mock.state.db.scalar = AsyncMock(return_value=sample_membership)
         request_mock.state.db.add = MagicMock()
         request_mock.state.db.commit = AsyncMock()
@@ -184,7 +188,9 @@ class TestConsumeInviteByID:
     ):
         """Sysadmin invite sets user.is_superuser = True."""
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_sysadmin)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_sysadmin, sample_user]
+        )
         request_mock.state.db.commit = AsyncMock()
 
         await user_manager._consume_invite_by_id(
@@ -206,7 +212,9 @@ class TestConsumeInviteByID:
         sample_invite_org.role = None
 
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_org, sample_user]
+        )
         request_mock.state.db.scalar = AsyncMock(return_value=None)
         request_mock.state.db.add = MagicMock()
         request_mock.state.db.commit = AsyncMock()
@@ -261,7 +269,9 @@ class TestConsumeInviteByID:
         initial_uses = sample_invite_org.uses
 
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_org, sample_user]
+        )
         request_mock.state.db.scalar = AsyncMock(return_value=None)
         request_mock.state.db.add = MagicMock()
         request_mock.state.db.commit = AsyncMock()
@@ -288,7 +298,9 @@ class TestConsumeInviteByID:
         sample_invite_org.role = OrgRole.ADMIN
 
         request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
+        request_mock.state.db.get = AsyncMock(
+            side_effect=[sample_invite_org, sample_user]
+        )
         request_mock.state.db.scalar = AsyncMock(return_value=sample_membership)
         request_mock.state.db.add = MagicMock()
         request_mock.state.db.commit = AsyncMock()
