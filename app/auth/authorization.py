@@ -18,25 +18,15 @@ def require_superuser(
     return current_user
 
 
-async def require_org_admin_any(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(current_active_user),
-) -> User:
-    membership = await db.scalar(
-        select(Membership).where(
-            (Membership.user_id == current_user.id) & (Membership.role == OrgRole.ADMIN)
-        )
-    )
-    if not membership:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
-    return current_user
-
-
-async def require_organization_admin(
+async def _validate_organization_admin(
     request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(current_active_user),
+    db: AsyncSession,
+    current_user: User,
 ) -> Membership:
+    """
+    Helper function to validate if current_user is an admin of the organization
+    specified in the request body.
+    """
     body = await request.json()
     organization_id = body.get("organization_id")
     if not organization_id:
@@ -70,3 +60,41 @@ async def require_organization_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     return membership
+
+
+async def require_org_admin_any(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(current_active_user),
+) -> User:
+    membership = await db.scalar(
+        select(Membership).where(
+            (Membership.user_id == current_user.id) & (Membership.role == OrgRole.ADMIN)
+        )
+    )
+    if not membership:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    return current_user
+
+
+async def require_organization_admin(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(current_active_user),
+) -> Membership:
+    return await _validate_organization_admin(request, db, current_user)
+
+
+async def require_organization_admin_or_sysadmin(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(current_active_user),
+) -> Membership | User:
+    """
+    Allows either a sysadmin or an organization admin to proceed.
+    - Sysadmin: can create invites for any organization
+    - Org admin: can create invites only for their organization
+    """
+    if current_user.is_superuser:
+        return current_user
+
+    return await _validate_organization_admin(request, db, current_user)

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
-from app.auth.authorization import require_organization_admin
+from app.auth.authorization import require_organization_admin_or_sysadmin
 from app.auth.backend import auth_backend
 from app.auth.manager import UserManager, get_user_manager
 from app.database import get_db
@@ -48,7 +48,7 @@ class CreateInviteResponse(BaseModel):
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
     db: AsyncSession = Depends(get_db),
-    _: Membership = Depends(require_organization_admin),
+    _: Membership | None = Depends(require_organization_admin_or_sysadmin),
 ):
     invite = build_invite_token(
         email=body.email,
