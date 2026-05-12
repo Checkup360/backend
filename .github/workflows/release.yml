@@ -5,7 +5,7 @@ name: Release image
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*"
 
 permissions:
   contents: read
@@ -52,3 +52,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  trigger-deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest frontend tag
+        id: frontend
+        run: |
+          TAG=$(gh api \
+            repos/${{ github.repository_owner }}/frontends/tags \
+            --jq '.[0].name')
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger infra deploy workflow
+        run: |
+          gh workflow run deploy-staging.yml \
+            --repo ${{ github.repository_owner }}/infra \
+            -f backend_version=${{ github.ref_name }} \
+            -f frontends_version=${{ steps.frontend.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.REPO_DISPATCH_TOKEN }}
