@@ -8,7 +8,8 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   packages: write
 
 jobs:
@@ -53,26 +54,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  trigger-deploy:
+  update-version:
     needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get latest frontend tag
-        id: frontend
-        run: |
-          TAG=$(gh api \
-            repos/${{ github.repository_owner }}/frontends/tags \
-            --jq '.[0].name')
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.REPO_DISPATCH_TOKEN }}
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/infra
+          token: ${{ secrets.REPO_DISPATCH_TOKEN }}
 
-      - name: Trigger infra deploy workflow
-        run: |
-          gh workflow run deploy-staging.yml \
-            --repo ${{ github.repository_owner }}/infra \
-            -f backend_version=${{ github.ref_name }} \
-            -f frontends_version=${{ steps.frontend.outputs.tag }}
-        env:
-          GH_TOKEN: ${{ secrets.REPO_DISPATCH_TOKEN }}
+      - name: Update backend version in staging.yml
+        uses: mikefarah/yq@v4.53.2
+        with:
+          cmd: yq -i '.backend = "${{ github.ref_name }}"' versions/staging.yml
+
+      - name: Create or update PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.REPO_DISPATCH_TOKEN }}
+          commit-message: "chore(staging): update backend to ${{ github.ref_name }}"
+          branch: "update/backend-${{ github.ref_name }}"
+          delete-branch: true
+          title: "Staging Deploy: Backend ${{ github.ref_name }}"
+          body: |
+            Automated version update from backend release
+            
+            **Backend**: `${{ github.ref_name }}`
+            **Frontends**: [latest in versions/staging.yml]
+            
+            This PR updates the backend version for staging. Once approved and merged, the deployment will start automatically.
+          labels: deployment,automated
