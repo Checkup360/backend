@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.auth.middleware import DBSessionMiddleware
 from app.auth.pending_invite_middleware import PendingInviteCookieMiddleware
@@ -8,9 +9,9 @@ from app.routers import admin, auth, invites, organizations
 
 app = FastAPI()
 
-# Primero el que limpia cookie de invite al final de la respuesta (corre último al salir).
 app.add_middleware(PendingInviteCookieMiddleware)
 app.add_middleware(DBSessionMiddleware)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.add_middleware(
     CORSMiddleware,
