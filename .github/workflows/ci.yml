@@ -41,6 +41,6 @@ jobs:
           if [ -f coverage.txt ]; then
             echo "## 📊 Test Coverage" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
-            sed -n '/- coverage: platform/,/TOTAL/p' coverage.txt >> $GITHUB_STEP_SUMMARY
+            sed -n '/Name.*Stmts/,/TOTAL/p' coverage.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
