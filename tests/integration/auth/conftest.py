@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.manager import UserManager
 from app.models import OAuthAccount, User
+from app.repositories.invite import InviteRepository
+from app.repositories.membership import MembershipRepository
+from app.repositories.user import UserRepository
 
 
 class FakeRequest:
@@ -17,17 +20,13 @@ class FakeRequest:
 
 
 @pytest_asyncio.fixture()
-async def db(db_session_maker):
-    """Fixture para obtener una sesión de BD de un contexto async."""
-    async with db_session_maker() as session:
-        yield session
-
-
-@pytest_asyncio.fixture()
 async def user_manager(db: AsyncSession):
     """UserManager con UserDB real para pruebas de integración."""
     user_db = SQLAlchemyUserDatabase(db, User, OAuthAccount)
-    return UserManager(user_db)
+    invite_repo = InviteRepository(db)
+    membership_repo = MembershipRepository(db)
+    user_repo = UserRepository(db)
+    return UserManager(user_db, invite_repo, membership_repo, user_repo)
 
 
 @pytest_asyncio.fixture()

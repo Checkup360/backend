@@ -3,13 +3,14 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.authorization import require_superuser
-from app.database import get_db
-from app.models import Organization, User
+from app.models import User
+from app.repositories.organization import (
+    OrganizationRepository,
+    get_organization_repository,
+)
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
@@ -44,12 +45,10 @@ class OrganizationResponse(BaseModel):
 
 @router.get("/", response_model=list[OrganizationResponse])
 async def list_organizations(
-    db: AsyncSession = Depends(get_db),
+    repo: OrganizationRepository = Depends(get_organization_repository),
     current_user: User = Depends(require_superuser),
 ):
-    query = select(Organization)
-    organizations = await db.scalars(query)
-    return list(organizations)
+    return await repo.list()
 
 
 @router.post(
@@ -57,34 +56,27 @@ async def list_organizations(
 )
 async def create_organization(
     request: CreateOrganizationRequest,
-    db: AsyncSession = Depends(get_db),
+    repo: OrganizationRepository = Depends(get_organization_repository),
     current_user: User = Depends(require_superuser),
 ):
-    existing_organization = await db.scalar(
-        select(Organization).where(Organization.slug == request.slug)
-    )
+    existing_organization = await repo.get_by_slug(request.slug)
     if existing_organization:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="organization_slug_already_exists",
         )
 
-    organization = Organization(name=request.name, slug=request.slug)
-    db.add(organization)
     try:
-        await db.commit()
+        organization = await repo.create(name=request.name, slug=request.slug)
     except IntegrityError:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="organization_slug_already_exists",
         )
     except Exception:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="unknown_error",
         )
-    await db.refresh(organization)
 
     return organization

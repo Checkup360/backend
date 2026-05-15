@@ -80,7 +80,7 @@ async def get_membership(
 @pytest.mark.asyncio
 class TestInviteConsumptionIntegration:
     async def test_new_user_joins_org_with_invite(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(db, name="Test Org", slug="test-org")
         invite = await create_invite(
@@ -92,9 +92,7 @@ class TestInviteConsumptionIntegration:
         user = await create_user(db, email="newuser@test.com")
         await db.commit()
 
-        await user_manager._consume_invite_by_id(
-            request_for_integration, invite.id, user
-        )
+        await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await get_membership(db, user_id=user.id, organization_id=org.id)
         assert membership is not None
@@ -103,7 +101,7 @@ class TestInviteConsumptionIntegration:
         assert invite_db.uses == 1
 
     async def test_existing_admin_not_downgraded(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(db, name="Admin Test Org", slug="admin-org")
         user = await create_user(db, email="admin@test.com")
@@ -122,9 +120,7 @@ class TestInviteConsumptionIntegration:
         )
         await db.commit()
 
-        await user_manager._consume_invite_by_id(
-            request_for_integration, invite.id, user
-        )
+        await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await db.get(Membership, (user.id, org.id))
         assert membership.role == OrgRole.ADMIN
@@ -141,7 +137,7 @@ class TestInviteConsumptionIntegration:
         assert invite_db.uses == 0
 
     async def test_invite_uses_incremented_correctly(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(db, name="Multi Use Org", slug="multi-use")
         invite = await create_invite(
@@ -155,16 +151,14 @@ class TestInviteConsumptionIntegration:
 
         for i in range(3):
             user = await create_user(db, email=f"user{i}@test.com")
-            await user_manager._consume_invite_by_id(
-                request_for_integration, invite.id, user
-            )
+            await user_manager._consume_invite_by_id(invite.id, user)
 
         invite_db = await db.get(InviteToken, invite.id)
         assert invite_db.uses == 3
         assert invite_db.is_exhausted is True
 
     async def test_sysadmin_invite_sets_superuser(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         user = await create_user(
             db,
@@ -180,9 +174,7 @@ class TestInviteConsumptionIntegration:
         )
         await db.commit()
 
-        await user_manager._consume_invite_by_id(
-            request_for_integration, invite.id, user
-        )
+        await user_manager._consume_invite_by_id(invite.id, user)
 
         user_db = await db.get(User, user.id)
         assert user_db.is_superuser is True
@@ -190,7 +182,7 @@ class TestInviteConsumptionIntegration:
         assert invite_db.uses == 1
 
     async def test_invite_with_default_member_role(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(
             db, name="Default Role Org", slug="default-role"
@@ -204,15 +196,13 @@ class TestInviteConsumptionIntegration:
         )
         await db.commit()
 
-        await user_manager._consume_invite_by_id(
-            request_for_integration, invite.id, user
-        )
+        await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await get_membership(db, user_id=user.id, organization_id=org.id)
         assert membership.role == OrgRole.MEMBER
 
     async def test_exhausted_invite_does_nothing(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(db, name="Exhausted Org", slug="exhausted")
         user = await create_user(db, email="exhausted@test.com")
@@ -225,9 +215,7 @@ class TestInviteConsumptionIntegration:
         )
         await db.commit()
 
-        await user_manager._consume_invite_by_id(
-            request_for_integration, invite.id, user
-        )
+        await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await get_membership(db, user_id=user.id, organization_id=org.id)
         assert membership is None
@@ -236,7 +224,7 @@ class TestInviteConsumptionIntegration:
         assert invite_db.uses == 1
 
     async def test_multiple_users_same_org_invite(
-        self, db: AsyncSession, user_manager: UserManager, request_for_integration
+        self, db: AsyncSession, user_manager: UserManager
     ):
         org = await create_organization(db, name="Shared Org", slug="shared")
         invite = await create_invite(
@@ -254,9 +242,7 @@ class TestInviteConsumptionIntegration:
             users.append(user)
 
         for user in users:
-            await user_manager._consume_invite_by_id(
-                request_for_integration, invite.id, user
-            )
+            await user_manager._consume_invite_by_id(invite.id, user)
 
         memberships = await db.scalars(
             select(Membership).where(Membership.organization_id == org.id)

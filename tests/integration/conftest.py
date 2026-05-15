@@ -221,3 +221,10 @@ async def make_invite(db_session_maker):
             return invite
 
     return _make_invite
+
+
+@pytest_asyncio.fixture()
+async def db(db_session_maker):
+    """Fixture para obtener una sesión de BD de un contexto async."""
+    async with db_session_maker() as session:
+        yield session

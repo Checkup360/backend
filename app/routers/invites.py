@@ -2,20 +2,18 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
 from app.auth.authorization import require_organization_admin_or_sysadmin
 from app.auth.backend import auth_backend
 from app.auth.manager import UserManager, get_user_manager
-from app.database import get_db
 from app.invites.cookies import apply_pending_invite_cookie
 from app.invites.json_response import response_json
 from app.invites.service import (
     build_invite_token,
     build_invite_url,
-    fetch_usable_invite,
 )
+from app.repositories.invite import InviteRepository, get_invite_repository
 from app.models import Membership
 from app.models.membership import OrgRole
 from app.schemas.invite import (
@@ -47,7 +45,7 @@ class CreateInviteResponse(BaseModel):
 @router.post("/organization", response_model=CreateInviteResponse)
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
-    db: AsyncSession = Depends(get_db),
+    repo: InviteRepository = Depends(get_invite_repository),
     _: Membership | None = Depends(require_organization_admin_or_sysadmin),
 ):
     invite = build_invite_token(
@@ -58,8 +56,7 @@ async def create_organization_invite(
         role=body.role,
         is_sysadmin=False,
     )
-    db.add(invite)
-    await db.commit()
+    await repo.save(invite)
 
     return CreateInviteResponse(
         token=invite.token,
@@ -72,13 +69,16 @@ async def create_organization_invite(
     response_model=PrepareGoogleSessionResponse,
     responses={400: {"model": InviteRejected}},
 )
-async def prepare_google_registration(token: str, request: Request) -> Response:
+async def prepare_google_registration(
+    token: str,
+    request: Request,
+    repo: InviteRepository = Depends(get_invite_repository),
+) -> Response:
     """
     Valida el invite y setea la cookie `pending_invite` para el callback OAuth.
     Si el invite no sirve, responde 400 tipado y se limpia cualquier cookie vieja.
     """
-    db = request.state.db
-    _, err = await fetch_usable_invite(db, token)
+    _, err = await repo.fetch_usable_invite(token)
     if err:
         request.state.clear_pending_invite_cookie = True
         return response_json(InviteRejected(code=err), status_code=400)

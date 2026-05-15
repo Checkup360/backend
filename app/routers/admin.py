@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.authorization import require_superuser
-from app.database import get_db
 from app.invites.service import build_invite_token, build_invite_url
 from app.models import User
+from app.repositories.invite import InviteRepository, get_invite_repository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -23,7 +22,7 @@ class CreateInviteResponse(BaseModel):
 @router.post("/invites", response_model=CreateInviteResponse)
 async def create_sysadmin_invite(
     request: CreateSysadminInviteRequest,
-    db: AsyncSession = Depends(get_db),
+    repo: InviteRepository = Depends(get_invite_repository),
     current_user: User = Depends(require_superuser),
 ):
     """
@@ -40,8 +39,7 @@ async def create_sysadmin_invite(
         is_sysadmin=True,
     )
 
-    db.add(invite)
-    await db.commit()
+    await repo.save(invite)
 
     return CreateInviteResponse(
         token=invite.token,

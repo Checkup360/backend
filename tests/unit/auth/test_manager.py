@@ -4,7 +4,6 @@ Unit tests for UserManager and invite logic.
 
 import pytest
 from fastapi import HTTPException
-from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 from app.models.membership import OrgRole
@@ -116,40 +115,42 @@ class TestConsumeInviteByID:
 
     @pytest.mark.asyncio
     async def test_consume_invite_creates_membership_new_user(
-        self, user_manager, request_mock, sample_user, sample_invite_org
+        self,
+        user_manager,
+        sample_user,
+        sample_invite_org,
+        invite_repo_mock,
+        membership_repo_mock,
+        user_repo_mock,
     ):
         """New user: create membership with the invite role."""
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_org, sample_user]
-        )
-        request_mock.state.db.scalar = AsyncMock(return_value=None)
-        request_mock.state.db.add = MagicMock()
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_org
+        user_repo_mock.get.return_value = sample_user
+        membership_repo_mock.get_by_user_and_org.return_value = None
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         # Verify the membership was created
-        request_mock.state.db.add.assert_called_once()
-        added_membership = request_mock.state.db.add.call_args[0][0]
-        assert added_membership.user_id == sample_user.id
-        assert added_membership.organization_id == sample_invite_org.organization_id
-        assert added_membership.role == OrgRole.MEMBER
+        membership_repo_mock.create.assert_called_once()
+        args = membership_repo_mock.create.call_args[1]
+        assert args["user_id"] == sample_user.id
+        assert args["organization_id"] == sample_invite_org.organization_id
+        assert args["role"] == OrgRole.MEMBER
 
         # Verify the invite was consumed
         assert sample_invite_org.uses == 1
-        request_mock.state.db.commit.assert_called_once()
+        invite_repo_mock.save.assert_called_once_with(sample_invite_org)
 
     @pytest.mark.asyncio
     async def test_consume_invite_admin_preserves_role(
         self,
         user_manager,
-        request_mock,
         sample_user,
         sample_invite_org,
         sample_membership,
+        invite_repo_mock,
+        membership_repo_mock,
+        user_repo_mock,
     ):
         """ADMIN user: does NOT downgrade role when consuming a MEMBER invite."""
         # Setup: user is ADMIN in the org
@@ -160,136 +161,124 @@ class TestConsumeInviteByID:
         # Invite attempts to assign MEMBER
         sample_invite_org.role = OrgRole.MEMBER
 
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_org, sample_user]
-        )
-        request_mock.state.db.scalar = AsyncMock(return_value=sample_membership)
-        request_mock.state.db.add = MagicMock()
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_org
+        user_repo_mock.get.return_value = sample_user
+        membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        # Verify no membership was added
-        request_mock.state.db.add.assert_not_called()
+        # Verify no membership was created
+        membership_repo_mock.create.assert_not_called()
 
         # Verify the role remained ADMIN
         assert sample_membership.role == OrgRole.ADMIN
 
         # Verify the invite was not consumed
         assert sample_invite_org.uses == 0
-        request_mock.state.db.commit.assert_not_called()
+        invite_repo_mock.save.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_consume_invite_sysadmin_sets_superuser(
-        self, user_manager, request_mock, sample_user, sample_invite_sysadmin
+        self,
+        user_manager,
+        sample_user,
+        sample_invite_sysadmin,
+        invite_repo_mock,
+        user_repo_mock,
     ):
         """Sysadmin invite sets user.is_superuser = True."""
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_sysadmin, sample_user]
-        )
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_sysadmin
+        user_repo_mock.get.return_value = sample_user
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_sysadmin.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_sysadmin.id, sample_user)
 
         # Verify superuser
-        assert sample_user.is_superuser is True
+        user_repo_mock.update.assert_called_once_with(sample_user.id, is_superuser=True)
 
         # Verify the invite was consumed
         assert sample_invite_sysadmin.uses == 1
-        request_mock.state.db.commit.assert_called_once()
+        invite_repo_mock.save.assert_called_once_with(sample_invite_sysadmin)
 
     @pytest.mark.asyncio
     async def test_consume_invite_default_member_role(
-        self, user_manager, request_mock, sample_user, sample_invite_org
+        self,
+        user_manager,
+        sample_user,
+        sample_invite_org,
+        invite_repo_mock,
+        membership_repo_mock,
+        user_repo_mock,
     ):
         """Invite without a role uses MEMBER by default."""
         sample_invite_org.role = None
 
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_org, sample_user]
-        )
-        request_mock.state.db.scalar = AsyncMock(return_value=None)
-        request_mock.state.db.add = MagicMock()
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_org
+        user_repo_mock.get.return_value = sample_user
+        membership_repo_mock.get_by_user_and_org.return_value = None
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         # Verify membership with MEMBER
-        added_membership = request_mock.state.db.add.call_args[0][0]
-        assert added_membership.role == OrgRole.MEMBER
+        args = membership_repo_mock.create.call_args[1]
+        assert args["role"] == OrgRole.MEMBER
 
     @pytest.mark.asyncio
     async def test_consume_invite_exhausted_does_nothing(
-        self, user_manager, request_mock, sample_user, sample_invite_org
+        self, user_manager, sample_user, sample_invite_org, invite_repo_mock
     ):
         """Exhausted invite: do nothing."""
         sample_invite_org.is_exhausted = True
+        invite_repo_mock.get.return_value = sample_invite_org
 
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=sample_invite_org)
-        request_mock.state.db.commit = AsyncMock()
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
-
-        # No commit
-        request_mock.state.db.commit.assert_not_called()
+        # No save
+        invite_repo_mock.save.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_consume_invite_nonexistent_does_nothing(
-        self, user_manager, request_mock, sample_user
+        self, user_manager, sample_user, invite_repo_mock
     ):
         """Nonexistent invite: ignore silently."""
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(return_value=None)
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = None
 
-        await user_manager._consume_invite_by_id(
-            request_mock, uuid.uuid4(), sample_user
-        )
+        await user_manager._consume_invite_by_id(uuid.uuid4(), sample_user)
 
-        # No commit
-        request_mock.state.db.commit.assert_not_called()
+        # No save
+        invite_repo_mock.save.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_consume_invite_increments_uses(
-        self, user_manager, request_mock, sample_user, sample_invite_org
+        self,
+        user_manager,
+        sample_user,
+        sample_invite_org,
+        invite_repo_mock,
+        user_repo_mock,
+        membership_repo_mock,
     ):
         """Consumption increments uses."""
         initial_uses = sample_invite_org.uses
 
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_org, sample_user]
-        )
-        request_mock.state.db.scalar = AsyncMock(return_value=None)
-        request_mock.state.db.add = MagicMock()
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_org
+        user_repo_mock.get.return_value = sample_user
+        membership_repo_mock.get_by_user_and_org.return_value = None
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         assert sample_invite_org.uses == initial_uses + 1
+        invite_repo_mock.save.assert_called_once_with(sample_invite_org)
 
     @pytest.mark.asyncio
     async def test_consume_invite_member_can_upgrade_to_admin(
         self,
         user_manager,
-        request_mock,
         sample_user,
         sample_invite_org,
         sample_membership,
+        invite_repo_mock,
+        user_repo_mock,
+        membership_repo_mock,
     ):
         sample_membership.user_id = sample_user.id
         sample_membership.organization_id = sample_invite_org.organization_id
@@ -297,19 +286,14 @@ class TestConsumeInviteByID:
 
         sample_invite_org.role = OrgRole.ADMIN
 
-        request_mock.state.db = AsyncMock()
-        request_mock.state.db.get = AsyncMock(
-            side_effect=[sample_invite_org, sample_user]
-        )
-        request_mock.state.db.scalar = AsyncMock(return_value=sample_membership)
-        request_mock.state.db.add = MagicMock()
-        request_mock.state.db.commit = AsyncMock()
+        invite_repo_mock.get.return_value = sample_invite_org
+        user_repo_mock.get.return_value = sample_user
+        membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
-        await user_manager._consume_invite_by_id(
-            request_mock, sample_invite_org.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        request_mock.state.db.add.assert_not_called()
-        request_mock.state.db.commit.assert_called_once()
+        membership_repo_mock.create.assert_not_called()
+        membership_repo_mock.save.assert_called_once_with(sample_membership)
+        invite_repo_mock.save.assert_called_once_with(sample_invite_org)
 
         assert sample_membership.role == OrgRole.ADMIN

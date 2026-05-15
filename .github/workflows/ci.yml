@@ -28,6 +28,17 @@ jobs:
         run: |
           uv run ruff format . --check
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
-          uv run pytest -q
+          set -o pipefail
+          uv run pytest | tee coverage.txt
+
+      - name: Post coverage to summary
+        if: always()
+        run: |
+          if [ -f coverage.txt ]; then
+            echo "## 📊 Test Coverage" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            sed -n '/- coverage: platform/,/TOTAL/p' coverage.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

@@ -23,8 +23,25 @@ def request_mock():
 
 
 @pytest.fixture
-def user_manager(user_db_mock):
-    manager = UserManager(user_db_mock)
+def invite_repo_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def membership_repo_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def user_repo_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def user_manager(user_db_mock, invite_repo_mock, membership_repo_mock, user_repo_mock):
+    manager = UserManager(
+        user_db_mock, invite_repo_mock, membership_repo_mock, user_repo_mock
+    )
     return manager
 
 

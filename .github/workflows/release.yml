@@ -80,9 +80,9 @@ jobs:
           title: "Staging Deploy: Backend ${{ github.ref_name }}"
           body: |
             Automated version update from backend release
-            
+
             **Backend**: `${{ github.ref_name }}`
             **Frontends**: [latest in versions/staging.yml]
-            
+
             This PR updates the backend version for staging. Once approved and merged, the deployment will start automatically.
           labels: deployment,automated
