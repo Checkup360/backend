@@ -1,7 +1,7 @@
 import uuid
 import pytest
 
-from app.invites import service as invites_service
+from app.services import invite as invites_service
 from app.models.membership import OrgRole
 from app.repositories.invite import InviteRepository
 

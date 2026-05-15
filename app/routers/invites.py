@@ -5,15 +5,11 @@ from pydantic import BaseModel
 from starlette.responses import Response
 
 from app.auth.authorization import require_organization_admin_or_sysadmin
-from app.auth.backend import auth_backend
+from app.auth.machinery.backend import auth_backend
 from app.auth.manager import UserManager, get_user_manager
-from app.invites.cookies import apply_pending_invite_cookie
-from app.invites.json_response import response_json
-from app.invites.service import (
-    build_invite_token,
-    build_invite_url,
-)
-from app.repositories.invite import InviteRepository, get_invite_repository
+from app.auth.machinery.cookies import apply_pending_invite_cookie
+from app.core.responses import response_json
+from app.services.invite import InviteService, get_invite_service, build_invite_url
 from app.models import Membership
 from app.models.membership import OrgRole
 from app.schemas.invite import (
@@ -45,10 +41,10 @@ class CreateInviteResponse(BaseModel):
 @router.post("/organization", response_model=CreateInviteResponse)
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
-    repo: InviteRepository = Depends(get_invite_repository),
+    service: InviteService = Depends(get_invite_service),
     _: Membership | None = Depends(require_organization_admin_or_sysadmin),
 ):
-    invite = build_invite_token(
+    invite = await service.create_invite(
         email=body.email,
         max_uses=body.max_uses,
         expires_in_hours=body.expires_in_hours,
@@ -56,7 +52,6 @@ async def create_organization_invite(
         role=body.role,
         is_sysadmin=False,
     )
-    await repo.save(invite)
 
     return CreateInviteResponse(
         token=invite.token,
@@ -72,13 +67,13 @@ async def create_organization_invite(
 async def prepare_google_registration(
     token: str,
     request: Request,
-    repo: InviteRepository = Depends(get_invite_repository),
+    service: InviteService = Depends(get_invite_service),
 ) -> Response:
     """
     Valida el invite y setea la cookie `pending_invite` para el callback OAuth.
     Si el invite no sirve, responde 400 tipado y se limpia cualquier cookie vieja.
     """
-    _, err = await repo.fetch_usable_invite(token)
+    _, err = await service.invite_repo.fetch_usable_invite(token)
     if err:
         request.state.clear_pending_invite_cookie = True
         return response_json(InviteRejected(code=err), status_code=400)

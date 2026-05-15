@@ -7,17 +7,11 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 
 from app.auth.dependencies import get_user_db
 from app.core import settings
-from app.invites.cookies import clear_pending_invite_cookie
+from app.auth.machinery.cookies import clear_pending_invite_cookie
 from app.models import User
 from app.models.invite import InviteToken
-from app.models.membership import OrgRole
 from app.schemas.invite import InviteRejected
-from app.repositories.invite import InviteRepository, get_invite_repository
-from app.repositories.membership import (
-    MembershipRepository,
-    get_membership_repository,
-)
-from app.repositories.user import UserRepository, get_user_repository
+from app.services.invite import InviteService, get_invite_service
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -27,14 +21,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     def __init__(
         self,
         user_db,
-        invite_repo: InviteRepository,
-        membership_repo: MembershipRepository,
-        user_repo: UserRepository,
+        invite_service: InviteService,
     ):
         super().__init__(user_db)
-        self.invite_repo = invite_repo
-        self.membership_repo = membership_repo
-        self.user_repo = user_repo
+        self.invite_service = invite_service
 
     async def on_after_login(
         self,
@@ -167,59 +157,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     ) -> InviteToken:
         """Checks the invite; does not mark it as used."""
         token = self._invite_token_from_request(request)
-        invite, err = await self.invite_repo.fetch_usable_invite(token)
+        invite, err = await self.invite_service.validate_invite(token, email)
 
         if err:
             self._invite_fail(request, err)
 
         assert invite is not None
-
-        if invite.email and invite.email != email:
-            self._invite_fail(request, "email_mismatch")
-
         return invite
 
     async def _consume_invite_by_id(self, invite_id: uuid.UUID, user: User) -> None:
-        invite = await self.invite_repo.get(invite_id)
-        if invite is None or invite.is_exhausted:
-            return
-
-        db_user = await self.user_repo.get(user.id)
-        if db_user is None:
-            return
-
-        if invite.is_sysadmin:
-            await self.user_repo.update(db_user.id, is_superuser=True)
-        elif invite.organization_id:
-            existing_membership = await self.membership_repo.get_by_user_and_org(
-                db_user.id, invite.organization_id
-            )
-
-            if not existing_membership:
-                await self.membership_repo.create(
-                    user_id=db_user.id,
-                    organization_id=invite.organization_id,
-                    role=invite.role or OrgRole.MEMBER,
-                )
-            else:
-                if (
-                    invite.role
-                    and invite.role == OrgRole.ADMIN
-                    and existing_membership.role != OrgRole.ADMIN
-                ):
-                    existing_membership.role = invite.role
-                    await self.membership_repo.save(existing_membership)
-                else:
-                    return
-
-        invite.uses += 1
-        await self.invite_repo.save(invite)
+        await self.invite_service.consume_invite(invite_id, user.id)
 
 
 async def get_user_manager(
     user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
-    invite_repo: InviteRepository = Depends(get_invite_repository),
-    membership_repo: MembershipRepository = Depends(get_membership_repository),
-    user_repo: UserRepository = Depends(get_user_repository),
+    invite_service: InviteService = Depends(get_invite_service),
 ):
-    yield UserManager(user_db, invite_repo, membership_repo, user_repo)
+    yield UserManager(user_db, invite_service)

@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.auth.middleware import DBSessionMiddleware
-from app.auth.pending_invite_middleware import PendingInviteCookieMiddleware
+from app.auth.middleware.db_session import DBSessionMiddleware
+from app.auth.middleware.pending_invite import PendingInviteCookieMiddleware
 from app.core import settings
 from app.routers import admin, auth, invites, organizations
 

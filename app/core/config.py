@@ -34,7 +34,6 @@ def _normalize_origin(url: str) -> str:
 
 
 def _default_cors_origins_csv(web_origin: str) -> str:
-    """When the web app runs on localhost, dev typically uses three Vite ports."""
     if web_origin.startswith("http://localhost:") or web_origin.startswith(
         "http://127.0.0.1:"
     ):

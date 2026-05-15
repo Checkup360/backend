@@ -2,7 +2,7 @@ import uuid
 
 from fastapi_users import FastAPIUsers
 
-from app.auth.backend import auth_backend
+from app.auth.machinery.backend import auth_backend
 from app.auth.manager import get_user_manager
 from app.models import User
 

@@ -105,7 +105,7 @@ async def db_session_maker(monkeypatch):
     )
 
     from app.auth import dependencies as auth_dependencies
-    from app.auth import middleware as auth_middleware
+    from app.auth.middleware import db_session as auth_middleware
     import app.database as database_module
 
     monkeypatch.setattr(database_module, "engine", engine)

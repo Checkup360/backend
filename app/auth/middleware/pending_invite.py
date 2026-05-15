@@ -1,7 +1,7 @@
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.invites.cookies import clear_pending_invite_cookie
+from app.auth.machinery.cookies import clear_pending_invite_cookie
 
 
 class PendingInviteCookieMiddleware(BaseHTTPMiddleware):

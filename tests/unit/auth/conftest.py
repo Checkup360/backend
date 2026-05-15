@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.auth.manager import UserManager
+from app.services.invite import InviteService
 from app.models.membership import OrgRole
 
 
@@ -38,10 +39,13 @@ def user_repo_mock():
 
 
 @pytest.fixture
-def user_manager(user_db_mock, invite_repo_mock, membership_repo_mock, user_repo_mock):
-    manager = UserManager(
-        user_db_mock, invite_repo_mock, membership_repo_mock, user_repo_mock
-    )
+def invite_service_mock(invite_repo_mock, membership_repo_mock, user_repo_mock):
+    return InviteService(invite_repo_mock, membership_repo_mock, user_repo_mock)
+
+
+@pytest.fixture
+def user_manager(user_db_mock, invite_service_mock):
+    manager = UserManager(user_db_mock, invite_service_mock)
     return manager
 
 

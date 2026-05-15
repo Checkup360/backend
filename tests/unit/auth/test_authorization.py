@@ -37,16 +37,13 @@ async def test_require_organization_admin_returns_admin_membership():
     request.json = AsyncMock(return_value={"organization_id": str(organization_id)})
     membership = SimpleNamespace(role=OrgRole.ADMIN)
 
-    org_repo = AsyncMock()
-    org_repo.get.return_value = SimpleNamespace(id=organization_id)
-    membership_repo = AsyncMock()
-    membership_repo.get_by_user_and_org.return_value = membership
+    membership_service = AsyncMock()
+    membership_service.get_admin_membership.return_value = membership
 
-    result = await require_organization_admin(request, org_repo, membership_repo, user)
+    result = await require_organization_admin(request, membership_service, user)
 
     assert result is membership
-    org_repo.get.assert_awaited_once_with(organization_id)
-    membership_repo.get_by_user_and_org.assert_awaited_once_with(
+    membership_service.get_admin_membership.assert_awaited_once_with(
         user.id, organization_id
     )
 
@@ -58,7 +55,7 @@ async def test_require_organization_admin_rejects_missing_organization_id():
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(
-            request, AsyncMock(), AsyncMock(), SimpleNamespace()
+            request, AsyncMock(), SimpleNamespace(id=uuid.uuid4())
         )
 
     assert exc_info.value.status_code == 422
@@ -72,7 +69,7 @@ async def test_require_organization_admin_rejects_invalid_organization_id():
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(
-            request, AsyncMock(), AsyncMock(), SimpleNamespace()
+            request, AsyncMock(), SimpleNamespace(id=uuid.uuid4())
         )
 
     assert exc_info.value.status_code == 422
@@ -83,12 +80,13 @@ async def test_require_organization_admin_rejects_invalid_organization_id():
 async def test_require_organization_admin_rejects_missing_organization():
     request = MagicMock()
     request.json = AsyncMock(return_value={"organization_id": str(uuid.uuid4())})
-    org_repo = AsyncMock()
-    org_repo.get.return_value = None
+    membership_service = AsyncMock()
+    membership_service.org_repo.get.return_value = None
+    membership_service.get_admin_membership.return_value = None
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(
-            request, org_repo, AsyncMock(), SimpleNamespace()
+            request, membership_service, SimpleNamespace(id=uuid.uuid4())
         )
 
     assert exc_info.value.status_code == 404
@@ -101,17 +99,12 @@ async def test_require_organization_admin_rejects_non_admin_membership():
     request = MagicMock()
     request.json = AsyncMock(return_value={"organization_id": str(organization_id)})
 
-    org_repo = AsyncMock()
-    org_repo.get.return_value = SimpleNamespace()
-
-    membership_repo = AsyncMock()
-    membership_repo.get_by_user_and_org.return_value = SimpleNamespace(
-        role=OrgRole.MEMBER
-    )
+    membership_service = AsyncMock()
+    membership_service.get_admin_membership.return_value = None
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(
-            request, org_repo, membership_repo, SimpleNamespace(id=uuid.uuid4())
+            request, membership_service, SimpleNamespace(id=uuid.uuid4())
         )
 
     assert exc_info.value.status_code == 403
@@ -121,23 +114,23 @@ async def test_require_organization_admin_rejects_non_admin_membership():
 @pytest.mark.asyncio
 async def test_require_org_admin_any_returns_user_with_admin_membership():
     user = SimpleNamespace(id=uuid.uuid4())
-    membership_repo = AsyncMock()
-    membership_repo.is_admin_of_any.return_value = True
+    membership_service = AsyncMock()
+    membership_service.is_admin_of_any.return_value = True
 
-    result = await require_org_admin_any(membership_repo, user)
+    result = await require_org_admin_any(membership_service, user)
 
     assert result is user
-    membership_repo.is_admin_of_any.assert_awaited_once_with(user.id)
+    membership_service.is_admin_of_any.assert_awaited_once_with(user.id)
 
 
 @pytest.mark.asyncio
 async def test_require_org_admin_any_rejects_user_without_admin_membership():
     user = SimpleNamespace(id=uuid.uuid4())
-    membership_repo = AsyncMock()
-    membership_repo.is_admin_of_any.return_value = False
+    membership_service = AsyncMock()
+    membership_service.is_admin_of_any.return_value = False
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_org_admin_any(membership_repo, user)
+        await require_org_admin_any(membership_service, user)
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "forbidden"

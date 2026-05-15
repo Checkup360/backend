@@ -3,14 +3,10 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
-from sqlalchemy.exc import IntegrityError
 
 from app.auth.authorization import require_superuser
 from app.models import User
-from app.repositories.organization import (
-    OrganizationRepository,
-    get_organization_repository,
-)
+from app.services.organization import OrganizationService, get_organization_service
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
@@ -45,10 +41,10 @@ class OrganizationResponse(BaseModel):
 
 @router.get("/", response_model=list[OrganizationResponse])
 async def list_organizations(
-    repo: OrganizationRepository = Depends(get_organization_repository),
+    service: OrganizationService = Depends(get_organization_service),
     current_user: User = Depends(require_superuser),
 ):
-    return await repo.list()
+    return await service.list_organizations()
 
 
 @router.post(
@@ -56,22 +52,22 @@ async def list_organizations(
 )
 async def create_organization(
     request: CreateOrganizationRequest,
-    repo: OrganizationRepository = Depends(get_organization_repository),
+    service: OrganizationService = Depends(get_organization_service),
     current_user: User = Depends(require_superuser),
 ):
-    existing_organization = await repo.get_by_slug(request.slug)
-    if existing_organization:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="organization_slug_already_exists",
-        )
-
     try:
-        organization = await repo.create(name=request.name, slug=request.slug)
-    except IntegrityError:
+        organization = await service.create_organization(
+            name=request.name, slug=request.slug
+        )
+    except ValueError as e:
+        if str(e) == "organization_slug_already_exists":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="organization_slug_already_exists",
+            )
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="organization_slug_already_exists",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
     except Exception:
         raise HTTPException(

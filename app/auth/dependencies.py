@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_users.db import SQLAlchemyUserDatabase
 
-from app.auth.google_oauth import google_oauth_client
+from app.auth.machinery.google_oauth import google_oauth_client
 from app.database import async_session_maker
 from app.models import User, OAuthAccount
 from httpx_oauth.clients.google import GoogleOAuth2

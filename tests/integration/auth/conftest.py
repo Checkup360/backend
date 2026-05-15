@@ -9,6 +9,7 @@ from app.models import OAuthAccount, User
 from app.repositories.invite import InviteRepository
 from app.repositories.membership import MembershipRepository
 from app.repositories.user import UserRepository
+from app.services.invite import InviteService
 
 
 class FakeRequest:
@@ -26,7 +27,8 @@ async def user_manager(db: AsyncSession):
     invite_repo = InviteRepository(db)
     membership_repo = MembershipRepository(db)
     user_repo = UserRepository(db)
-    return UserManager(user_db, invite_repo, membership_repo, user_repo)
+    invite_service = InviteService(invite_repo, membership_repo, user_repo)
+    return UserManager(user_db, invite_service)
 
 
 @pytest_asyncio.fixture()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
-from app.invites.service import build_invite_token, build_invite_url
+from app.services.invite import build_invite_token, build_invite_url
 from app.models import User
 from app.repositories.invite import InviteRepository, get_invite_repository
 
