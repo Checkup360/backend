@@ -2,7 +2,7 @@ import pytest
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.membership import MembershipRepository
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 from app.models.organization import Organization
 from app.models.user import User
 

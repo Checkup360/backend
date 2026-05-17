@@ -1,7 +1,7 @@
 import uuid
 
 from app.models.invite import InviteToken
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 from app.repositories.invite import InviteRepository, get_invite_repository
 from app.repositories.membership import MembershipRepository, get_membership_repository
 from app.repositories.user import UserRepository, get_user_repository

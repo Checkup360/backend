@@ -2,7 +2,7 @@ import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.services.membership import MembershipService
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 @pytest.mark.asyncio

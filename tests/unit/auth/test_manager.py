@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 import uuid
 
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 class TestInviteTokenFromRequest:

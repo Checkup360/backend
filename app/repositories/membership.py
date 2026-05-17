@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.membership import Membership, OrgRole
+from app.domain.entities.org_role import OrgRole
+from app.models.membership import Membership
 from app.repositories.base import BaseRepository
 
 

@@ -2,7 +2,7 @@ import uuid
 import pytest
 
 from app.services import invite as invites_service
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 from app.repositories.invite import InviteRepository
 
 

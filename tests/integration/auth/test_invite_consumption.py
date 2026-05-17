@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.manager import UserManager
 from app.models import User, Organization
 from app.models.invite import InviteToken
-from app.models.membership import Membership, OrgRole
+from app.domain.entities.org_role import OrgRole
+from app.models.membership import Membership
 
 
 async def create_user(

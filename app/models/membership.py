@@ -5,18 +5,13 @@ from sqlalchemy import DateTime, Index, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-import enum
+from app.domain.entities.org_role import OrgRole
 from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
     from app.models.user import User
-
-
-class OrgRole(str, enum.Enum):
-    ADMIN = "admin"
-    MEMBER = "member"
 
 
 class Membership(Base):

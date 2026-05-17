@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import InviteToken, Organization
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 class TestOrgInvites:

@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from app.core import settings
 from app.models import Membership, Organization, User
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 def register(client, token: str, email: str, password: str = "SuperSecure123!"):

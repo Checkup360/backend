@@ -10,7 +10,7 @@ from app.auth.authorization import (
     require_superuser,
     require_org_admin_any,
 )
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 def test_require_superuser_returns_user():

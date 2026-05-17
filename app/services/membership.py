@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import Depends
 
 from app.models import Membership
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 from app.repositories.membership import MembershipRepository, get_membership_repository
 from app.repositories.organization import (
     OrganizationRepository,

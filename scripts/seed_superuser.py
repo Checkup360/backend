@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.database import async_session_maker
 from app.models import Membership, Organization, User
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 _password_helper = PasswordHelper()
 

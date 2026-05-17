@@ -11,7 +11,7 @@ from app.auth.machinery.cookies import apply_pending_invite_cookie
 from app.core.responses import response_json
 from app.services.invite import InviteService, get_invite_service, build_invite_url
 from app.models import Membership
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 from app.schemas.invite import (
     InvitePasswordRegisterBody,
     InviteRejected,

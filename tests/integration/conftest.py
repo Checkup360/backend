@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base
 from app.main import app
 from app.models import InviteToken, Membership, Organization, User
-from app.models.membership import OrgRole
+from app.domain.entities.org_role import OrgRole
 
 
 DEFAULT_TEST_PASSWORD = "SuperSecure123!"
