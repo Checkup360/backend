@@ -12,6 +12,7 @@ from app.domain.exceptions import (
     InviteExhaustedError,
     InviteExpiredError,
     InviteNotFoundError,
+    UserNotFoundError,
 )
 from app.persistence.repositories.invite import InviteRepository, get_invite_repository
 from app.persistence.repositories.membership import MembershipRepository, get_membership_repository
@@ -100,12 +101,14 @@ class InviteService:
 
     async def consume_invite(self, invite_id: uuid.UUID, user_id: uuid.UUID) -> None:
         invite = await self.invite_repo.get(invite_id)
-        if invite is None or invite.is_exhausted:
-            return
+        if invite is None:
+            raise InviteNotFoundError()
+        if invite.is_exhausted:
+            raise InviteExhaustedError()
 
         user = await self.user_repo.get(user_id)
         if user is None:
-            return
+            raise UserNotFoundError()
 
         if invite.is_sysadmin:
             await self.user_repo.update(user.id, is_superuser=True)

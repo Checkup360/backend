@@ -38,3 +38,7 @@ class OrganizationNotFoundError(DomainError):
 
 class NotOrganizationAdminError(DomainError):
     pass
+
+
+class UserNotFoundError(DomainError):
+    pass

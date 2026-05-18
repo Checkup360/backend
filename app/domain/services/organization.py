@@ -1,5 +1,4 @@
 from fastapi import Depends
-from sqlalchemy.exc import IntegrityError
 
 from app.domain.entities import Organization
 from app.domain.exceptions import OrganizationSlugAlreadyExists
@@ -18,10 +17,7 @@ class OrganizationService:
         if existing:
             raise OrganizationSlugAlreadyExists()
 
-        try:
-            return await self.repo.create(name=name, slug=slug)
-        except IntegrityError:
-            raise OrganizationSlugAlreadyExists()
+        return await self.repo.create(name=name, slug=slug)
 
     async def list_organizations(self) -> list[Organization]:
         return await self.repo.list()

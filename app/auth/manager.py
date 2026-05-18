@@ -9,7 +9,7 @@ from app.auth.dependencies import get_user_db
 from app.core import settings
 from app.auth.machinery.cookies import clear_pending_invite_cookie
 from app.domain.entities import InviteToken
-from app.domain.exceptions import InviteError
+from app.domain.exceptions import InviteError, InviteExhaustedError, InviteNotFoundError, UserNotFoundError
 from app.persistence.models import User
 from app.schemas.invite import InviteRejected
 from app.domain.services.invite import InviteService, get_invite_service
@@ -163,7 +163,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             self._invite_fail(request, e.code)
 
     async def _consume_invite_by_id(self, invite_id: uuid.UUID, user: User) -> None:
-        await self.invite_service.consume_invite(invite_id, user.id)
+        try:
+            await self.invite_service.consume_invite(invite_id, user.id)
+        except (InviteNotFoundError, InviteExhaustedError, UserNotFoundError):
+            pass
 
 
 async def get_user_manager(
