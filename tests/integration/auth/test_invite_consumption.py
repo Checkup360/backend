@@ -101,6 +101,34 @@ class TestInviteConsumptionIntegration:
         invite_db = await db.get(InviteToken, invite.id)
         assert invite_db.uses == 1
 
+    async def test_existing_member_upgraded_to_admin(
+        self, db: AsyncSession, user_manager: UserManager
+    ):
+        org = await create_organization(db, name="Upgrade Org", slug="upgrade-org")
+        user = await create_user(db, email="member@test.com")
+        db.add(
+            Membership(
+                user_id=user.id,
+                organization_id=org.id,
+                role=OrgRole.MEMBER,
+            )
+        )
+        invite = await create_invite(
+            db,
+            token="upgrade-invite",
+            organization_id=org.id,
+            role=OrgRole.ADMIN,
+        )
+        await db.commit()
+
+        await user_manager._consume_invite_by_id(invite.id, user)
+
+        membership = await db.get(Membership, (user.id, org.id))
+        assert membership.role == OrgRole.ADMIN
+
+        invite_db = await db.get(InviteToken, invite.id)
+        assert invite_db.uses == 1
+
     async def test_existing_admin_not_downgraded(
         self, db: AsyncSession, user_manager: UserManager
     ):

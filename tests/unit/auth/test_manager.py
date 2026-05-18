@@ -102,11 +102,11 @@ class TestConsumeInviteByID:
 
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        membership_repo_mock.create.assert_called_once()
-        args = membership_repo_mock.create.call_args[1]
-        assert args["user_id"] == sample_user.id
-        assert args["organization_id"] == sample_invite_org.organization_id
-        assert args["role"] == OrgRole.MEMBER
+        membership_repo_mock.save.assert_called_once()
+        saved = membership_repo_mock.save.call_args[0][0]
+        assert saved.user_id == sample_user.id
+        assert saved.organization_id == sample_invite_org.organization_id
+        assert saved.role == OrgRole.MEMBER
 
         invite_repo_mock.update.assert_called_once_with(
             sample_invite_org.id, uses=1
@@ -182,8 +182,8 @@ class TestConsumeInviteByID:
 
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        args = membership_repo_mock.create.call_args[1]
-        assert args["role"] == OrgRole.MEMBER
+        saved = membership_repo_mock.save.call_args[0][0]
+        assert saved.role == OrgRole.MEMBER
 
     @pytest.mark.asyncio
     async def test_consume_invite_exhausted_does_nothing(

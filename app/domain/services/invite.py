@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.core import settings
-from app.domain.entities import InviteToken
+from app.domain.entities import InviteToken, Membership
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import (
     InviteEmailMismatchError,
@@ -115,20 +115,20 @@ class InviteService:
                 user.id, invite.organization_id
             )
             if not existing_membership:
-                await self.membership_repo.create(
+                membership = Membership(
                     user_id=user.id,
                     organization_id=invite.organization_id,
                     role=invite.role or OrgRole.MEMBER,
                 )
             else:
-                if (
+                if not (
                     invite.role
                     and invite.role == OrgRole.ADMIN
                     and existing_membership.role != OrgRole.ADMIN
                 ):
-                    existing_membership.role = invite.role
-                    await self.membership_repo.save(existing_membership)
-                else:
                     return
+                existing_membership.role = invite.role
+                membership = existing_membership
+            await self.membership_repo.save(membership)
 
         await self.invite_repo.update(invite_id, uses=invite.uses + 1)
