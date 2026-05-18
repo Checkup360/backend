@@ -34,39 +34,3 @@ async def test_get_by_token(db: AsyncSession):
     assert found.token == token
 
     assert await repo.get_by_token("not-found") is None
-
-
-@pytest.mark.asyncio
-async def test_fetch_usable_invite(db: AsyncSession):
-    repo = InviteRepository(db)
-
-    # Valid invite
-    await repo.create(
-        token="valid",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-        max_uses=1,
-    )
-    invite, err = await repo.fetch_usable_invite("valid")
-    assert invite is not None
-    assert err is None
-
-    # Used invite
-    await repo.create(
-        token="used",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-        max_uses=1,
-        uses=1,
-    )
-    invite, err = await repo.fetch_usable_invite("used")
-    assert invite is None
-    assert err == "invite_used"
-
-    # Expired invite
-    await repo.create(
-        token="expired",
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        max_uses=1,
-    )
-    invite, err = await repo.fetch_usable_invite("expired")
-    assert invite is None
-    assert err == "invite_expired"

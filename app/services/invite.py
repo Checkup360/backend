@@ -70,13 +70,31 @@ class InviteService:
         )
         return await self.invite_repo.save(invite)
 
+    async def _check_usable(
+        self, token: str
+    ) -> tuple[InviteToken | None, str | None]:
+        invite = await self.invite_repo.get_by_token(token)
+        if not invite:
+            return None, "invalid_invite"
+        if invite.is_exhausted:
+            return None, "invite_used"
+        expires_at = invite.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            return None, "invite_expired"
+        return invite, None
+
+    async def check_invite_usable(self, token: str) -> str | None:
+        _, err = await self._check_usable(token)
+        return err
+
     async def validate_invite(
         self, token: str, email: str
     ) -> tuple[InviteToken | None, str | None]:
-        invite, err = await self.invite_repo.fetch_usable_invite(token)
+        invite, err = await self._check_usable(token)
         if err:
             return None, err
-        assert invite is not None
         if invite.email and invite.email != email:
             return None, "email_mismatch"
         return invite, None
@@ -108,11 +126,8 @@ class InviteService:
                     and invite.role == OrgRole.ADMIN
                     and existing_membership.role != OrgRole.ADMIN
                 ):
-                    await self.membership_repo.update_role(
-                        user_id=existing_membership.user_id,
-                        organization_id=existing_membership.organization_id,
-                        role=invite.role,
-                    )
+                    existing_membership.role = invite.role
+                    await self.membership_repo.save(existing_membership)
                 else:
                     return
 

@@ -1,8 +1,12 @@
 import uuid
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock
+
 import pytest
 
-from app.services import invite as invites_service
+from app.domain.entities import InviteToken
 from app.domain.entities.org_role import OrgRole
+from app.services import invite as invites_service
 from app.repositories.invite import InviteRepository
 
 
@@ -31,65 +35,84 @@ def test_build_invite_url_uses_frontend_url():
     assert invites_service.build_invite_url("abc123").endswith("/invite/abc123")
 
 
-@pytest.fixture
-def invite_repo(mock_db):
-    return InviteRepository(mock_db)
+@pytest.mark.asyncio
+async def test_check_invite_usable_not_found():
+    repo = AsyncMock(spec=InviteRepository)
+    repo.get_by_token.return_value = None
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    err = await service.check_invite_usable("no-such-token")
+
+    assert err == "invalid_invite"
 
 
 @pytest.mark.asyncio
-async def test_fetch_usable_invite_not_found(invite_repo, mock_db):
-    mock_db.scalar.return_value = None
+async def test_check_invite_usable_used():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="used-token",
+        uses=1,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    invite, code = await invite_repo.fetch_usable_invite("no-such-token")
+    err = await service.check_invite_usable("used-token")
 
-    assert invite is None
-    assert code == "invalid_invite"
-
-
-@pytest.mark.asyncio
-async def test_fetch_usable_invite_used(invite_repo, mock_db, make_invite_token):
-    token = make_invite_token(token="used-token", used=True)
-    mock_db.scalar.return_value = token
-
-    invite, code = await invite_repo.fetch_usable_invite("used-token")
-
-    assert invite is None
-    assert code == "invite_used"
+    assert err == "invite_used"
 
 
 @pytest.mark.asyncio
-async def test_fetch_usable_invite_expired(invite_repo, mock_db, make_invite_token):
-    token = make_invite_token(token="expired-token", expires_in_hours=-1)
-    mock_db.scalar.return_value = token
+async def test_check_invite_usable_expired():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="expired-token",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    invite, code = await invite_repo.fetch_usable_invite("expired-token")
+    err = await service.check_invite_usable("expired-token")
 
-    assert invite is None
-    assert code == "invite_expired"
-
-
-@pytest.mark.asyncio
-async def test_fetch_usable_invite_valid(invite_repo, mock_db, make_invite_token):
-    token = make_invite_token(token="valid-token")
-    mock_db.scalar.return_value = token
-
-    invite, code = await invite_repo.fetch_usable_invite("valid-token")
-
-    assert invite is not None
-    assert invite.token == token.token
-    assert invite.uses == token.uses
-    assert code is None
+    assert err == "invite_expired"
 
 
 @pytest.mark.asyncio
-async def test_fetch_usable_invite_edge_expiry_just_now(
-    invite_repo, mock_db, make_invite_token
-):
-    """Test invite that expires exactly now (should be expired)."""
-    token = make_invite_token(token="edge-token", expires_in_hours=0)
-    mock_db.scalar.return_value = token
+async def test_check_invite_usable_valid():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="valid-token",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    invite, code = await invite_repo.fetch_usable_invite("edge-token")
+    err = await service.check_invite_usable("valid-token")
 
-    assert invite is None
-    assert code == "invite_expired"
+    assert err is None
+
+
+@pytest.mark.asyncio
+async def test_check_invite_usable_edge_expiry_just_now():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="edge-token",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    err = await service.check_invite_usable("edge-token")
+
+    assert err == "invite_expired"

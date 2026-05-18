@@ -3,7 +3,7 @@ from fastapi import HTTPException
 import uuid
 from datetime import datetime, timezone
 
-from app.domain.entities import InviteToken, Membership
+from app.domain.entities import InviteToken
 from app.domain.entities.org_role import OrgRole
 
 
@@ -124,23 +124,19 @@ class TestConsumeInviteByID:
         user_repo_mock,
     ):
         """ADMIN user: does NOT downgrade role when consuming a MEMBER invite."""
-        invite = sample_invite_org.model_copy(update={"role": OrgRole.MEMBER})
-        invite_repo_mock.get.return_value = invite
+        sample_invite_org.role = OrgRole.MEMBER
+        invite_repo_mock.get.return_value = sample_invite_org
         user_repo_mock.get.return_value = sample_user
 
-        membership = sample_membership.model_copy(
-            update={
-                "user_id": sample_user.id,
-                "organization_id": invite.organization_id,
-                "role": OrgRole.ADMIN,
-            }
-        )
-        membership_repo_mock.get_by_user_and_org.return_value = membership
+        sample_membership.user_id = sample_user.id
+        sample_membership.organization_id = sample_invite_org.organization_id
+        sample_membership.role = OrgRole.ADMIN
+        membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
-        await user_manager._consume_invite_by_id(invite.id, sample_user)
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         membership_repo_mock.create.assert_not_called()
-        membership_repo_mock.update_role.assert_not_called()
+        membership_repo_mock.save.assert_not_called()
         invite_repo_mock.update.assert_not_called()
 
     @pytest.mark.asyncio
@@ -179,12 +175,12 @@ class TestConsumeInviteByID:
         user_repo_mock,
     ):
         """Invite without a role uses MEMBER by default."""
-        invite = sample_invite_org.model_copy(update={"role": None})
-        invite_repo_mock.get.return_value = invite
+        sample_invite_org.role = None
+        invite_repo_mock.get.return_value = sample_invite_org
         user_repo_mock.get.return_value = sample_user
         membership_repo_mock.get_by_user_and_org.return_value = None
 
-        await user_manager._consume_invite_by_id(invite.id, sample_user)
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         args = membership_repo_mock.create.call_args[1]
         assert args["role"] == OrgRole.MEMBER
@@ -251,28 +247,22 @@ class TestConsumeInviteByID:
         user_repo_mock,
         membership_repo_mock,
     ):
-        invite = sample_invite_org.model_copy(update={"role": OrgRole.ADMIN})
-        invite_repo_mock.get.return_value = invite
+        sample_invite_org.role = OrgRole.ADMIN
+        invite_repo_mock.get.return_value = sample_invite_org
 
         user_repo_mock.get.return_value = sample_user
 
-        membership = sample_membership.model_copy(
-            update={
-                "user_id": sample_user.id,
-                "organization_id": invite.organization_id,
-                "role": OrgRole.MEMBER,
-            }
-        )
-        membership_repo_mock.get_by_user_and_org.return_value = membership
+        sample_membership.user_id = sample_user.id
+        sample_membership.organization_id = sample_invite_org.organization_id
+        sample_membership.role = OrgRole.MEMBER
+        membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
-        await user_manager._consume_invite_by_id(invite.id, sample_user)
+        await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         membership_repo_mock.create.assert_not_called()
-        membership_repo_mock.update_role.assert_called_once_with(
-            user_id=sample_user.id,
-            organization_id=invite.organization_id,
-            role=OrgRole.ADMIN,
-        )
+        membership_repo_mock.save.assert_called_once()
+        saved = membership_repo_mock.save.call_args[0][0]
+        assert saved.role == OrgRole.ADMIN
         invite_repo_mock.update.assert_called_once_with(
-            invite.id, uses=1
+            sample_invite_org.id, uses=1
         )

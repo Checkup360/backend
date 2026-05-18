@@ -33,16 +33,20 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         result = await self.db.execute(query)
         return result.first() is not None
 
-    async def update_role(
-        self, user_id: uuid.UUID, organization_id: uuid.UUID, role: OrgRole
-    ) -> Membership:
-        orm = await self.db.get(self.model, (user_id, organization_id))
-        if orm is None:
-            raise ValueError("membership_not_found")
-        orm.role = role
-        await self.db.commit()
-        await self.db.refresh(orm)
-        return self._to_domain(orm)
+    async def save(self, membership: Membership) -> Membership:
+        orm = await self.db.get(
+            self.model, (membership.user_id, membership.organization_id)
+        )
+        if orm is not None:
+            orm.role = membership.role
+            await self.db.commit()
+            await self.db.refresh(orm)
+            return self._to_domain(orm)
+        return await self.create(
+            user_id=membership.user_id,
+            organization_id=membership.organization_id,
+            role=membership.role,
+        )
 
     @staticmethod
     def _to_domain(orm: MembershipORM) -> Membership:

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.auth.manager import UserManager
-from app.domain.entities import InviteToken, Membership, User
+from app.domain.entities import InviteToken, Membership
 from app.domain.entities.org_role import OrgRole
 from app.services.invite import InviteService
 

@@ -69,7 +69,7 @@ async def prepare_google_registration(
     request: Request,
     service: InviteService = Depends(get_invite_service),
 ) -> Response:
-    _, err = await service.invite_repo.fetch_usable_invite(token)
+    err = await service.check_invite_usable(token)
     if err:
         request.state.clear_pending_invite_cookie = True
         return response_json(InviteRejected(code=err), status_code=400)
