@@ -9,9 +9,10 @@ from app.auth.dependencies import get_user_db
 from app.core import settings
 from app.auth.machinery.cookies import clear_pending_invite_cookie
 from app.domain.entities import InviteToken
+from app.domain.exceptions import InviteError
 from app.models import User
 from app.schemas.invite import InviteRejected
-from app.services.invite import InviteService, get_invite_service
+from app.domain.services.invite import InviteService, get_invite_service
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -156,11 +157,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self, request: Optional[Request], email: str
     ) -> InviteToken:
         token = self._invite_token_from_request(request)
-        invite, err = await self.invite_service.validate_invite(token, email)
-        if err:
-            self._invite_fail(request, err)
-        assert invite is not None
-        return invite
+        try:
+            return await self.invite_service.validate_invite(token, email)
+        except InviteError as e:
+            self._invite_fail(request, e.code)
 
     async def _consume_invite_by_id(self, invite_id: uuid.UUID, user: User) -> None:
         await self.invite_service.consume_invite(invite_id, user.id)

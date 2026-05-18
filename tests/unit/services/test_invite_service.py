@@ -6,7 +6,12 @@ import pytest
 
 from app.domain.entities import InviteToken
 from app.domain.entities.org_role import OrgRole
-from app.services import invite as invites_service
+from app.domain.exceptions import (
+    InviteExhaustedError,
+    InviteExpiredError,
+    InviteNotFoundError,
+)
+from app.domain.services import invite as invites_service
 from app.repositories.invite import InviteRepository
 
 
@@ -41,9 +46,8 @@ async def test_check_invite_usable_not_found():
     repo.get_by_token.return_value = None
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    err = await service.check_invite_usable("no-such-token")
-
-    assert err == "invalid_invite"
+    with pytest.raises(InviteNotFoundError):
+        await service.check_invite_usable("no-such-token")
 
 
 @pytest.mark.asyncio
@@ -59,9 +63,8 @@ async def test_check_invite_usable_used():
     repo.get_by_token.return_value = token
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    err = await service.check_invite_usable("used-token")
-
-    assert err == "invite_used"
+    with pytest.raises(InviteExhaustedError):
+        await service.check_invite_usable("used-token")
 
 
 @pytest.mark.asyncio
@@ -77,9 +80,8 @@ async def test_check_invite_usable_expired():
     repo.get_by_token.return_value = token
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    err = await service.check_invite_usable("expired-token")
-
-    assert err == "invite_expired"
+    with pytest.raises(InviteExpiredError):
+        await service.check_invite_usable("expired-token")
 
 
 @pytest.mark.asyncio
@@ -95,9 +97,7 @@ async def test_check_invite_usable_valid():
     repo.get_by_token.return_value = token
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    err = await service.check_invite_usable("valid-token")
-
-    assert err is None
+    await service.check_invite_usable("valid-token")
 
 
 @pytest.mark.asyncio
@@ -113,6 +113,5 @@ async def test_check_invite_usable_edge_expiry_just_now():
     repo.get_by_token.return_value = token
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
 
-    err = await service.check_invite_usable("edge-token")
-
-    assert err == "invite_expired"
+    with pytest.raises(InviteExpiredError):
+        await service.check_invite_usable("edge-token")

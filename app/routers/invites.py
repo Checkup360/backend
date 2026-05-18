@@ -11,13 +11,14 @@ from app.auth.machinery.cookies import apply_pending_invite_cookie
 from app.core.responses import response_json
 from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import InviteError
 from app.schemas.invite import (
     InvitePasswordRegisterBody,
     InviteRejected,
     PrepareGoogleSessionResponse,
 )
 from app.schemas.user import UserCreate
-from app.services.invite import InviteService, get_invite_service, build_invite_url
+from app.domain.services.invite import InviteService, get_invite_service, build_invite_url
 
 from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
@@ -69,10 +70,11 @@ async def prepare_google_registration(
     request: Request,
     service: InviteService = Depends(get_invite_service),
 ) -> Response:
-    err = await service.check_invite_usable(token)
-    if err:
+    try:
+        await service.check_invite_usable(token)
+    except InviteError as e:
         request.state.clear_pending_invite_cookie = True
-        return response_json(InviteRejected(code=err), status_code=400)
+        return response_json(InviteRejected(code=e.code), status_code=400)
 
     ok = PrepareGoogleSessionResponse(ok=True)
     r = response_json(ok, status_code=200)

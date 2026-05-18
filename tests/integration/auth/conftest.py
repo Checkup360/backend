@@ -9,7 +9,7 @@ from app.models import OAuthAccount, User
 from app.repositories.invite import InviteRepository
 from app.repositories.membership import MembershipRepository
 from app.repositories.user import UserRepository
-from app.services.invite import InviteService
+from app.domain.services.invite import InviteService
 
 
 class FakeRequest:

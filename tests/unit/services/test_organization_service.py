@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from app.services.organization import OrganizationService
+from app.domain.exceptions import OrganizationSlugAlreadyExists
+from app.domain.services.organization import OrganizationService
 
 
 @pytest.mark.asyncio
@@ -26,10 +27,9 @@ async def test_create_organization_duplicate_slug_raises_error():
 
     service = OrganizationService(repo)
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(OrganizationSlugAlreadyExists):
         await service.create_organization("Acme 2", "acme")
 
-    assert str(exc.value) == "organization_slug_already_exists"
     repo.create.assert_not_called()
 
 

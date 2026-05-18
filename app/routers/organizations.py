@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 
 from app.auth.authorization import require_superuser
+from app.domain.exceptions import OrganizationSlugAlreadyExists
 from app.models import User
-from app.services.organization import OrganizationService, get_organization_service
+from app.domain.services.organization import OrganizationService, get_organization_service
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
@@ -59,12 +60,12 @@ async def create_organization(
         organization = await service.create_organization(
             name=request.name, slug=request.slug
         )
+    except OrganizationSlugAlreadyExists:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="organization_slug_already_exists",
+        )
     except ValueError as e:
-        if str(e) == "organization_slug_already_exists":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="organization_slug_already_exists",
-            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),

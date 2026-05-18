@@ -7,6 +7,12 @@ from fastapi import Depends
 from app.core import settings
 from app.domain.entities import InviteToken
 from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import (
+    InviteEmailMismatchError,
+    InviteExhaustedError,
+    InviteExpiredError,
+    InviteNotFoundError,
+)
 from app.repositories.invite import InviteRepository, get_invite_repository
 from app.repositories.membership import MembershipRepository, get_membership_repository
 from app.repositories.user import UserRepository, get_user_repository
@@ -70,34 +76,27 @@ class InviteService:
         )
         return await self.invite_repo.save(invite)
 
-    async def _check_usable(
-        self, token: str
-    ) -> tuple[InviteToken | None, str | None]:
+    async def _check_usable(self, token: str) -> InviteToken:
         invite = await self.invite_repo.get_by_token(token)
         if not invite:
-            return None, "invalid_invite"
+            raise InviteNotFoundError()
         if invite.is_exhausted:
-            return None, "invite_used"
+            raise InviteExhaustedError()
         expires_at = invite.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         if expires_at < datetime.now(timezone.utc):
-            return None, "invite_expired"
-        return invite, None
+            raise InviteExpiredError()
+        return invite
 
-    async def check_invite_usable(self, token: str) -> str | None:
-        _, err = await self._check_usable(token)
-        return err
+    async def check_invite_usable(self, token: str) -> None:
+        await self._check_usable(token)
 
-    async def validate_invite(
-        self, token: str, email: str
-    ) -> tuple[InviteToken | None, str | None]:
-        invite, err = await self._check_usable(token)
-        if err:
-            return None, err
+    async def validate_invite(self, token: str, email: str) -> InviteToken:
+        invite = await self._check_usable(token)
         if invite.email and invite.email != email:
-            return None, "email_mismatch"
-        return invite, None
+            raise InviteEmailMismatchError()
+        return invite
 
     async def consume_invite(self, invite_id: uuid.UUID, user_id: uuid.UUID) -> None:
         invite = await self.invite_repo.get(invite_id)
