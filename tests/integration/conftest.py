@@ -8,9 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base
+from app.persistence.database import Base
 from app.main import app
-from app.models import InviteToken, Membership, Organization, User
+from app.persistence.models import InviteToken, Membership, Organization, User
 from app.domain.entities.org_role import OrgRole
 
 
@@ -106,7 +106,7 @@ async def db_session_maker(monkeypatch):
 
     from app.auth import dependencies as auth_dependencies
     from app.auth.middleware import db_session as auth_middleware
-    import app.database as database_module
+    import app.persistence.database as database_module
 
     monkeypatch.setattr(database_module, "engine", engine)
     monkeypatch.setattr(database_module, "async_session_maker", session_maker)

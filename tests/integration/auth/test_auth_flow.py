@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core import settings
-from app.models import Membership, Organization, User
+from app.persistence.models import Membership, Organization, User
 from app.domain.entities.org_role import OrgRole
 
 

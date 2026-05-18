@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models import InviteToken, Organization
+from app.persistence.models import InviteToken, Organization
 from app.domain.entities.org_role import OrgRole
 
 

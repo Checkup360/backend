@@ -1,10 +1,10 @@
 import pytest
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.repositories.membership import MembershipRepository
+from app.persistence.repositories.membership import MembershipRepository
 from app.domain.entities.org_role import OrgRole
-from app.models.organization import Organization
-from app.models.user import User
+from app.persistence.models.organization import Organization
+from app.persistence.models.user import User
 
 
 @pytest.mark.asyncio

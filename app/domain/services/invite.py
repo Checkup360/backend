@@ -13,9 +13,9 @@ from app.domain.exceptions import (
     InviteExpiredError,
     InviteNotFoundError,
 )
-from app.repositories.invite import InviteRepository, get_invite_repository
-from app.repositories.membership import MembershipRepository, get_membership_repository
-from app.repositories.user import UserRepository, get_user_repository
+from app.persistence.repositories.invite import InviteRepository, get_invite_repository
+from app.persistence.repositories.membership import MembershipRepository, get_membership_repository
+from app.persistence.repositories.user import UserRepository, get_user_repository
 
 
 def build_invite_url(token: str) -> str:

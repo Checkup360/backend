@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.auth.machinery.users import current_active_user
 from app.domain.entities import Membership
-from app.models import User
+from app.persistence.models import User
 from app.domain.services.membership import MembershipService, get_membership_service
 
 

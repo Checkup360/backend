@@ -3,8 +3,8 @@ from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
 from app.domain.services.invite import build_invite_token, build_invite_url
-from app.models import User
-from app.repositories.invite import InviteRepository, get_invite_repository
+from app.persistence.models import User
+from app.persistence.repositories.invite import InviteRepository, get_invite_repository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

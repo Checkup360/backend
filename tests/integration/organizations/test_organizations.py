@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.models import Organization
+from app.persistence.models import Organization
 
 
 class TestOrganizations:

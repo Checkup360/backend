@@ -1,7 +1,7 @@
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.database import async_session_maker
+from app.persistence.database import async_session_maker
 
 
 class DBSessionMiddleware(BaseHTTPMiddleware):

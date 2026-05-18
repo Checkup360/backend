@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.manager import UserManager
-from app.models import User, Organization
-from app.models.invite import InviteToken
+from app.persistence.models import User, Organization
+from app.persistence.models.invite import InviteToken
 from app.domain.entities.org_role import OrgRole
-from app.models.membership import Membership
+from app.persistence.models.membership import Membership
 
 
 async def create_user(

@@ -5,8 +5,8 @@ from fastapi import Depends
 
 from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
-from app.repositories.membership import MembershipRepository, get_membership_repository
-from app.repositories.organization import (
+from app.persistence.repositories.membership import MembershipRepository, get_membership_repository
+from app.persistence.repositories.organization import (
     OrganizationRepository,
     get_organization_repository,
 )

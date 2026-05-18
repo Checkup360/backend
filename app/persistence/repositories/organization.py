@@ -2,10 +2,10 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.persistence.database import get_db
 from app.domain.entities import Organization
-from app.models.organization import Organization as OrganizationORM
-from app.repositories.base import BaseRepository
+from app.persistence.models.organization import Organization as OrganizationORM
+from app.persistence.repositories.base import BaseRepository
 
 
 class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):

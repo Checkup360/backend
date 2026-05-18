@@ -1,10 +1,10 @@
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.persistence.database import get_db
 from app.domain.entities import User
-from app.models.user import User as UserORM
-from app.repositories.base import BaseRepository
+from app.persistence.models.user import User as UserORM
+from app.persistence.repositories.base import BaseRepository
 
 
 class UserRepository(BaseRepository[UserORM, User]):

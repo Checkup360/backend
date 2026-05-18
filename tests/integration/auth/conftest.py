@@ -5,10 +5,10 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.manager import UserManager
-from app.models import OAuthAccount, User
-from app.repositories.invite import InviteRepository
-from app.repositories.membership import MembershipRepository
-from app.repositories.user import UserRepository
+from app.persistence.models import OAuthAccount, User
+from app.persistence.repositories.invite import InviteRepository
+from app.persistence.repositories.membership import MembershipRepository
+from app.persistence.repositories.user import UserRepository
 from app.domain.services.invite import InviteService
 
 

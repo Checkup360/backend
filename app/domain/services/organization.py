@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.domain.entities import Organization
 from app.domain.exceptions import OrganizationSlugAlreadyExists
-from app.repositories.organization import (
+from app.persistence.repositories.organization import (
     OrganizationRepository,
     get_organization_repository,
 )

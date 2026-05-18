@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import Base
+from app.persistence.database import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 DomainType = TypeVar("DomainType")

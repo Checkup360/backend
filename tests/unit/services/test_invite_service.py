@@ -12,7 +12,7 @@ from app.domain.exceptions import (
     InviteNotFoundError,
 )
 from app.domain.services import invite as invites_service
-from app.repositories.invite import InviteRepository
+from app.persistence.repositories.invite import InviteRepository
 
 
 def test_build_invite_token_sets_all_fields():

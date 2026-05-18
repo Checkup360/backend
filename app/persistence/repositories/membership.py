@@ -4,11 +4,11 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.persistence.database import get_db
 from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
-from app.models.membership import Membership as MembershipORM
-from app.repositories.base import BaseRepository
+from app.persistence.models.membership import Membership as MembershipORM
+from app.persistence.repositories.base import BaseRepository
 
 
 class MembershipRepository(BaseRepository[MembershipORM, Membership]):

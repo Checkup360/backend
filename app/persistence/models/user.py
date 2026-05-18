@@ -4,8 +4,8 @@ from fastapi_users.db import (
 )
 from sqlalchemy.orm import Mapped, relationship
 
-from app.database import Base
-from app.models.membership import Membership
+from app.persistence.database import Base
+from app.persistence.models.membership import Membership
 
 
 class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):

@@ -2,10 +2,10 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.persistence.database import get_db
 from app.domain.entities import InviteToken
-from app.models.invite import InviteToken as InviteTokenORM
-from app.repositories.base import BaseRepository
+from app.persistence.models.invite import InviteToken as InviteTokenORM
+from app.persistence.repositories.base import BaseRepository
 
 
 class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):

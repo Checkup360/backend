@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models import InviteToken
+from app.persistence.models import InviteToken
 
 
 class TestAdminInvites:

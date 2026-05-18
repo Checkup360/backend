@@ -4,7 +4,7 @@ from app.auth.machinery.backend import auth_backend
 from app.auth.machinery.google_oauth import google_oauth_client
 from app.auth.machinery.users import current_active_user, fastapi_users
 from app.core import settings
-from app.models import User
+from app.persistence.models import User
 from app.schemas.auth import AuthMeResponse, OrganizationMembership
 
 router = APIRouter(prefix="/auth", tags=["auth"])

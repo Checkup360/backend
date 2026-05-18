@@ -10,7 +10,7 @@ from app.core import settings
 from app.auth.machinery.cookies import clear_pending_invite_cookie
 from app.domain.entities import InviteToken
 from app.domain.exceptions import InviteError
-from app.models import User
+from app.persistence.models import User
 from app.schemas.invite import InviteRejected
 from app.domain.services.invite import InviteService, get_invite_service
 

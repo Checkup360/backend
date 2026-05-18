@@ -4,14 +4,14 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, Index, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.persistence.database import Base
 from app.domain.entities.org_role import OrgRole
 from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from app.models.organization import Organization
-    from app.models.user import User
+    from app.persistence.models.organization import Organization
+    from app.persistence.models.user import User
 
 
 class Membership(Base):
