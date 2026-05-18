@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
-from app.dependencies import get_invite_repository
-from app.domain.services.invite import build_invite_token, build_invite_url
+from app.dependencies import get_invite_service
+from app.domain.services.invite import InviteService, build_invite_url
 from app.persistence.models import User
-from app.persistence.repositories.invite import InviteRepository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -23,7 +22,7 @@ class CreateInviteResponse(BaseModel):
 @router.post("/invites", response_model=CreateInviteResponse)
 async def create_sysadmin_invite(
     request: CreateSysadminInviteRequest,
-    repo: InviteRepository = Depends(get_invite_repository),
+    service: InviteService = Depends(get_invite_service),
     current_user: User = Depends(require_superuser),
 ):
     """
@@ -31,7 +30,7 @@ async def create_sysadmin_invite(
     Si se proporciona un email, el token solo es válido para ese email.
     El token expira en `expires_in_hours` horas.
     """
-    invite = build_invite_token(
+    invite = await service.create_invite(
         email=request.email,
         max_uses=1,
         expires_in_hours=request.expires_in_hours,
@@ -39,8 +38,6 @@ async def create_sysadmin_invite(
         role=None,
         is_sysadmin=True,
     )
-
-    await repo.save(invite)
 
     return CreateInviteResponse(
         token=invite.token,
