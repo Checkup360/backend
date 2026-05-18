@@ -2,8 +2,6 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends
-
 from app.core import settings
 from app.domain.entities import InviteToken
 from app.domain.entities.org_role import OrgRole
@@ -14,9 +12,9 @@ from app.domain.exceptions import (
     InviteNotFoundError,
     UserNotFoundError,
 )
-from app.persistence.repositories.invite import InviteRepository, get_invite_repository
-from app.persistence.repositories.membership import MembershipRepository, get_membership_repository
-from app.persistence.repositories.user import UserRepository, get_user_repository
+from app.persistence.repositories.invite import InviteRepository
+from app.persistence.repositories.membership import MembershipRepository
+from app.persistence.repositories.user import UserRepository
 
 
 def build_invite_url(token: str) -> str:
@@ -134,11 +132,3 @@ class InviteService:
                     return
 
         await self.invite_repo.update(invite_id, uses=invite.uses + 1)
-
-
-async def get_invite_service(
-    invite_repo: InviteRepository = Depends(get_invite_repository),
-    membership_repo: MembershipRepository = Depends(get_membership_repository),
-    user_repo: UserRepository = Depends(get_user_repository),
-) -> InviteService:
-    return InviteService(invite_repo, membership_repo, user_repo)

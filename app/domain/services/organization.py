@@ -1,11 +1,6 @@
-from fastapi import Depends
-
 from app.domain.entities import Organization
 from app.domain.exceptions import OrganizationSlugAlreadyExists
-from app.persistence.repositories.organization import (
-    OrganizationRepository,
-    get_organization_repository,
-)
+from app.persistence.repositories.organization import OrganizationRepository
 
 
 class OrganizationService:
@@ -21,9 +16,3 @@ class OrganizationService:
 
     async def list_organizations(self) -> list[Organization]:
         return await self.repo.list()
-
-
-async def get_organization_service(
-    repo: OrganizationRepository = Depends(get_organization_repository),
-) -> OrganizationService:
-    return OrganizationService(repo)

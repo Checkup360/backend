@@ -12,7 +12,8 @@ from app.domain.entities import InviteToken
 from app.domain.exceptions import InviteError, InviteExhaustedError, InviteNotFoundError, UserNotFoundError
 from app.persistence.models import User
 from app.schemas.invite import InviteRejected
-from app.domain.services.invite import InviteService, get_invite_service
+from app.dependencies import get_invite_service
+from app.domain.services.invite import InviteService
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):

@@ -6,7 +6,8 @@ from app.auth.machinery.users import current_active_user
 from app.domain.entities import Membership
 from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
 from app.persistence.models import User
-from app.domain.services.membership import MembershipService, get_membership_service
+from app.dependencies import get_membership_service
+from app.domain.services.membership import MembershipService
 
 
 def require_superuser(

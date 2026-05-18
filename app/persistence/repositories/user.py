@@ -1,7 +1,5 @@
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.persistence.database import get_db
 from app.domain.entities import User
 from app.persistence.models.user import User as UserORM
 from app.persistence.repositories.base import BaseRepository
@@ -27,7 +25,3 @@ class UserRepository(BaseRepository[UserORM, User]):
             "is_superuser": entity.is_superuser,
             "is_active": entity.is_active,
         }
-
-
-async def get_user_repository(db: AsyncSession = Depends(get_db)):
-    return UserRepository(db)

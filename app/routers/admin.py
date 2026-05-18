@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
+from app.dependencies import get_invite_repository
 from app.domain.services.invite import build_invite_token, build_invite_url
 from app.persistence.models import User
-from app.persistence.repositories.invite import InviteRepository, get_invite_repository
+from app.persistence.repositories.invite import InviteRepository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

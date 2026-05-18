@@ -1,10 +1,8 @@
 import uuid
 
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.persistence.database import get_db
 from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
 from app.persistence.models.membership import Membership as MembershipORM
@@ -60,9 +58,3 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             "organization_id": entity.organization_id,
             "role": entity.role,
         }
-
-
-async def get_membership_repository(
-    db: AsyncSession = Depends(get_db),
-) -> MembershipRepository:
-    return MembershipRepository(db)

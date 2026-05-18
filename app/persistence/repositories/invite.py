@@ -1,8 +1,6 @@
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.persistence.database import get_db
 from app.domain.entities import InviteToken
 from app.persistence.models.invite import InviteToken as InviteTokenORM
 from app.persistence.repositories.base import BaseRepository
@@ -43,9 +41,3 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             "role": entity.role,
             "is_sysadmin": entity.is_sysadmin,
         }
-
-
-async def get_invite_repository(
-    db: AsyncSession = Depends(get_db),
-) -> InviteRepository:
-    return InviteRepository(db)

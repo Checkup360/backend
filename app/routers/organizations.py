@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 
 from app.auth.authorization import require_superuser
+from app.dependencies import get_organization_service
 from app.domain.exceptions import OrganizationSlugAlreadyExists
 from app.persistence.models import User
-from app.domain.services.organization import OrganizationService, get_organization_service
+from app.domain.services.organization import OrganizationService
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 

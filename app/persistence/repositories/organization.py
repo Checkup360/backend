@@ -1,8 +1,6 @@
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.persistence.database import get_db
 from app.domain.entities import Organization
 from app.persistence.models.organization import Organization as OrganizationORM
 from app.persistence.repositories.base import BaseRepository
@@ -31,9 +29,3 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             "name": entity.name,
             "slug": entity.slug,
         }
-
-
-async def get_organization_repository(
-    db: AsyncSession = Depends(get_db),
-) -> OrganizationRepository:
-    return OrganizationRepository(db)

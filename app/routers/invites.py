@@ -18,7 +18,8 @@ from app.schemas.invite import (
     PrepareGoogleSessionResponse,
 )
 from app.schemas.user import UserCreate
-from app.domain.services.invite import InviteService, get_invite_service, build_invite_url
+from app.dependencies import get_invite_service
+from app.domain.services.invite import InviteService, build_invite_url
 
 from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
