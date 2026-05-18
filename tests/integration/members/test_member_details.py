@@ -9,7 +9,9 @@ from app.persistence.models import MemberDetails
 
 class TestMemberDetailsOnboarding:
     @pytest.mark.asyncio
-    async def test_member_without_details_requires_onboarding(self, client, auth_scenario):
+    async def test_member_without_details_requires_onboarding(
+        self, client, auth_scenario
+    ):
         await auth_scenario.register_and_login(
             email="member-onboarding-required@example.com",
             memberships=[("member-onboarding-required", OrgRole.MEMBER)],

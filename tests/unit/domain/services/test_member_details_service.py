@@ -66,8 +66,6 @@ async def test_complete_onboarding_rejects_future_date():
     service = MemberDetailsService(repo)
 
     with pytest.raises(ValueError, match="date_of_birth_in_future"):
-        await service.complete_onboarding(
-            make_user(), date.today() + timedelta(days=1)
-        )
+        await service.complete_onboarding(make_user(), date.today() + timedelta(days=1))
 
     repo.save.assert_not_awaited()
