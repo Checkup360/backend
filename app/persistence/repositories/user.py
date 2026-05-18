@@ -20,6 +20,14 @@ class UserRepository(BaseRepository[UserORM, User]):
             is_active=orm.is_active,
         )
 
+    def _from_domain(self, entity: User) -> dict:
+        return {
+            "id": entity.id,
+            "email": entity.email,
+            "is_superuser": entity.is_superuser,
+            "is_active": entity.is_active,
+        }
+
 
 async def get_user_repository(db: AsyncSession = Depends(get_db)):
     return UserRepository(db)

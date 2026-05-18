@@ -34,19 +34,17 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return result.first() is not None
 
     async def save(self, membership: Membership) -> Membership:
+        data = self._from_domain(membership)
         orm = await self.db.get(
-            self.model, (membership.user_id, membership.organization_id)
+            self.model, (data["user_id"], data["organization_id"])
         )
         if orm is not None:
-            orm.role = membership.role
+            for key, value in data.items():
+                setattr(orm, key, value)
             await self.db.commit()
             await self.db.refresh(orm)
             return self._to_domain(orm)
-        return await self.create(
-            user_id=membership.user_id,
-            organization_id=membership.organization_id,
-            role=membership.role,
-        )
+        return await self.create(**data)
 
     @staticmethod
     def _to_domain(orm: MembershipORM) -> Membership:
@@ -55,6 +53,13 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             organization_id=orm.organization_id,
             role=orm.role,
         )
+
+    def _from_domain(self, entity: Membership) -> dict:
+        return {
+            "user_id": entity.user_id,
+            "organization_id": entity.organization_id,
+            "role": entity.role,
+        }
 
 
 async def get_membership_repository(

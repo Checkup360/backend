@@ -1,10 +1,13 @@
 import uuid
-from typing import Optional
 
 from fastapi import Depends
 
 from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import (
+    NotOrganizationAdminError,
+    OrganizationNotFoundError,
+)
 from app.persistence.repositories.membership import MembershipRepository, get_membership_repository
 from app.persistence.repositories.organization import (
     OrganizationRepository,
@@ -23,16 +26,16 @@ class MembershipService:
 
     async def get_admin_membership(
         self, user_id: uuid.UUID, organization_id: uuid.UUID
-    ) -> Optional[Membership]:
+    ) -> Membership:
         organization = await self.org_repo.get(organization_id)
         if not organization:
-            return None
+            raise OrganizationNotFoundError()
 
         membership = await self.membership_repo.get_by_user_and_org(
             user_id, organization_id
         )
         if not membership or membership.role != OrgRole.ADMIN:
-            return None
+            raise NotOrganizationAdminError()
 
         return membership
 

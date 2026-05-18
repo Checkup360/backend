@@ -11,6 +11,7 @@ from app.auth.authorization import (
     require_org_admin_any,
 )
 from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
 
 
 def test_require_superuser_returns_user():
@@ -81,8 +82,7 @@ async def test_require_organization_admin_rejects_missing_organization():
     request = MagicMock()
     request.json = AsyncMock(return_value={"organization_id": str(uuid.uuid4())})
     membership_service = AsyncMock()
-    membership_service.org_repo.get.return_value = None
-    membership_service.get_admin_membership.return_value = None
+    membership_service.get_admin_membership.side_effect = OrganizationNotFoundError()
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(
@@ -100,7 +100,7 @@ async def test_require_organization_admin_rejects_non_admin_membership():
     request.json = AsyncMock(return_value={"organization_id": str(organization_id)})
 
     membership_service = AsyncMock()
-    membership_service.get_admin_membership.return_value = None
+    membership_service.get_admin_membership.side_effect = NotOrganizationAdminError()
 
     with pytest.raises(HTTPException) as exc_info:
         await require_organization_admin(

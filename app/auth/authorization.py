@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.auth.machinery.users import current_active_user
 from app.domain.entities import Membership
+from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
 from app.persistence.models import User
 from app.domain.services.membership import MembershipService, get_membership_service
 
@@ -37,20 +38,17 @@ async def _validate_organization_admin(
             detail="invalid_organization_id",
         )
 
-    organization = await membership_service.org_repo.get(organization_uuid)
-    if not organization:
+    try:
+        return await membership_service.get_admin_membership(
+            current_user.id, organization_uuid
+        )
+    except OrganizationNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="organization_not_found",
         )
-
-    membership = await membership_service.get_admin_membership(
-        current_user.id, organization_uuid
-    )
-    if not membership:
+    except NotOrganizationAdminError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
-
-    return membership
 
 
 async def require_org_admin_any(

@@ -30,3 +30,11 @@ class InviteEmailMismatchError(InviteError):
 
 class OrganizationSlugAlreadyExists(DomainError):
     pass
+
+
+class OrganizationNotFoundError(DomainError):
+    pass
+
+
+class NotOrganizationAdminError(DomainError):
+    pass

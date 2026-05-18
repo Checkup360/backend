@@ -31,6 +31,19 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             is_sysadmin=orm.is_sysadmin,
         )
 
+    def _from_domain(self, entity: InviteToken) -> dict:
+        return {
+            "id": entity.id,
+            "token": entity.token,
+            "email": entity.email,
+            "max_uses": entity.max_uses,
+            "uses": entity.uses,
+            "expires_at": entity.expires_at,
+            "organization_id": entity.organization_id,
+            "role": entity.role,
+            "is_sysadmin": entity.is_sysadmin,
+        }
+
 
 async def get_invite_repository(
     db: AsyncSession = Depends(get_db),

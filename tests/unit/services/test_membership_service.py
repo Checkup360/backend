@@ -3,6 +3,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.domain.services.membership import MembershipService
 from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import (
+    NotOrganizationAdminError,
+    OrganizationNotFoundError,
+)
 
 
 @pytest.mark.asyncio
@@ -26,7 +30,7 @@ async def test_get_admin_membership_success():
 
 
 @pytest.mark.asyncio
-async def test_get_admin_membership_non_admin_returns_none():
+async def test_get_admin_membership_non_admin_raises():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
@@ -38,22 +42,22 @@ async def test_get_admin_membership_non_admin_returns_none():
     membership_repo.get_by_user_and_org.return_value = membership
 
     service = MembershipService(membership_repo, org_repo)
-    result = await service.get_admin_membership(user_id, org_id)
 
-    assert result is None
+    with pytest.raises(NotOrganizationAdminError):
+        await service.get_admin_membership(user_id, org_id)
 
 
 @pytest.mark.asyncio
-async def test_get_admin_membership_org_not_found_returns_none():
+async def test_get_admin_membership_org_not_found_raises():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     org_repo.get.return_value = None
 
     service = MembershipService(membership_repo, org_repo)
-    result = await service.get_admin_membership(uuid.uuid4(), uuid.uuid4())
 
-    assert result is None
+    with pytest.raises(OrganizationNotFoundError):
+        await service.get_admin_membership(uuid.uuid4(), uuid.uuid4())
 
 
 @pytest.mark.asyncio

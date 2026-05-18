@@ -25,6 +25,13 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             slug=orm.slug,
         )
 
+    def _from_domain(self, entity: Organization) -> dict:
+        return {
+            "id": entity.id,
+            "name": entity.name,
+            "slug": entity.slug,
+        }
+
 
 async def get_organization_repository(
     db: AsyncSession = Depends(get_db),

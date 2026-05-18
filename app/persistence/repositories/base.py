@@ -21,6 +21,9 @@ class BaseRepository(Generic[ModelType, DomainType]):
     def _to_domain(self, orm: ModelType) -> DomainType:
         raise NotImplementedError
 
+    def _from_domain(self, entity: DomainType) -> dict:
+        return entity.model_dump()
+
     async def get(self, id: UUID) -> DomainType | None:
         orm = await self.db.get(self.model, id)
         return self._to_domain(orm) if orm else None
@@ -47,7 +50,7 @@ class BaseRepository(Generic[ModelType, DomainType]):
         return self._to_domain(orm)
 
     async def save(self, entity: DomainType) -> DomainType:
-        data = entity.model_dump()
+        data = self._from_domain(entity)
         pk_value = data.get("id")
         if pk_value:
             orm = await self.db.get(self.model, pk_value)
