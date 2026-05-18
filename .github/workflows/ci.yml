@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          uv run pytest | tee coverage.txt
+          COVERAGE_CORE=sysmon uv run pytest | tee coverage.txt
 
       - name: Post coverage to summary
         if: always()

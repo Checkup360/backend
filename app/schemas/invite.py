@@ -17,3 +17,8 @@ class InviteRejected(BaseModel):
 class InvitePasswordRegisterBody(BaseModel):
     email: EmailStr
     password: str
+
+
+class RedeemInviteBody(BaseModel):
+    email: str | None = None
+    password: str | None = None

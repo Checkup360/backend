@@ -1,11 +1,13 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from starlette.responses import Response
 
 from app.auth.authorization import require_organization_admin_or_sysadmin
 from app.auth.machinery.backend import auth_backend
+from app.auth.machinery.users import fastapi_users
 from app.auth.manager import UserManager, get_user_manager
 from app.auth.machinery.cookies import apply_pending_invite_cookie
 from app.core.responses import response_json
@@ -13,9 +15,9 @@ from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import InviteError
 from app.schemas.invite import (
-    InvitePasswordRegisterBody,
     InviteRejected,
     PrepareGoogleSessionResponse,
+    RedeemInviteBody,
 )
 from app.schemas.user import UserCreate
 from app.dependencies import get_invite_service
@@ -40,6 +42,17 @@ class CreateInviteResponse(BaseModel):
     invite_url: str
 
 
+class InviteMetadataResponse(BaseModel):
+    organization_id: uuid.UUID | None = None
+    organization_name: str | None = None
+    role: str | None = None
+    is_sysadmin: bool = False
+
+
+class RedeemResponse(BaseModel):
+    ok: bool = True
+
+
 @router.post("/organization", response_model=CreateInviteResponse)
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
@@ -58,6 +71,20 @@ async def create_organization_invite(
     return CreateInviteResponse(
         token=invite.token,
         invite_url=build_invite_url(invite.token),
+    )
+
+
+@router.get("/{token}", response_model=InviteMetadataResponse)
+async def get_invite_metadata(
+    token: str,
+    service: InviteService = Depends(get_invite_service),
+):
+    invite = await service.check_invite_usable(token)
+    return InviteMetadataResponse(
+        organization_id=invite.organization_id,
+        organization_name=invite.organization.name if invite.organization else None,
+        role=invite.role.value if invite.role else None,
+        is_sysadmin=invite.is_sysadmin,
     )
 
 
@@ -83,25 +110,60 @@ async def prepare_google_registration(
     return r
 
 
-@router.post("/{token}/register")
-async def register_with_invite_token(
+@router.post("/{token}/redeem")
+async def redeem_invite(
     token: str,
-    body: InvitePasswordRegisterBody,
+    body: RedeemInviteBody,
     request: Request,
     user_manager: UserManager = Depends(get_user_manager),
+    invite_service: InviteService = Depends(get_invite_service),
     strategy=Depends(auth_backend.get_strategy),
+    current_user=Depends(fastapi_users.current_user(optional=True, active=True)),
 ):
+    if current_user:
+        email = current_user.email
+    else:
+        if not body.email or not body.password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email and password are required",
+            )
+        email = body.email
+
+    try:
+        invite = await invite_service.validate_invite(token, email)
+    except InviteError as e:
+        request.state.clear_pending_invite_cookie = True
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=InviteRejected(code=e.code).model_dump(),
+        )
+
+    if current_user:
+        await invite_service.consume_invite(invite.id, current_user.id)
+        return RedeemResponse()
+
+    existing = await user_manager.user_db.get_by_email(body.email)
+    if existing:
+        credentials = OAuth2PasswordRequestForm(
+            username=body.email, password=body.password
+        )
+        user = await user_manager.authenticate(credentials)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
+            )
+        await invite_service.consume_invite(invite.id, user.id)
+        response = await auth_backend.login(strategy, user)
+        await user_manager.on_after_login(user, request, response)
+        return response
+
     request.state.invite_token_override = token
     request.state.invite_validation_error_as_json = True
-
     user_create = UserCreate(email=body.email, password=body.password)
     try:
         user = await user_manager.create(user_create, safe=True, request=request)
-    except exceptions.UserAlreadyExists:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
-        )
     except exceptions.InvalidPasswordException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

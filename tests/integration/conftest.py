@@ -51,7 +51,7 @@ class AuthScenario:
             await session.commit()
 
         register_response = self.client.post(
-            f"/invites/{invite_token}/register",
+            f"/invites/{invite_token}/redeem",
             json={"email": email, "password": password},
             follow_redirects=False,
         )

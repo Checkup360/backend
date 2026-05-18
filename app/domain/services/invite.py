@@ -88,8 +88,8 @@ class InviteService:
             raise InviteExpiredError()
         return invite
 
-    async def check_invite_usable(self, token: str) -> None:
-        await self._check_usable(token)
+    async def check_invite_usable(self, token: str) -> InviteToken:
+        return await self._check_usable(token)
 
     async def validate_invite(self, token: str, email: str) -> InviteToken:
         invite = await self._check_usable(token)

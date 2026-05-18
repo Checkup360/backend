@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.domain.entities.org_role import OrgRole
+from app.domain.entities.organization import Organization
 
 
 class InviteToken(BaseModel):
@@ -14,6 +15,7 @@ class InviteToken(BaseModel):
     uses: int = 0
     expires_at: datetime
     organization_id: uuid.UUID | None = None
+    organization: Organization | None = None
     role: OrgRole | None = None
     is_sysadmin: bool = False
 

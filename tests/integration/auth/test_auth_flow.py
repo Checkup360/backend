@@ -6,9 +6,9 @@ from app.persistence.models import Membership, Organization, User
 from app.domain.entities.org_role import OrgRole
 
 
-def register(client, token: str, email: str, password: str = "SuperSecure123!"):
+def redeem(client, token: str, email: str, password: str = "SuperSecure123!"):
     return client.post(
-        f"/invites/{token}/register",
+        f"/invites/{token}/redeem",
         json={"email": email, "password": password},
         follow_redirects=False,
     )
@@ -28,7 +28,7 @@ class TestRegister:
             expires_in_hours=1,
         )
 
-        response = register(client, invite.token, "juan@example.com")
+        response = redeem(client, invite.token, "juan@example.com")
 
         assert response.status_code == 303
 
@@ -47,7 +47,7 @@ class TestRegister:
             expires_in_hours=-1,
         )
 
-        response = register(client, invite.token, "juan@example.com")
+        response = redeem(client, invite.token, "juan@example.com")
 
         assert_error_code(response, "invite_expired")
 
@@ -59,8 +59,8 @@ class TestRegister:
             uses=1,
         )
 
-        register(client, invite.token, "juan@example.com")
-        response = register(client, invite.token, "fede@example.com")
+        redeem(client, invite.token, "juan@example.com")
+        response = redeem(client, invite.token, "fede@example.com")
 
         assert_error_code(response, "invite_used")
 
@@ -72,13 +72,13 @@ class TestRegister:
             expires_in_hours=1,
         )
 
-        response = register(client, invite.token, "otro@example.com")
+        response = redeem(client, invite.token, "otro@example.com")
 
         assert_error_code(response, "email_mismatch")
 
     @pytest.mark.asyncio
     async def test_with_nonexistent_invite(self, client):
-        response = register(client, "nonexistent-token", "juan@example.com")
+        response = redeem(client, "nonexistent-token", "juan@example.com")
 
         assert_error_code(response, "invalid_invite")
 
@@ -95,7 +95,7 @@ class TestMeEndpoint:
             email="juan@example.com",
             expires_in_hours=1,
         )
-        register(client, invite.token, "juan@example.com")
+        redeem(client, invite.token, "juan@example.com")
         response = client.get("/auth/me")
         assert response.status_code == 200
         data = response.json()
@@ -112,7 +112,7 @@ class TestMeEndpoint:
             email="admin@example.com",
             expires_in_hours=1,
         )
-        register(client, invite.token, "admin@example.com")
+        redeem(client, invite.token, "admin@example.com")
         async with db_session_maker() as session:
             user = await session.scalar(
                 select(User).where(User.email == "admin@example.com")
@@ -133,7 +133,7 @@ class TestMeEndpoint:
             email="user@example.com",
             expires_in_hours=1,
         )
-        register(client, invite.token, "user@example.com")
+        redeem(client, invite.token, "user@example.com")
 
         async with db_session_maker() as session:
             user = await session.scalar(
@@ -169,7 +169,7 @@ class TestLoginEndpoint:
             expires_in_hours=1,
         )
 
-        register(client, invite.token, "juan@example.com")
+        redeem(client, invite.token, "juan@example.com")
         client.cookies.clear()
 
         response = client.post(
