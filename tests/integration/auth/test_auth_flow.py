@@ -38,6 +38,7 @@ class TestRegister:
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
         assert data["memberships"] == []
+        assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
     async def test_with_expired_invite(self, client, make_invite):
@@ -102,6 +103,7 @@ class TestMeEndpoint:
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
         assert data["memberships"] == []
+        assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
     async def test_sysadmin_returns_is_sysadmin_true(
@@ -123,6 +125,7 @@ class TestMeEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["is_sysadmin"] is True
+        assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
     async def test_user_with_org_membership_returns_memberships(
@@ -158,6 +161,7 @@ class TestMeEndpoint:
         assert data["memberships"][0]["organization_id"] == str(org.id)
         assert data["memberships"][0]["organization_name"] == "Test Org"
         assert data["memberships"][0]["role"] == "admin"
+        assert data["requires_onboarding"] is False
 
 
 class TestLoginEndpoint:
@@ -187,3 +191,4 @@ class TestLoginEndpoint:
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
         assert data["memberships"] == []
+        assert data["requires_onboarding"] is False

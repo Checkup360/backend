@@ -5,6 +5,7 @@ from fastapi_users.db import (
 from sqlalchemy.orm import Mapped, relationship
 
 from app.persistence.database import Base
+from app.persistence.models.member_details import MemberDetails
 from app.persistence.models.membership import Membership
 
 
@@ -18,4 +19,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     )
     memberships: Mapped[list["Membership"]] = relationship(
         "Membership", back_populates="user", lazy="joined"
+    )
+    member_details: Mapped["MemberDetails | None"] = relationship(
+        "MemberDetails", back_populates="user", lazy="joined", uselist=False
     )

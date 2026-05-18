@@ -12,6 +12,7 @@ class AuthMeResponse(BaseModel):
     email: str
     is_sysadmin: bool
     memberships: list[OrganizationMembership]
+    requires_onboarding: bool
 
 
 class OAuthAuthorizeResponse(BaseModel):

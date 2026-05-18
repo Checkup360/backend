@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.auth.authorization import (
+    require_completed_member_onboarding,
     require_organization_admin,
     require_superuser,
     require_org_admin_any,
@@ -134,3 +135,28 @@ async def test_require_org_admin_any_rejects_user_without_admin_membership():
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "forbidden"
+
+
+@pytest.mark.asyncio
+async def test_require_completed_member_onboarding_returns_user_when_completed():
+    user = SimpleNamespace(id=uuid.uuid4())
+    member_details_service = AsyncMock()
+    member_details_service.requires_onboarding.return_value = False
+
+    result = await require_completed_member_onboarding(member_details_service, user)
+
+    assert result is user
+    member_details_service.requires_onboarding.assert_awaited_once_with(user)
+
+
+@pytest.mark.asyncio
+async def test_require_completed_member_onboarding_rejects_pending_user():
+    user = SimpleNamespace(id=uuid.uuid4())
+    member_details_service = AsyncMock()
+    member_details_service.requires_onboarding.return_value = True
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_completed_member_onboarding(member_details_service, user)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "onboarding_required"

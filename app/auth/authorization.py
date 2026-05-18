@@ -6,7 +6,8 @@ from app.auth.machinery.users import current_active_user
 from app.domain.entities import Membership
 from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
 from app.persistence.models import User
-from app.dependencies import get_membership_service
+from app.dependencies import get_member_details_service, get_membership_service
+from app.domain.services.member_details import MemberDetailsService
 from app.domain.services.membership import MembershipService
 
 
@@ -60,6 +61,19 @@ async def require_org_admin_any(
         return current_user
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+
+async def require_completed_member_onboarding(
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
+    current_user: User = Depends(current_active_user),
+) -> User:
+    if await member_details_service.requires_onboarding(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="onboarding_required",
+        )
+
+    return current_user
 
 
 async def require_organization_admin(
