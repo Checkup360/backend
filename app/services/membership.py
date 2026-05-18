@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import Depends
 
-from app.models import Membership
+from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
 from app.repositories.membership import MembershipRepository, get_membership_repository
 from app.repositories.organization import (
@@ -24,9 +24,6 @@ class MembershipService:
     async def get_admin_membership(
         self, user_id: uuid.UUID, organization_id: uuid.UUID
     ) -> Optional[Membership]:
-        """
-        Returns the membership if the user is an admin of the specified organization.
-        """
         organization = await self.org_repo.get(organization_id)
         if not organization:
             return None

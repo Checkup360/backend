@@ -3,17 +3,27 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.organization import Organization
+from app.domain.entities import Organization
+from app.models.organization import Organization as OrganizationORM
 from app.repositories.base import BaseRepository
 
 
-class OrganizationRepository(BaseRepository[Organization]):
+class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
     def __init__(self, db: AsyncSession):
-        super().__init__(Organization, db)
+        super().__init__(OrganizationORM, db)
 
     async def get_by_slug(self, slug: str) -> Organization | None:
         query = select(self.model).where(self.model.slug == slug)
-        return await self.db.scalar(query)
+        orm = await self.db.scalar(query)
+        return self._to_domain(orm) if orm else None
+
+    @staticmethod
+    def _to_domain(orm: OrganizationORM) -> Organization:
+        return Organization(
+            id=orm.id,
+            name=orm.name,
+            slug=orm.slug,
+        )
 
 
 async def get_organization_repository(

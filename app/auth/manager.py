@@ -8,8 +8,8 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from app.auth.dependencies import get_user_db
 from app.core import settings
 from app.auth.machinery.cookies import clear_pending_invite_cookie
+from app.domain.entities import InviteToken
 from app.models import User
-from app.models.invite import InviteToken
 from app.schemas.invite import InviteRejected
 from app.services.invite import InviteService, get_invite_service
 
@@ -155,13 +155,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def _assert_invite_valid_for_email(
         self, request: Optional[Request], email: str
     ) -> InviteToken:
-        """Checks the invite; does not mark it as used."""
         token = self._invite_token_from_request(request)
         invite, err = await self.invite_service.validate_invite(token, email)
-
         if err:
             self._invite_fail(request, err)
-
         assert invite is not None
         return invite
 

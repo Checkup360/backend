@@ -1,54 +1,70 @@
-from typing import Generic, TypeVar, Type, Sequence
+from typing import Generic, TypeVar
 from uuid import UUID
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
+DomainType = TypeVar("DomainType")
 
 
-class BaseRepository(Generic[ModelType]):
-    def __init__(self, model: Type[ModelType], db: AsyncSession):
+class BaseRepository(Generic[ModelType, DomainType]):
+    model: type[ModelType]
+    db: AsyncSession
+
+    def __init__(self, model: type[ModelType], db: AsyncSession):
         self.model = model
         self.db = db
 
-    async def get(self, id: UUID) -> ModelType | None:
-        query = select(self.model).where(self.model.id == id)
-        return await self.db.scalar(query)
+    def _to_domain(self, orm: ModelType) -> DomainType:
+        raise NotImplementedError
 
-    async def list(self) -> Sequence[ModelType]:
-        query = select(self.model)
-        result = await self.db.scalars(query)
-        return result.all()
+    async def get(self, id: UUID) -> DomainType | None:
+        orm = await self.db.get(self.model, id)
+        return self._to_domain(orm) if orm else None
 
-    async def create(self, **kwargs) -> ModelType:
+    async def list(self) -> list[DomainType]:
+        result = await self.db.scalars(select(self.model))
+        return [self._to_domain(o) for o in result.all()]
+
+    async def create(self, **kwargs) -> DomainType:
         instance = self.model(**kwargs)
         self.db.add(instance)
         await self.db.commit()
         await self.db.refresh(instance)
-        return instance
+        return self._to_domain(instance)
 
-    async def update(self, id: UUID, **kwargs) -> ModelType | None:
-        query = (
-            update(self.model)
-            .where(self.model.id == id)
-            .values(**kwargs)
-            .returning(self.model)
-        )
-        result = await self.db.execute(query)
+    async def update(self, id: UUID, **kwargs) -> DomainType | None:
+        orm = await self.db.get(self.model, id)
+        if orm is None:
+            return None
+        for key, value in kwargs.items():
+            setattr(orm, key, value)
         await self.db.commit()
-        return result.unique().scalar_one_or_none()
+        await self.db.refresh(orm)
+        return self._to_domain(orm)
+
+    async def save(self, entity: DomainType) -> DomainType:
+        data = entity.model_dump()
+        pk_value = data.get("id")
+        if pk_value:
+            orm = await self.db.get(self.model, pk_value)
+            if orm is not None:
+                for key, value in data.items():
+                    setattr(orm, key, value)
+                await self.db.commit()
+                await self.db.refresh(orm)
+                return self._to_domain(orm)
+        orm = self.model(**data)
+        self.db.add(orm)
+        await self.db.commit()
+        await self.db.refresh(orm)
+        return self._to_domain(orm)
 
     async def delete(self, id: UUID) -> bool:
         query = delete(self.model).where(self.model.id == id)
         result = await self.db.execute(query)
         await self.db.commit()
         return result.rowcount > 0
-
-    async def save(self, instance: ModelType) -> ModelType:
-        self.db.add(instance)
-        await self.db.commit()
-        await self.db.refresh(instance)
-        return instance

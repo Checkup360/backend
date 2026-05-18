@@ -13,7 +13,6 @@ class InviteToken(BaseModel):
     max_uses: int = 1
     uses: int = 0
     expires_at: datetime
-    created_at: datetime | None = None
     organization_id: uuid.UUID | None = None
     role: OrgRole | None = None
     is_sysadmin: bool = False

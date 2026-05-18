@@ -9,8 +9,7 @@ from app.auth.machinery.backend import auth_backend
 from app.auth.manager import UserManager, get_user_manager
 from app.auth.machinery.cookies import apply_pending_invite_cookie
 from app.core.responses import response_json
-from app.services.invite import InviteService, get_invite_service, build_invite_url
-from app.models import Membership
+from app.domain.entities import Membership
 from app.domain.entities.org_role import OrgRole
 from app.schemas.invite import (
     InvitePasswordRegisterBody,
@@ -18,6 +17,7 @@ from app.schemas.invite import (
     PrepareGoogleSessionResponse,
 )
 from app.schemas.user import UserCreate
+from app.services.invite import InviteService, get_invite_service, build_invite_url
 
 from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
@@ -69,10 +69,6 @@ async def prepare_google_registration(
     request: Request,
     service: InviteService = Depends(get_invite_service),
 ) -> Response:
-    """
-    Valida el invite y setea la cookie `pending_invite` para el callback OAuth.
-    Si el invite no sirve, responde 400 tipado y se limpia cualquier cookie vieja.
-    """
     _, err = await service.invite_repo.fetch_usable_invite(token)
     if err:
         request.state.clear_pending_invite_cookie = True
@@ -92,10 +88,6 @@ async def register_with_invite_token(
     user_manager: UserManager = Depends(get_user_manager),
     strategy=Depends(auth_backend.get_strategy),
 ):
-    """
-    Registro con email/contraseña; el token de invitación va solo en la URL.
-    La validez y el consumo del invite los hace UserManager.create.
-    """
     request.state.invite_token_override = token
     request.state.invite_validation_error_as_json = True
 

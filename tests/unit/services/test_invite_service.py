@@ -75,7 +75,9 @@ async def test_fetch_usable_invite_valid(invite_repo, mock_db, make_invite_token
 
     invite, code = await invite_repo.fetch_usable_invite("valid-token")
 
-    assert invite is token
+    assert invite is not None
+    assert invite.token == token.token
+    assert invite.uses == token.uses
     assert code is None
 
 

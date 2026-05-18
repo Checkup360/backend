@@ -3,7 +3,8 @@ import uuid
 from fastapi import Depends, HTTPException, Request, status
 
 from app.auth.machinery.users import current_active_user
-from app.models import Membership, User
+from app.domain.entities import Membership
+from app.models import User
 from app.services.membership import MembershipService, get_membership_service
 
 
@@ -20,10 +21,6 @@ async def _validate_organization_admin(
     membership_service: MembershipService,
     current_user: User,
 ) -> Membership:
-    """
-    Helper function to validate if current_user is an admin of the organization
-    specified in the request body.
-    """
     body = await request.json()
     organization_id = body.get("organization_id")
     if not organization_id:
@@ -40,7 +37,6 @@ async def _validate_organization_admin(
             detail="invalid_organization_id",
         )
 
-    # Check if organization exists first to maintain 404 behavior
     organization = await membership_service.org_repo.get(organization_uuid)
     if not organization:
         raise HTTPException(
@@ -80,11 +76,6 @@ async def require_organization_admin_or_sysadmin(
     membership_service: MembershipService = Depends(get_membership_service),
     current_user: User = Depends(current_active_user),
 ) -> Membership | User:
-    """
-    Allows either a sysadmin or an organization admin to proceed.
-    - Sysadmin: can create invites for any organization
-    - Org admin: can create invites only for their organization
-    """
     if current_user.is_superuser:
         return current_user
 

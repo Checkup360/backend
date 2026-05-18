@@ -2,13 +2,23 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
+from app.domain.entities import User
+from app.models.user import User as UserORM
 from app.repositories.base import BaseRepository
 
 
-class UserRepository(BaseRepository[User]):
+class UserRepository(BaseRepository[UserORM, User]):
     def __init__(self, db: AsyncSession):
-        super().__init__(User, db)
+        super().__init__(UserORM, db)
+
+    @staticmethod
+    def _to_domain(orm: UserORM) -> User:
+        return User(
+            id=orm.id,
+            email=orm.email,
+            is_superuser=orm.is_superuser,
+            is_active=orm.is_active,
+        )
 
 
 async def get_user_repository(db: AsyncSession = Depends(get_db)):

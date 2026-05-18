@@ -1,11 +1,11 @@
+from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
-from app.models.organization import Organization
+
+from app.domain.entities import Organization
 from app.repositories.organization import (
     OrganizationRepository,
     get_organization_repository,
 )
-
-from fastapi import Depends
 
 
 class OrganizationService:
