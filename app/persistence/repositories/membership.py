@@ -33,9 +33,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
 
     async def save(self, membership: Membership) -> Membership:
         data = self._from_domain(membership)
-        orm = await self.db.get(
-            self.model, (data["user_id"], data["organization_id"])
-        )
+        orm = await self.db.get(self.model, (data["user_id"], data["organization_id"]))
         if orm is not None:
             for key, value in data.items():
                 setattr(orm, key, value)

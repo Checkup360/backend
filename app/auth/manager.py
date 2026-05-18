@@ -9,7 +9,12 @@ from app.auth.dependencies import get_user_db
 from app.core import settings
 from app.auth.machinery.cookies import clear_pending_invite_cookie
 from app.domain.entities import InviteToken
-from app.domain.exceptions import InviteError, InviteExhaustedError, InviteNotFoundError, UserNotFoundError
+from app.domain.exceptions import (
+    InviteError,
+    InviteExhaustedError,
+    InviteNotFoundError,
+    UserNotFoundError,
+)
 from app.persistence.models import User
 from app.schemas.invite import InviteRejected
 from app.dependencies import get_invite_service

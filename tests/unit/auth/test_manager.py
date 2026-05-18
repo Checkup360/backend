@@ -108,9 +108,7 @@ class TestConsumeInviteByID:
         assert saved.organization_id == sample_invite_org.organization_id
         assert saved.role == OrgRole.MEMBER
 
-        invite_repo_mock.update.assert_called_once_with(
-            sample_invite_org.id, uses=1
-        )
+        invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
 
     @pytest.mark.asyncio
     async def test_consume_invite_admin_preserves_role(
@@ -152,13 +150,9 @@ class TestConsumeInviteByID:
         invite_repo_mock.get.return_value = sample_invite_sysadmin
         user_repo_mock.get.return_value = sample_user
 
-        await user_manager._consume_invite_by_id(
-            sample_invite_sysadmin.id, sample_user
-        )
+        await user_manager._consume_invite_by_id(sample_invite_sysadmin.id, sample_user)
 
-        user_repo_mock.update.assert_called_once_with(
-            sample_user.id, is_superuser=True
-        )
+        user_repo_mock.update.assert_called_once_with(sample_user.id, is_superuser=True)
 
         invite_repo_mock.update.assert_called_once_with(
             sample_invite_sysadmin.id, uses=1
@@ -232,9 +226,7 @@ class TestConsumeInviteByID:
 
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
-        invite_repo_mock.update.assert_called_once_with(
-            sample_invite_org.id, uses=1
-        )
+        invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
 
     @pytest.mark.asyncio
     async def test_consume_invite_member_can_upgrade_to_admin(
@@ -263,6 +255,4 @@ class TestConsumeInviteByID:
         membership_repo_mock.save.assert_called_once()
         saved = membership_repo_mock.save.call_args[0][0]
         assert saved.role == OrgRole.ADMIN
-        invite_repo_mock.update.assert_called_once_with(
-            sample_invite_org.id, uses=1
-        )
+        invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
