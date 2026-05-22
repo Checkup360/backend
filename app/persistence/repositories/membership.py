@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -61,6 +61,13 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         )
         result = await self.db.scalars(query)
         return [self._to_employee(orm) for orm in result.unique().all()]
+
+    async def count_members_for_organization(self, organization_id: uuid.UUID) -> int:
+        query = select(func.count()).select_from(self.model).where(
+            self.model.organization_id == organization_id,
+            self.model.role == OrgRole.MEMBER,
+        )
+        return await self.db.scalar(query) or 0
 
     async def save(self, membership: Membership) -> Membership:
         data = self._from_domain(membership)

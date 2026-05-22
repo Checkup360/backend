@@ -19,6 +19,28 @@ class DashboardEmployeeResponse(BaseModel):
     role: Literal["member"]
 
 
+class DashboardSummaryResponse(BaseModel):
+    total_employees: int
+
+
+@router.get("/summary", response_model=DashboardSummaryResponse)
+async def get_dashboard_summary(
+    current_user: User = Depends(current_active_user),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        total_employees = await membership_service.count_employees_for_admin(
+            current_user.id
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+    return DashboardSummaryResponse(total_employees=total_employees)
+
+
 @router.get("/employees", response_model=list[DashboardEmployeeResponse])
 async def list_dashboard_employees(
     current_user: User = Depends(current_active_user),

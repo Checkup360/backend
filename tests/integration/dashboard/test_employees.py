@@ -148,3 +148,71 @@ class TestDashboardEmployees:
         response = client.get("/dashboard/employees")
 
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_org_admin_can_get_total_employee_count(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_organization,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="dashboard-summary-admin@example.com",
+            memberships=[("summary-dashboard-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "summary-dashboard-org"
+        )
+        other_organization = await make_organization(
+            name="Other Summary Org", slug="other-summary-org"
+        )
+        member_a = await make_user(email="summary-a@example.com")
+        member_b = await make_user(email="summary-b@example.com")
+        another_admin = await make_user(email="summary-admin@example.com")
+        other_member = await make_user(email="summary-other@example.com")
+        await make_membership(
+            user_id=member_a.id,
+            organization_id=organization.id,
+            role="member",
+        )
+        await make_membership(
+            user_id=member_b.id,
+            organization_id=organization.id,
+            role="member",
+        )
+        await make_membership(
+            user_id=another_admin.id,
+            organization_id=organization.id,
+            role="admin",
+        )
+        await make_membership(
+            user_id=other_member.id,
+            organization_id=other_organization.id,
+            role="member",
+        )
+
+        response = client.get("/dashboard/summary")
+
+        assert response.status_code == 200
+        assert response.json() == {"total_employees": 2}
+
+    @pytest.mark.asyncio
+    async def test_member_cannot_get_dashboard_summary(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="dashboard-summary-member@example.com",
+            memberships=[("summary-member-org", OrgRole.MEMBER)],
+        )
+
+        response = client.get("/dashboard/summary")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "forbidden"
+
+    @pytest.mark.asyncio
+    async def test_unauthenticated_cannot_get_dashboard_summary(self, client):
+        response = client.get("/dashboard/summary")
+
+        assert response.status_code == 401

@@ -43,3 +43,12 @@ class MembershipService:
             raise NotOrganizationAdminError()
 
         return await self.membership_repo.list_members_for_organization(organization_id)
+
+    async def count_employees_for_admin(self, user_id: uuid.UUID) -> int:
+        organization_id = await self.membership_repo.get_admin_organization_id(user_id)
+        if organization_id is None:
+            raise NotOrganizationAdminError()
+
+        return await self.membership_repo.count_members_for_organization(
+            organization_id
+        )
