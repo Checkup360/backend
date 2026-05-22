@@ -63,9 +63,13 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return [self._to_employee(orm) for orm in result.unique().all()]
 
     async def count_members_for_organization(self, organization_id: uuid.UUID) -> int:
-        query = select(func.count()).select_from(self.model).where(
-            self.model.organization_id == organization_id,
-            self.model.role == OrgRole.MEMBER,
+        query = (
+            select(func.count())
+            .select_from(self.model)
+            .where(
+                self.model.organization_id == organization_id,
+                self.model.role == OrgRole.MEMBER,
+            )
         )
         return await self.db.scalar(query) or 0
 
