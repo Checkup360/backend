@@ -163,7 +163,7 @@ class TestInviteConsumptionIntegration:
         assert len(list(memberships)) == 1
 
         invite_db = await db.get(InviteToken, invite.id)
-        assert invite_db.uses == 0
+        assert invite_db.uses == 1
 
     async def test_invite_uses_incremented_correctly(
         self, db: AsyncSession, user_manager: UserManager

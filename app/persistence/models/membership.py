@@ -23,12 +23,19 @@ class OrgRoleArray(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        return [role.value if isinstance(role, OrgRole) else role for role in value]
+        # Always store in lowercase for consistency
+        return [
+            role.value.lower() if isinstance(role, OrgRole) else str(role).lower()
+            for role in value
+        ]
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        return [OrgRole(role) for role in value]
+        # Handle both uppercase (from old migrations) and lowercase values
+        return [
+            OrgRole(role.lower() if isinstance(role, str) else role) for role in value
+        ]
 
 
 class Membership(Base):

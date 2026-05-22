@@ -121,7 +121,7 @@ class TestConsumeInviteByID:
         membership_repo_mock,
         user_repo_mock,
     ):
-        """ADMIN user: does NOT downgrade role when consuming a MEMBER invite."""
+        """ADMIN user: adds MEMBER role when consuming a MEMBER invite."""
         sample_invite_org.role = OrgRole.MEMBER
         invite_repo_mock.get.return_value = sample_invite_org
         user_repo_mock.get.return_value = sample_user
@@ -134,8 +134,11 @@ class TestConsumeInviteByID:
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         membership_repo_mock.create.assert_not_called()
-        membership_repo_mock.save.assert_not_called()
-        invite_repo_mock.update.assert_not_called()
+        membership_repo_mock.save.assert_called_once()
+        saved = membership_repo_mock.save.call_args[0][0]
+        assert OrgRole.ADMIN in saved.roles
+        assert OrgRole.MEMBER in saved.roles
+        invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
 
     @pytest.mark.asyncio
     async def test_consume_invite_sysadmin_sets_superuser(

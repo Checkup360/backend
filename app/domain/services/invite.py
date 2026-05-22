@@ -121,14 +121,11 @@ class InviteService:
                     roles=[invite.role or OrgRole.MEMBER],
                 )
             else:
-                if not (
-                    invite.role
-                    and invite.role == OrgRole.ADMIN
-                    and OrgRole.ADMIN not in existing_membership.roles
-                ):
-                    return
-                if invite.role not in existing_membership.roles:
-                    existing_membership.roles.append(invite.role)
+                role_to_add = invite.role or OrgRole.MEMBER
+                if role_to_add not in existing_membership.roles:
+                    existing_membership.roles = existing_membership.roles + [
+                        role_to_add
+                    ]
                 membership = existing_membership
             await self.membership_repo.save(membership)
 

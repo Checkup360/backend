@@ -17,7 +17,7 @@ async def test_get_by_user_and_org(db: AsyncSession):
     db.add_all([org, user])
     await db.flush()
 
-    await repo.create(user_id=user.id, organization_id=org.id, role=OrgRole.ADMIN)
+    await repo.create(user_id=user.id, organization_id=org.id, roles=[OrgRole.ADMIN])
 
     found = await repo.get_by_user_and_org(user.id, org.id)
     assert found is not None

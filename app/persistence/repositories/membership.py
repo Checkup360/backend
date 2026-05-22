@@ -73,13 +73,6 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         )
         return await self.db.scalar(query) or 0
 
-    async def create(self, **kwargs) -> Membership:
-        """Create membership, converting role to roles array if needed."""
-        if "role" in kwargs and "roles" not in kwargs:
-            role = kwargs.pop("role")
-            kwargs["roles"] = [role] if role else [OrgRole.MEMBER]
-        return await super().create(**kwargs)
-
     async def save(self, membership: Membership) -> Membership:
         data = self._from_domain(membership)
         orm = await self.db.get(self.model, (data["user_id"], data["organization_id"]))
