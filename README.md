@@ -14,9 +14,18 @@ curl -Ls https://astral.sh/uv/install.sh | sh
 ```
 
 Crear venv e instalar las dependencias:
+
 ```bash
 uv venv
 uv sync
+```
+
+## Pre-commit
+
+Instalar los hooks:
+
+```bash
+uv run pre-commit install
 ```
 
 ## Ejecutar en modo desarrollo
