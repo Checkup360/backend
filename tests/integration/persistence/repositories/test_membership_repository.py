@@ -21,6 +21,6 @@ async def test_get_by_user_and_org(db: AsyncSession):
 
     found = await repo.get_by_user_and_org(user.id, org.id)
     assert found is not None
-    assert found.role == OrgRole.ADMIN
+    assert OrgRole.ADMIN in found.roles
 
     assert await repo.get_by_user_and_org(uuid.uuid4(), org.id) is None

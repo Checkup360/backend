@@ -18,7 +18,9 @@ async def test_get_admin_membership_success():
     org_id = uuid.uuid4()
 
     org_repo.get.return_value = MagicMock(id=org_id)
-    membership = MagicMock(user_id=user_id, organization_id=org_id, role=OrgRole.ADMIN)
+    membership = MagicMock(
+        user_id=user_id, organization_id=org_id, roles=[OrgRole.ADMIN]
+    )
     membership_repo.get_by_user_and_org.return_value = membership
 
     service = MembershipService(membership_repo, org_repo)
@@ -38,7 +40,9 @@ async def test_get_admin_membership_non_admin_raises():
     org_id = uuid.uuid4()
 
     org_repo.get.return_value = MagicMock(id=org_id)
-    membership = MagicMock(user_id=user_id, organization_id=org_id, role=OrgRole.MEMBER)
+    membership = MagicMock(
+        user_id=user_id, organization_id=org_id, roles=[OrgRole.MEMBER]
+    )
     membership_repo.get_by_user_and_org.return_value = membership
 
     service = MembershipService(membership_repo, org_repo)

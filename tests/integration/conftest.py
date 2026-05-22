@@ -73,7 +73,7 @@ class AuthScenario:
                         Membership(
                             user_id=user.id,
                             organization_id=organization.id,
-                            role=role,
+                            roles=[role],
                         )
                     )
 
@@ -180,7 +180,7 @@ async def make_membership(db_session_maker):
         membership = Membership(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrgRole(role),
+            roles=[OrgRole(role)],
         )
         async with db_session_maker() as session:
             session.add(membership)

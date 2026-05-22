@@ -14,7 +14,7 @@ def make_user(*, is_superuser=False, roles=None):
         id=uuid.uuid4(),
         is_superuser=is_superuser,
         memberships=[
-            SimpleNamespace(role=role)
+            SimpleNamespace(roles=[role])
             for role in (roles if roles is not None else [OrgRole.MEMBER])
         ],
     )

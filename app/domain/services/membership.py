@@ -29,7 +29,7 @@ class MembershipService:
         membership = await self.membership_repo.get_by_user_and_org(
             user_id, organization_id
         )
-        if not membership or membership.role != OrgRole.ADMIN:
+        if not membership or OrgRole.ADMIN not in membership.roles:
             raise NotOrganizationAdminError()
 
         return membership

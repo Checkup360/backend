@@ -5,7 +5,7 @@ import uuid
 class OrganizationMembership(BaseModel):
     organization_id: uuid.UUID
     organization_name: str
-    role: str
+    roles: list[str]
 
 
 class AuthMeResponse(BaseModel):

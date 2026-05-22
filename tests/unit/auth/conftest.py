@@ -94,5 +94,5 @@ def sample_membership():
     return Membership(
         user_id=uuid.uuid4(),
         organization_id=uuid.uuid4(),
-        role=OrgRole.ADMIN,
+        roles=[OrgRole.ADMIN],
     )

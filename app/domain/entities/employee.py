@@ -8,4 +8,4 @@ from app.domain.entities.user import User
 class Employee(BaseModel):
     user: User
     organization: Organization
-    role: OrgRole
+    roles: list[OrgRole]

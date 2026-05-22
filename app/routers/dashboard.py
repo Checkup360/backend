@@ -1,5 +1,4 @@
 import uuid
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -16,7 +15,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 class DashboardEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: str
-    role: Literal["member"]
+    roles: list[str]
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -58,7 +57,7 @@ async def list_dashboard_employees(
         DashboardEmployeeResponse(
             id=employee.user.id,
             email=employee.user.email,
-            role=employee.role.value,
+            roles=[r.value for r in employee.roles],
         )
         for employee in employees
     ]

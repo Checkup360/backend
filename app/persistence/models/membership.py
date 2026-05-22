@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Index, Enum, ForeignKey
+from sqlalchemy import DateTime, Index, ForeignKey, JSON, TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.persistence.database import Base
@@ -14,6 +14,23 @@ if TYPE_CHECKING:
     from app.persistence.models.user import User
 
 
+class OrgRoleArray(TypeDecorator):
+    """Custom type for storing array of OrgRole as JSON in both SQLite and PostgreSQL."""
+
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return [role.value if isinstance(role, OrgRole) else role for role in value]
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return [OrgRole(role) for role in value]
+
+
 class Membership(Base):
     __tablename__ = "memberships"
 
@@ -21,8 +38,10 @@ class Membership(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organizations.id"), primary_key=True
     )
-    role: Mapped[OrgRole] = mapped_column(
-        Enum(OrgRole), default=OrgRole.MEMBER, nullable=False
+    roles: Mapped[list[OrgRole]] = mapped_column(
+        OrgRoleArray,
+        default=[OrgRole.MEMBER],
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

@@ -30,7 +30,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool:
         query = select(self.model).where(
             self.model.user_id == user_id,
-            self.model.role == OrgRole.ADMIN,
+            self.model.roles.contains([OrgRole.ADMIN]),
         )
         result = await self.db.execute(query)
         return result.first() is not None
@@ -40,7 +40,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             select(self.model.organization_id)
             .where(
                 self.model.user_id == user_id,
-                self.model.role == OrgRole.ADMIN,
+                self.model.roles.contains([OrgRole.ADMIN]),
             )
             .limit(1)
         )
@@ -55,7 +55,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             .options(joinedload(self.model.user), joinedload(self.model.organization))
             .where(
                 self.model.organization_id == organization_id,
-                self.model.role == OrgRole.MEMBER,
+                self.model.roles.contains([OrgRole.MEMBER]),
             )
             .order_by(UserORM.email)
         )
@@ -68,10 +68,17 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             .select_from(self.model)
             .where(
                 self.model.organization_id == organization_id,
-                self.model.role == OrgRole.MEMBER,
+                self.model.roles.contains([OrgRole.MEMBER]),
             )
         )
         return await self.db.scalar(query) or 0
+
+    async def create(self, **kwargs) -> Membership:
+        """Create membership, converting role to roles array if needed."""
+        if "role" in kwargs and "roles" not in kwargs:
+            role = kwargs.pop("role")
+            kwargs["roles"] = [role] if role else [OrgRole.MEMBER]
+        return await super().create(**kwargs)
 
     async def save(self, membership: Membership) -> Membership:
         data = self._from_domain(membership)
@@ -89,7 +96,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return Membership(
             user_id=orm.user_id,
             organization_id=orm.organization_id,
-            role=orm.role,
+            roles=orm.roles,
         )
 
     @staticmethod
@@ -106,12 +113,12 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
                 name=orm.organization.name,
                 slug=orm.organization.slug,
             ),
-            role=orm.role,
+            roles=orm.roles,
         )
 
     def _from_domain(self, entity: Membership) -> dict:
         return {
             "user_id": entity.user_id,
             "organization_id": entity.organization_id,
-            "role": entity.role,
+            "roles": entity.roles,
         }

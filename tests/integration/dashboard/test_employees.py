@@ -52,7 +52,7 @@ class TestDashboardEmployees:
             "ana.employee@example.com",
             "zoe.employee@example.com",
         ]
-        assert all(employee["role"] == "member" for employee in data)
+        assert all(employee["roles"] == ["member"] for employee in data)
         assert all("risk" not in employee for employee in data)
 
     @pytest.mark.asyncio

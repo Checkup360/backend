@@ -8,4 +8,4 @@ from app.domain.entities.org_role import OrgRole
 class Membership(BaseModel):
     user_id: uuid.UUID
     organization_id: uuid.UUID
-    role: OrgRole
+    roles: list[OrgRole]

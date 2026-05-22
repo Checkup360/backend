@@ -38,7 +38,7 @@ async def get_me(
         OrganizationMembership(
             organization_id=m.organization_id,
             organization_name=m.organization.name,
-            role=m.role.value,
+            roles=[r.value for r in m.roles],
         )
         for m in user.memberships
     ]

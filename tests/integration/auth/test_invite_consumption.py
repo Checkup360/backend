@@ -97,7 +97,7 @@ class TestInviteConsumptionIntegration:
 
         membership = await get_membership(db, user_id=user.id, organization_id=org.id)
         assert membership is not None
-        assert membership.role == OrgRole.MEMBER
+        assert OrgRole.MEMBER in membership.roles
         invite_db = await db.get(InviteToken, invite.id)
         assert invite_db.uses == 1
 
@@ -110,7 +110,7 @@ class TestInviteConsumptionIntegration:
             Membership(
                 user_id=user.id,
                 organization_id=org.id,
-                role=OrgRole.MEMBER,
+                roles=[OrgRole.MEMBER],
             )
         )
         invite = await create_invite(
@@ -124,7 +124,7 @@ class TestInviteConsumptionIntegration:
         await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await db.get(Membership, (user.id, org.id))
-        assert membership.role == OrgRole.ADMIN
+        assert OrgRole.ADMIN in membership.roles
 
         invite_db = await db.get(InviteToken, invite.id)
         assert invite_db.uses == 1
@@ -138,7 +138,7 @@ class TestInviteConsumptionIntegration:
             Membership(
                 user_id=user.id,
                 organization_id=org.id,
-                role=OrgRole.ADMIN,
+                roles=[OrgRole.ADMIN],
             )
         )
         invite = await create_invite(
@@ -152,7 +152,7 @@ class TestInviteConsumptionIntegration:
         await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await db.get(Membership, (user.id, org.id))
-        assert membership.role == OrgRole.ADMIN
+        assert OrgRole.ADMIN in membership.roles
 
         memberships = await db.scalars(
             select(Membership).where(
@@ -228,7 +228,7 @@ class TestInviteConsumptionIntegration:
         await user_manager._consume_invite_by_id(invite.id, user)
 
         membership = await get_membership(db, user_id=user.id, organization_id=org.id)
-        assert membership.role == OrgRole.MEMBER
+        assert OrgRole.MEMBER in membership.roles
 
     async def test_exhausted_invite_does_nothing(
         self, db: AsyncSession, user_manager: UserManager

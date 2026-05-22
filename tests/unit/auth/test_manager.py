@@ -106,7 +106,7 @@ class TestConsumeInviteByID:
         saved = membership_repo_mock.save.call_args[0][0]
         assert saved.user_id == sample_user.id
         assert saved.organization_id == sample_invite_org.organization_id
-        assert saved.role == OrgRole.MEMBER
+        assert saved.roles == [OrgRole.MEMBER]
 
         invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
 
@@ -128,7 +128,7 @@ class TestConsumeInviteByID:
 
         sample_membership.user_id = sample_user.id
         sample_membership.organization_id = sample_invite_org.organization_id
-        sample_membership.role = OrgRole.ADMIN
+        sample_membership.roles = [OrgRole.ADMIN]
         membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
@@ -177,7 +177,7 @@ class TestConsumeInviteByID:
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
 
         saved = membership_repo_mock.save.call_args[0][0]
-        assert saved.role == OrgRole.MEMBER
+        assert saved.roles == [OrgRole.MEMBER]
 
     @pytest.mark.asyncio
     async def test_consume_invite_exhausted_does_nothing(
@@ -246,7 +246,7 @@ class TestConsumeInviteByID:
 
         sample_membership.user_id = sample_user.id
         sample_membership.organization_id = sample_invite_org.organization_id
-        sample_membership.role = OrgRole.MEMBER
+        sample_membership.roles = [OrgRole.MEMBER]
         membership_repo_mock.get_by_user_and_org.return_value = sample_membership
 
         await user_manager._consume_invite_by_id(sample_invite_org.id, sample_user)
@@ -254,5 +254,5 @@ class TestConsumeInviteByID:
         membership_repo_mock.create.assert_not_called()
         membership_repo_mock.save.assert_called_once()
         saved = membership_repo_mock.save.call_args[0][0]
-        assert saved.role == OrgRole.ADMIN
+        assert OrgRole.ADMIN in saved.roles
         invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)

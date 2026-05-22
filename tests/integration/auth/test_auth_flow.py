@@ -149,7 +149,7 @@ class TestMeEndpoint:
                 Membership(
                     user_id=user.id,
                     organization_id=org.id,
-                    role=OrgRole.ADMIN,
+                    roles=[OrgRole.ADMIN],
                 )
             )
             await session.commit()
@@ -160,7 +160,7 @@ class TestMeEndpoint:
         assert len(data["memberships"]) == 1
         assert data["memberships"][0]["organization_id"] == str(org.id)
         assert data["memberships"][0]["organization_name"] == "Test Org"
-        assert data["memberships"][0]["role"] == "admin"
+        assert data["memberships"][0]["roles"] == ["admin"]
         assert data["requires_onboarding"] is False
 
 

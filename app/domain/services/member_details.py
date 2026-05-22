@@ -14,7 +14,7 @@ class MemberDetailsService:
         if user.is_superuser:
             return False
 
-        roles = {membership.role for membership in user.memberships}
+        roles = {role for membership in user.memberships for role in membership.roles}
         return OrgRole.MEMBER in roles and OrgRole.ADMIN not in roles
 
     async def requires_onboarding(self, user: User) -> bool:
