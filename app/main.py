@@ -5,7 +5,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from app.auth.middleware.db_session import DBSessionMiddleware
 from app.auth.middleware.pending_invite import PendingInviteCookieMiddleware
 from app.core import settings
-from app.routers import admin, auth, invites, members, organizations
+from app.routers import admin, auth, dashboard, invites, members, organizations
 
 app = FastAPI()
 
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(organizations.router)
+app.include_router(dashboard.router)
 app.include_router(auth.router)
 app.include_router(invites.router)
 app.include_router(members.router)

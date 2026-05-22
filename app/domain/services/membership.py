@@ -1,6 +1,6 @@
 import uuid
 
-from app.domain.entities import Membership
+from app.domain.entities import Employee, Membership
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import (
     NotOrganizationAdminError,
@@ -36,3 +36,10 @@ class MembershipService:
 
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool:
         return await self.membership_repo.is_admin_of_any(user_id)
+
+    async def list_employees_for_admin(self, user_id: uuid.UUID) -> list[Employee]:
+        organization_id = await self.membership_repo.get_admin_organization_id(user_id)
+        if organization_id is None:
+            raise NotOrganizationAdminError()
+
+        return await self.membership_repo.list_members_for_organization(organization_id)
