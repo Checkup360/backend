@@ -67,10 +67,12 @@ async def _ensure_org_admin_membership(
         )
         if membership is None:
             session.add(
-                Membership(user_id=user_id, organization_id=org.id, role=OrgRole.ADMIN)
+                Membership(
+                    user_id=user_id, organization_id=org.id, roles=[OrgRole.ADMIN]
+                )
             )
         else:
-            membership.role = OrgRole.ADMIN
+            membership.roles = [OrgRole.ADMIN]
 
         await session.commit()
 
