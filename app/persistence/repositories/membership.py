@@ -24,7 +24,8 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             self.model.user_id == user_id,
             self.model.organization_id == organization_id,
         )
-        orm = await self.db.scalar(query)
+        result = await self.db.execute(query)
+        orm = result.scalars().first()
         return self._to_domain(orm) if orm else None
 
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool:
@@ -75,10 +76,16 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
 
     async def save(self, membership: Membership) -> Membership:
         data = self._from_domain(membership)
-        orm = await self.db.get(self.model, (data["user_id"], data["organization_id"]))
+
+        query = select(self.model).where(
+            self.model.user_id == data["user_id"],
+            self.model.organization_id == data["organization_id"],
+        )
+        result = await self.db.execute(query)
+        orm = result.scalars().first()
+
         if orm is not None:
-            for key, value in data.items():
-                setattr(orm, key, value)
+            orm.roles = data["roles"]
             await self.db.commit()
             await self.db.refresh(orm)
             return self._to_domain(orm)
@@ -113,5 +120,5 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return {
             "user_id": entity.user_id,
             "organization_id": entity.organization_id,
-            "roles": entity.roles,
+            "roles": [r.value if isinstance(r, OrgRole) else r for r in entity.roles],
         }

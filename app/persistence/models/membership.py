@@ -1,12 +1,14 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Index, ForeignKey, JSON, TypeDecorator
+from sqlalchemy import DateTime, Index, ForeignKey, TypeDecorator, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.persistence.database import Base
 from app.domain.entities.org_role import OrgRole
 from typing import TYPE_CHECKING
+
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 if TYPE_CHECKING:
@@ -15,10 +17,16 @@ if TYPE_CHECKING:
 
 
 class OrgRoleArray(TypeDecorator):
-    """Custom type for storing array of OrgRole as JSON in both SQLite and PostgreSQL."""
+    """Custom type for storing array of OrgRole as JSONB in both SQLite and PostgreSQL."""
 
     impl = JSON
     cache_ok = True
+
+    def type_engine(self, dialect):
+        """Use JSONB for PostgreSQL, JSON for other databases like SQLite."""
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
 
     def process_bind_param(self, value, dialect):
         if value is None:

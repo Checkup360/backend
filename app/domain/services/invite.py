@@ -121,12 +121,19 @@ class InviteService:
                     roles=[invite.role or OrgRole.MEMBER],
                 )
             else:
-                role_to_add = invite.role or OrgRole.MEMBER
+                role_to_add = (
+                    invite.role.value
+                    if isinstance(invite.role, OrgRole)
+                    else invite.role
+                ) or "member"
                 if role_to_add not in existing_membership.roles:
-                    existing_membership.roles = existing_membership.roles + [
-                        role_to_add
+                    existing_roles = [
+                        r.value if isinstance(r, OrgRole) else r
+                        for r in existing_membership.roles
                     ]
+                    existing_membership.roles = list(
+                        dict.fromkeys(existing_roles + [role_to_add])
+                    )
                 membership = existing_membership
             await self.membership_repo.save(membership)
-
         await self.invite_repo.update(invite_id, uses=invite.uses + 1)
