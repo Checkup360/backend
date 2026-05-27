@@ -6,12 +6,13 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool
 
 from app.persistence.database import Base
 from app.main import app
 from app.persistence.models import InviteToken, Membership, Organization, User
 from app.domain.entities.org_role import OrgRole
+from testcontainers.postgres import PostgresContainer
 
 
 DEFAULT_TEST_PASSWORD = "SuperSecure123!"
@@ -91,12 +92,19 @@ class AuthScenario:
             return fresh_user
 
 
+@pytest.fixture(scope="session")
+def postgres_container():
+    with PostgresContainer("postgres:16-alpine", driver="asyncpg") as postgres:
+        yield postgres
+
+
 @pytest_asyncio.fixture()
-async def db_session_maker(monkeypatch):
+async def db_session_maker(postgres_container, monkeypatch):
+    database_url = postgres_container.get_connection_url()
+
     engine = create_async_engine(
-        "sqlite+aiosqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        database_url,
+        poolclass=NullPool,
     )
     session_maker = async_sessionmaker(
         bind=engine,
@@ -119,6 +127,8 @@ async def db_session_maker(monkeypatch):
     try:
         yield session_maker
     finally:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
         await engine.dispose()
 
 

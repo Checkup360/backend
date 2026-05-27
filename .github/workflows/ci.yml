@@ -10,11 +10,14 @@ jobs:
   quality-check:
     name: Lint, Format, Test
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
 
       - name: Install / Sync environment with uv
         run: |
