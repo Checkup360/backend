@@ -79,3 +79,17 @@ async def create_organization(
         )
 
     return organization
+
+
+@router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_organization(
+    organization_id: uuid.UUID,
+    service: OrganizationService = Depends(get_organization_service),
+    _: User = Depends(require_superuser),
+):
+    deleted = await service.delete_organization(id=organization_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )

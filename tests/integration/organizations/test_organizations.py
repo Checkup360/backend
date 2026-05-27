@@ -209,3 +209,57 @@ class TestOrganizations:
     async def test_unauthenticated_cannot_list_organizations(self, client):
         response = client.get("/organizations/")
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_superuser_can_delete_organization_and_memberships(
+        self,
+        client,
+        make_organization,
+        auth_scenario,
+        make_user,
+        make_membership,
+        make_invite,
+        db_session_maker,
+    ):
+        await auth_scenario.register_and_login(
+            email="superuser-delete-org@example.com",
+            is_superuser=True,
+        )
+        org = await make_organization(name="Org To Delete", slug="org-delete")
+        user = await make_user()
+        await make_membership(user_id=user.id, organization_id=org.id)
+        await make_invite(email="pending@example.com", organization_id=org.id)
+
+        response = client.delete(f"/organizations/{org.id}")
+        assert response.status_code == 204
+
+        async with db_session_maker() as session:
+            from app.persistence.models import Organization, Membership
+            from app.persistence.models.invite import InviteToken
+            from sqlalchemy import select
+
+            deleted_org = await session.get(Organization, org.id)
+            assert deleted_org is None
+
+            memberships = await session.scalars(
+                select(Membership).where(Membership.organization_id == org.id)
+            )
+            assert len(memberships.all()) == 0
+
+            invites = await session.scalars(
+                select(InviteToken).where(InviteToken.organization_id == org.id)
+            )
+            assert len(invites.all()) == 0
+
+    @pytest.mark.asyncio
+    async def test_non_superuser_cannot_delete_organization(
+        self, client, auth_scenario, make_organization
+    ):
+        await auth_scenario.register_and_login(
+            email="regular-delete-org@example.com",
+            is_superuser=False,
+        )
+        org = await make_organization(name="Org To Keep", slug="org-keep")
+
+        response = client.delete(f"/organizations/{org.id}")
+        assert response.status_code == 403

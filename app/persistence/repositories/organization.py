@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Organization
@@ -39,6 +39,20 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             return None
         orm, count = result
         return self._to_domain(orm, count)
+
+    async def delete(self, id: UUID) -> bool:
+        from app.persistence.models.invite import InviteToken
+
+        await self.db.execute(
+            delete(Membership).where(Membership.organization_id == id)
+        )
+        await self.db.execute(
+            delete(InviteToken).where(InviteToken.organization_id == id)
+        )
+        query = delete(self.model).where(self.model.id == id)
+        result = await self.db.execute(query)
+        await self.db.commit()
+        return result.rowcount > 0
 
     async def list(self) -> list[Organization]:
         result = await self.db.execute(self._base_query)

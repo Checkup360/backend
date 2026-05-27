@@ -1,3 +1,5 @@
+import uuid
+
 from app.domain.entities import Organization
 from app.domain.exceptions import OrganizationSlugAlreadyExists
 from app.persistence.repositories.organization import OrganizationRepository
@@ -16,3 +18,6 @@ class OrganizationService:
 
     async def list_organizations(self) -> list[Organization]:
         return await self.repo.list()
+
+    async def delete_organization(self, id: uuid.UUID) -> bool:
+        return await self.repo.delete(id)
