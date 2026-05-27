@@ -36,10 +36,16 @@ async def test_create_organization_duplicate_slug_raises_error():
 @pytest.mark.asyncio
 async def test_list_organizations():
     repo = AsyncMock()
-    repo.list.return_value = [MagicMock(name="Org 1"), MagicMock(name="Org 2")]
+    org_1 = MagicMock(name="Org 1")
+    org_1.collaborators_count = 5
+    org_2 = MagicMock(name="Org 2")
+    org_2.collaborators_count = 0
+    repo.list.return_value = [org_1, org_2]
 
     service = OrganizationService(repo)
     orgs = await service.list_organizations()
 
     assert len(orgs) == 2
+    assert orgs[0].collaborators_count == 5
+    assert orgs[1].collaborators_count == 0
     repo.list.assert_awaited_once()

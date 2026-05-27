@@ -10,15 +10,15 @@ class MemberDetailsService:
     def __init__(self, repo: MemberDetailsRepository):
         self.repo = repo
 
-    def is_member_only_user(self, user: User) -> bool:
+    def is_member_user(self, user: User) -> bool:
         if user.is_superuser:
             return False
 
         roles = {role for membership in user.memberships for role in membership.roles}
-        return OrgRole.MEMBER in roles and OrgRole.ADMIN not in roles
+        return OrgRole.MEMBER in roles
 
     async def requires_onboarding(self, user: User) -> bool:
-        if not self.is_member_only_user(user):
+        if not self.is_member_user(user):
             return False
         return not await self.repo.exists_for_user(user.id)
 

@@ -39,6 +39,7 @@ class OrganizationResponse(BaseModel):
     id: uuid.UUID
     name: str
     slug: str
+    collaborators_count: int
 
 
 @router.get("/", response_model=list[OrganizationResponse])

@@ -15,7 +15,7 @@ async def create_my_member_details(
     user: User = Depends(current_active_user),
     service: MemberDetailsService = Depends(get_member_details_service),
 ) -> MemberDetailsCreated:
-    if not service.is_member_only_user(user):
+    if not service.is_member_user(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     try:

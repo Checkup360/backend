@@ -21,15 +21,20 @@ def make_user(*, is_superuser=False, roles=None):
 
 
 @pytest.mark.asyncio
-async def test_requires_onboarding_for_member_only_without_details():
+async def test_requires_onboarding_for_member_user_without_details():
     repo = AsyncMock()
     repo.exists_for_user.return_value = False
-    user = make_user(roles=[OrgRole.MEMBER])
+
+    users = [
+        make_user(roles=[OrgRole.MEMBER]),
+        make_user(roles=[OrgRole.MEMBER, OrgRole.ADMIN]),
+    ]
 
     service = MemberDetailsService(repo)
 
-    assert await service.requires_onboarding(user) is True
-    repo.exists_for_user.assert_awaited_once_with(user.id)
+    for user in users:
+        assert await service.requires_onboarding(user) is True
+        repo.exists_for_user.assert_awaited_with(user.id)
 
 
 @pytest.mark.asyncio
@@ -44,7 +49,7 @@ async def test_does_not_require_onboarding_for_member_with_details():
 
 
 @pytest.mark.asyncio
-async def test_does_not_require_onboarding_for_sysadmin_admin_or_non_member():
+async def test_does_not_require_onboarding_for_sysadmin_or_non_member():
     repo = AsyncMock()
     service = MemberDetailsService(repo)
 
