@@ -1,10 +1,7 @@
-import uuid
-
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 
 from app.auth.machinery.users import current_active_user
-from app.domain.entities import Membership
-from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
+from app.domain.entities import Membership, OrgRole
 from app.persistence.models import User
 from app.dependencies import get_member_details_service, get_membership_service
 from app.domain.services.member_details import MemberDetailsService
@@ -20,37 +17,15 @@ def require_superuser(
 
 
 async def _validate_organization_admin(
-    request: Request,
-    membership_service: MembershipService,
     current_user: User,
 ) -> Membership:
-    body = await request.json()
-    organization_id = body.get("organization_id")
-    if not organization_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="organization_id_required",
-        )
-
-    try:
-        organization_uuid = uuid.UUID(str(organization_id))
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="invalid_organization_id",
-        )
-
-    try:
-        return await membership_service.get_admin_membership(
-            current_user.id, organization_uuid
-        )
-    except OrganizationNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="organization_not_found",
-        )
-    except NotOrganizationAdminError:
+    if not current_user.membership:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    if OrgRole.ADMIN not in current_user.membership.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    return current_user.membership
 
 
 async def require_org_admin_any(
@@ -77,19 +52,15 @@ async def require_completed_member_onboarding(
 
 
 async def require_organization_admin(
-    request: Request,
-    membership_service: MembershipService = Depends(get_membership_service),
     current_user: User = Depends(current_active_user),
 ) -> Membership:
-    return await _validate_organization_admin(request, membership_service, current_user)
+    return await _validate_organization_admin(current_user)
 
 
 async def require_organization_admin_or_sysadmin(
-    request: Request,
-    membership_service: MembershipService = Depends(get_membership_service),
     current_user: User = Depends(current_active_user),
 ) -> Membership | User:
     if current_user.is_superuser:
         return current_user
 
-    return await _validate_organization_admin(request, membership_service, current_user)
+    return await _validate_organization_admin(current_user)

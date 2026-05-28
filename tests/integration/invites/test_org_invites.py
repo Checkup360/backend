@@ -26,7 +26,6 @@ class TestOrgInvites:
             "/invites/organization",
             json={
                 "email": "new@example.com",
-                "organization_id": str(organization.id),
                 "role": "member",
             },
         )
@@ -54,14 +53,13 @@ class TestOrgInvites:
             memberships=[("admin-invite", OrgRole.ADMIN)],
         )
         async with db_session_maker() as session:
-            organization = await session.scalar(
+            await session.scalar(
                 select(Organization).where(Organization.slug == "admin-invite")
             )
 
         response = client.post(
             "/invites/organization",
             json={
-                "organization_id": str(organization.id),
                 "role": "admin",
             },
         )
@@ -85,14 +83,13 @@ class TestOrgInvites:
             memberships=[("member-denied", OrgRole.MEMBER)],
         )
         async with db_session_maker() as session:
-            organization = await session.scalar(
+            await session.scalar(
                 select(Organization).where(Organization.slug == "member-denied")
             )
 
         response = client.post(
             "/invites/organization",
             json={
-                "organization_id": str(organization.id),
                 "role": "member",
             },
         )
@@ -111,14 +108,13 @@ class TestOrgInvites:
             memberships=[("invalid-org-role", OrgRole.ADMIN)],
         )
         async with db_session_maker() as session:
-            organization = await session.scalar(
+            await session.scalar(
                 select(Organization).where(Organization.slug == "invalid-org-role")
             )
 
         response = client.post(
             "/invites/organization",
             json={
-                "organization_id": str(organization.id),
                 "role": "owner",
             },
         )

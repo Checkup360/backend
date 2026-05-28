@@ -1,6 +1,6 @@
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
@@ -12,7 +12,6 @@ from app.auth.authorization import (
     require_org_admin_any,
 )
 from app.domain.entities.org_role import OrgRole
-from app.domain.exceptions import NotOrganizationAdminError, OrganizationNotFoundError
 
 
 def test_require_superuser_returns_user():
@@ -33,80 +32,71 @@ def test_require_superuser_rejects_non_superuser():
 
 @pytest.mark.asyncio
 async def test_require_organization_admin_returns_admin_membership():
-    organization_id = uuid.uuid4()
-    user = SimpleNamespace(id=uuid.uuid4())
-    request = MagicMock()
-    request.json = AsyncMock(return_value={"organization_id": str(organization_id)})
-    membership = SimpleNamespace(role=OrgRole.ADMIN)
-
-    membership_service = AsyncMock()
-    membership_service.get_admin_membership.return_value = membership
-
-    result = await require_organization_admin(request, membership_service, user)
-
-    assert result is membership
-    membership_service.get_admin_membership.assert_awaited_once_with(
-        user.id, organization_id
+    user = SimpleNamespace(
+        id=uuid.uuid4(),
+        membership=SimpleNamespace(
+            roles=[OrgRole.ADMIN],
+            organization_id=uuid.uuid4(),
+            organization=SimpleNamespace(name="Test Org"),
+        ),
     )
+
+    result = await require_organization_admin(user)
+
+    assert result is user.membership
 
 
 @pytest.mark.asyncio
 async def test_require_organization_admin_rejects_missing_organization_id():
-    request = MagicMock()
-    request.json = AsyncMock(return_value={})
+    user = SimpleNamespace(membership=None)
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_organization_admin(
-            request, AsyncMock(), SimpleNamespace(id=uuid.uuid4())
-        )
+        await require_organization_admin(user)
 
-    assert exc_info.value.status_code == 422
-    assert exc_info.value.detail == "organization_id_required"
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "forbidden"
 
 
 @pytest.mark.asyncio
 async def test_require_organization_admin_rejects_invalid_organization_id():
-    request = MagicMock()
-    request.json = AsyncMock(return_value={"organization_id": "not-a-uuid"})
+    user = SimpleNamespace(
+        membership=SimpleNamespace(
+            roles=[OrgRole.MEMBER],
+            organization_id=uuid.uuid4(),
+            organization=SimpleNamespace(name="Test Org"),
+        )
+    )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_organization_admin(
-            request, AsyncMock(), SimpleNamespace(id=uuid.uuid4())
-        )
+        await require_organization_admin(user)
 
-    assert exc_info.value.status_code == 422
-    assert exc_info.value.detail == "invalid_organization_id"
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "forbidden"
 
 
 @pytest.mark.asyncio
 async def test_require_organization_admin_rejects_missing_organization():
-    request = MagicMock()
-    request.json = AsyncMock(return_value={"organization_id": str(uuid.uuid4())})
-    membership_service = AsyncMock()
-    membership_service.get_admin_membership.side_effect = OrganizationNotFoundError()
+    user = SimpleNamespace(membership=None)
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_organization_admin(
-            request, membership_service, SimpleNamespace(id=uuid.uuid4())
-        )
+        await require_organization_admin(user)
 
-    assert exc_info.value.status_code == 404
-    assert exc_info.value.detail == "organization_not_found"
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "forbidden"
 
 
 @pytest.mark.asyncio
 async def test_require_organization_admin_rejects_non_admin_membership():
-    organization_id = uuid.uuid4()
-    request = MagicMock()
-    request.json = AsyncMock(return_value={"organization_id": str(organization_id)})
-
-    membership_service = AsyncMock()
-    membership_service.get_admin_membership.side_effect = NotOrganizationAdminError()
+    user = SimpleNamespace(
+        membership=SimpleNamespace(
+            roles=[OrgRole.MEMBER],
+            organization_id=uuid.uuid4(),
+            organization=SimpleNamespace(name="Test Org"),
+        )
+    )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_organization_admin(
-            request, membership_service, SimpleNamespace(id=uuid.uuid4())
-        )
+        await require_organization_admin(user)
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "forbidden"

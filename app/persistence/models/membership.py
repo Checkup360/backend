@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 class Membership(Base):
     __tablename__ = "memberships"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user.id"), primary_key=True, unique=True
+    )
     organization_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organizations.id"), primary_key=True
     )
@@ -34,5 +36,5 @@ class Membership(Base):
     organization: Mapped["Organization"] = relationship(
         "Organization", back_populates="memberships", lazy="joined"
     )
-    user: Mapped["User"] = relationship("User", back_populates="memberships")
+    user: Mapped["User"] = relationship("User", back_populates="membership")
     __table_args__ = (Index("ix_user_org_organization_id", "organization_id"),)

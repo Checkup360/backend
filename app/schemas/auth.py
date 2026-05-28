@@ -11,7 +11,7 @@ class OrganizationMembership(BaseModel):
 class AuthMeResponse(BaseModel):
     email: str
     is_sysadmin: bool
-    memberships: list[OrganizationMembership]
+    membership: OrganizationMembership | None
     requires_onboarding: bool
 
 

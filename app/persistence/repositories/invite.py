@@ -46,6 +46,12 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
 
     @staticmethod
     def _to_domain(orm: InviteTokenORM) -> InviteToken:
+        role = None
+        if orm.role is not None:
+            from app.domain.entities.org_role import OrgRole
+
+            role = orm.role if isinstance(orm.role, OrgRole) else OrgRole(orm.role)
+
         return InviteToken(
             id=orm.id,
             token=orm.token,
@@ -54,7 +60,7 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             uses=orm.uses,
             expires_at=orm.expires_at,
             organization_id=orm.organization_id,
-            role=orm.role,
+            role=role,
             is_sysadmin=orm.is_sysadmin,
             organization=_organization_from_orm(orm),
         )

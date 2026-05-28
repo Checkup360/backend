@@ -12,6 +12,7 @@ from app.auth.manager import UserManager, get_user_manager
 from app.auth.machinery.cookies import apply_pending_invite_cookie
 from app.core.responses import response_json
 from app.domain.entities import Membership
+from app.persistence.models import User
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import InviteError
 from app.schemas.invite import (
@@ -33,7 +34,7 @@ class CreateOrganizationInviteRequest(BaseModel):
     email: str | None = None
     expires_in_hours: int = 24
     max_uses: int = 1
-    organization_id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     role: OrgRole
 
 
@@ -57,13 +58,23 @@ class RedeemResponse(BaseModel):
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
     service: InviteService = Depends(get_invite_service),
-    _: Membership | None = Depends(require_organization_admin_or_sysadmin),
+    admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
 ):
+    if isinstance(admin_entity, User):
+        if not body.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="organization_id_required_for_sysadmin",
+            )
+        org_id = body.organization_id
+    else:
+        org_id = admin_entity.organization_id
+
     invite = await service.create_invite(
         email=body.email,
         max_uses=body.max_uses,
         expires_in_hours=body.expires_in_hours,
-        organization_id=body.organization_id,
+        organization_id=org_id,
         role=body.role,
         is_sysadmin=False,
     )

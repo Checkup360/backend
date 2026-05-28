@@ -114,26 +114,25 @@ class InviteService:
             existing_membership = await self.membership_repo.get_by_user_and_org(
                 user.id, invite.organization_id
             )
+
+            # Ensure we have an OrgRole enum
+            invite_role = invite.role or OrgRole.MEMBER
+            if isinstance(invite_role, str):
+                invite_role = OrgRole(invite_role)
+
             if not existing_membership:
                 membership = Membership(
                     user_id=user.id,
                     organization_id=invite.organization_id,
-                    roles=[invite.role or OrgRole.MEMBER],
+                    roles=[invite_role],
                 )
             else:
-                role_to_add = (
-                    invite.role.value
-                    if isinstance(invite.role, OrgRole)
-                    else invite.role
-                ) or "member"
-                if role_to_add not in existing_membership.roles:
-                    existing_roles = [
-                        r.value if isinstance(r, OrgRole) else r
-                        for r in existing_membership.roles
+                # Add role to existing membership if not already present
+                if invite_role not in existing_membership.roles:
+                    existing_membership.roles = existing_membership.roles + [
+                        invite_role
                     ]
-                    existing_membership.roles = list(
-                        dict.fromkeys(existing_roles + [role_to_add])
-                    )
                 membership = existing_membership
+
             await self.membership_repo.save(membership)
         await self.invite_repo.update(invite_id, uses=invite.uses + 1)

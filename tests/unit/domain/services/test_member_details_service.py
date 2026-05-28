@@ -10,13 +10,16 @@ from app.domain.services.member_details import MemberDetailsService
 
 
 def make_user(*, is_superuser=False, roles=None):
+    membership = None
+    if roles is not None:
+        membership = SimpleNamespace(roles=roles)
+    elif not is_superuser:
+        membership = SimpleNamespace(roles=[OrgRole.MEMBER])
+
     return SimpleNamespace(
         id=uuid.uuid4(),
         is_superuser=is_superuser,
-        memberships=[
-            SimpleNamespace(roles=[role])
-            for role in (roles if roles is not None else [OrgRole.MEMBER])
-        ],
+        membership=membership,
     )
 
 

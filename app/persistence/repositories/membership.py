@@ -85,7 +85,8 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         orm = result.scalars().first()
 
         if orm is not None:
-            orm.roles = data["roles"]
+            roles = [r if isinstance(r, OrgRole) else OrgRole(r) for r in data["roles"]]
+            orm.roles = roles
             await self.db.commit()
             await self.db.refresh(orm)
             return self._to_domain(orm)
@@ -93,14 +94,16 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
 
     @staticmethod
     def _to_domain(orm: MembershipORM) -> Membership:
+        roles = [r if isinstance(r, OrgRole) else OrgRole(r) for r in orm.roles]
         return Membership(
             user_id=orm.user_id,
             organization_id=orm.organization_id,
-            roles=orm.roles,
+            roles=roles,
         )
 
     @staticmethod
     def _to_employee(orm: MembershipORM) -> Employee:
+        roles = [r if isinstance(r, OrgRole) else OrgRole(r) for r in orm.roles]
         return Employee(
             user=User(
                 id=orm.user.id,
@@ -113,7 +116,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
                 name=orm.organization.name,
                 slug=orm.organization.slug,
             ),
-            roles=orm.roles,
+            roles=roles,
         )
 
     def _from_domain(self, entity: Membership) -> dict:

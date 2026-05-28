@@ -17,8 +17,8 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     oauth_accounts: Mapped[list[OAuthAccount]] = relationship(
         "OAuthAccount", lazy="joined"
     )
-    memberships: Mapped[list["Membership"]] = relationship(
-        "Membership", back_populates="user", lazy="joined"
+    membership: Mapped["Membership | None"] = relationship(
+        "Membership", back_populates="user", lazy="joined", uselist=False
     )
     member_details: Mapped["MemberDetails | None"] = relationship(
         "MemberDetails", back_populates="user", lazy="joined", uselist=False

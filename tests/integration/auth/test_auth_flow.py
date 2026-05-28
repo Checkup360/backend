@@ -37,7 +37,7 @@ class TestRegister:
         data = me_response.json()
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
-        assert data["memberships"] == []
+        assert data["membership"] is None
         assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
@@ -102,7 +102,7 @@ class TestMeEndpoint:
         data = response.json()
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
-        assert data["memberships"] == []
+        assert data["membership"] is None
         assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
@@ -128,7 +128,7 @@ class TestMeEndpoint:
         assert data["requires_onboarding"] is False
 
     @pytest.mark.asyncio
-    async def test_user_with_org_membership_returns_memberships(
+    async def test_user_with_org_membership_returns_membership(
         self, client, make_invite, db_session_maker
     ):
         invite = await make_invite(
@@ -157,10 +157,9 @@ class TestMeEndpoint:
         response = client.get("/auth/me")
         assert response.status_code == 200
         data = response.json()
-        assert len(data["memberships"]) == 1
-        assert data["memberships"][0]["organization_id"] == str(org.id)
-        assert data["memberships"][0]["organization_name"] == "Test Org"
-        assert data["memberships"][0]["roles"] == ["admin"]
+        assert data["membership"]["organization_id"] == str(org.id)
+        assert data["membership"]["organization_name"] == "Test Org"
+        assert data["membership"]["roles"] == ["admin"]
         assert data["requires_onboarding"] is False
 
 
@@ -190,5 +189,5 @@ class TestLoginEndpoint:
         data = me_response.json()
         assert data["email"] == "juan@example.com"
         assert data["is_sysadmin"] is False
-        assert data["memberships"] == []
+        assert data["membership"] is None
         assert data["requires_onboarding"] is False

@@ -34,17 +34,16 @@ async def get_me(
     user: User = Depends(current_active_user),
     member_details_service: MemberDetailsService = Depends(get_member_details_service),
 ) -> AuthMeResponse:
-    memberships = [
-        OrganizationMembership(
-            organization_id=m.organization_id,
-            organization_name=m.organization.name,
-            roles=[r.value for r in m.roles],
+    membership = None
+    if user.membership:
+        membership = OrganizationMembership(
+            organization_id=user.membership.organization_id,
+            organization_name=user.membership.organization.name,
+            roles=[r.value for r in user.membership.roles],
         )
-        for m in user.memberships
-    ]
     return AuthMeResponse(
         email=user.email,
         is_sysadmin=user.is_superuser,
-        memberships=memberships,
+        membership=membership,
         requires_onboarding=await member_details_service.requires_onboarding(user),
     )
