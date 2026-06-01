@@ -1,12 +1,19 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, field_validator
 
 from app.auth.authorization import require_superuser
-from app.dependencies import get_organization_service
-from app.domain.exceptions import OrganizationSlugAlreadyExists
+from app.auth.machinery.users import current_active_user
+from app.dependencies import get_membership_service, get_organization_service
+from app.domain.entities.org_role import OrgRole
+from app.domain.exceptions import (
+    NotOrganizationAdminError,
+    OrganizationNotFoundError,
+    OrganizationSlugAlreadyExists,
+)
+from app.domain.services.membership import MembershipService
 from app.persistence.models import User
 from app.domain.services.organization import OrganizationService
 
@@ -40,6 +47,12 @@ class OrganizationResponse(BaseModel):
     name: str
     slug: str
     collaborators_count: int
+
+
+class OrganizationEmployeeResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    roles: list[str]
 
 
 @router.get("/", response_model=list[OrganizationResponse])
@@ -93,3 +106,37 @@ async def delete_organization(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="organization_not_found",
         )
+
+
+@router.get(
+    "/{organization_id}/employees", response_model=list[OrganizationEmployeeResponse]
+)
+async def list_organization_employees(
+    organization_id: uuid.UUID,
+    role: list[OrgRole] | None = Query(default=None),
+    current_user: User = Depends(current_active_user),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        employees = await membership_service.list_employees_for_organization_admin(
+            current_user.id, organization_id, roles=role
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+    return [
+        OrganizationEmployeeResponse(
+            id=employee.user.id,
+            email=employee.user.email,
+            roles=[r.value for r in employee.roles],
+        )
+        for employee in employees
+    ]

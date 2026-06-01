@@ -78,83 +78,106 @@ async def test_is_admin_of_any():
 
 
 @pytest.mark.asyncio
-async def test_list_employees_for_admin_returns_members():
+async def test_list_employees_for_organization_admin_returns_filtered_roles():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     user_id = uuid.uuid4()
     org_id = uuid.uuid4()
     employees = [MagicMock()]
-    membership_repo.get_admin_organization_id.return_value = org_id
+    org_repo.get.return_value = MagicMock(id=org_id)
+    membership_repo.get_by_user_and_org.return_value = MagicMock(
+        user_id=user_id, organization_id=org_id, roles=[OrgRole.ADMIN]
+    )
     membership_repo.list_members_for_organization.return_value = employees
 
     service = MembershipService(membership_repo, org_repo)
-    result = await service.list_employees_for_admin(user_id)
+    result = await service.list_employees_for_organization_admin(
+        user_id, org_id, roles=[OrgRole.MEMBER]
+    )
 
     assert result == employees
-    membership_repo.get_admin_organization_id.assert_awaited_once_with(user_id)
-    membership_repo.list_members_for_organization.assert_awaited_once_with(org_id)
+    membership_repo.get_by_user_and_org.assert_awaited_once_with(user_id, org_id)
+    membership_repo.list_members_for_organization.assert_awaited_once_with(
+        org_id, roles=[OrgRole.MEMBER]
+    )
 
 
 @pytest.mark.asyncio
-async def test_list_employees_for_admin_delegates_member_filter_to_repository():
+async def test_list_employees_for_organization_admin_without_role_filter():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     user_id = uuid.uuid4()
     org_id = uuid.uuid4()
-    membership_repo.get_admin_organization_id.return_value = org_id
+    org_repo.get.return_value = MagicMock(id=org_id)
+    membership_repo.get_by_user_and_org.return_value = MagicMock(
+        user_id=user_id, organization_id=org_id, roles=[OrgRole.ADMIN]
+    )
     membership_repo.list_members_for_organization.return_value = []
 
     service = MembershipService(membership_repo, org_repo)
-    await service.list_employees_for_admin(user_id)
+    await service.list_employees_for_organization_admin(user_id, org_id)
 
-    membership_repo.list_members_for_organization.assert_awaited_once_with(org_id)
+    membership_repo.list_members_for_organization.assert_awaited_once_with(
+        org_id, roles=None
+    )
 
 
 @pytest.mark.asyncio
-async def test_list_employees_for_admin_without_admin_membership_raises():
+async def test_list_employees_for_organization_admin_without_admin_membership_raises():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     user_id = uuid.uuid4()
-    membership_repo.get_admin_organization_id.return_value = None
+    org_id = uuid.uuid4()
+    org_repo.get.return_value = MagicMock(id=org_id)
+    membership_repo.get_by_user_and_org.return_value = None
 
     service = MembershipService(membership_repo, org_repo)
 
     with pytest.raises(NotOrganizationAdminError):
-        await service.list_employees_for_admin(user_id)
+        await service.list_employees_for_organization_admin(user_id, org_id)
     membership_repo.list_members_for_organization.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_count_employees_for_admin_returns_member_count():
+async def test_count_employees_for_organization_admin_returns_filtered_count():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     user_id = uuid.uuid4()
     org_id = uuid.uuid4()
-    membership_repo.get_admin_organization_id.return_value = org_id
+    org_repo.get.return_value = MagicMock(id=org_id)
+    membership_repo.get_by_user_and_org.return_value = MagicMock(
+        user_id=user_id, organization_id=org_id, roles=[OrgRole.ADMIN]
+    )
     membership_repo.count_members_for_organization.return_value = 3
 
     service = MembershipService(membership_repo, org_repo)
-    result = await service.count_employees_for_admin(user_id)
+    result = await service.count_employees_for_organization_admin(
+        user_id, org_id, roles=[OrgRole.MEMBER]
+    )
 
     assert result == 3
-    membership_repo.get_admin_organization_id.assert_awaited_once_with(user_id)
-    membership_repo.count_members_for_organization.assert_awaited_once_with(org_id)
+    membership_repo.get_by_user_and_org.assert_awaited_once_with(user_id, org_id)
+    membership_repo.count_members_for_organization.assert_awaited_once_with(
+        org_id, roles=[OrgRole.MEMBER]
+    )
 
 
 @pytest.mark.asyncio
-async def test_count_employees_for_admin_without_admin_membership_raises():
+async def test_count_employees_for_organization_admin_without_admin_membership_raises():
     membership_repo = AsyncMock()
     org_repo = AsyncMock()
 
     user_id = uuid.uuid4()
-    membership_repo.get_admin_organization_id.return_value = None
+    org_id = uuid.uuid4()
+    org_repo.get.return_value = MagicMock(id=org_id)
+    membership_repo.get_by_user_and_org.return_value = None
 
     service = MembershipService(membership_repo, org_repo)
 
     with pytest.raises(NotOrganizationAdminError):
-        await service.count_employees_for_admin(user_id)
+        await service.count_employees_for_organization_admin(user_id, org_id)
     membership_repo.count_members_for_organization.assert_not_awaited()

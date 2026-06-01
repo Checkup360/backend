@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -48,30 +48,36 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return await self.db.scalar(query)
 
     async def list_members_for_organization(
-        self, organization_id: uuid.UUID
+        self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
     ) -> list[Employee]:
+        role_filters = (
+            [self.model.roles.contains([role]) for role in roles] if roles else []
+        )
         query = (
             select(self.model)
             .join(UserORM, UserORM.id == self.model.user_id)
             .options(joinedload(self.model.user), joinedload(self.model.organization))
-            .where(
-                self.model.organization_id == organization_id,
-                self.model.roles.contains([OrgRole.MEMBER]),
-            )
+            .where(self.model.organization_id == organization_id)
             .order_by(UserORM.email)
         )
+        if role_filters:
+            query = query.where(or_(*role_filters))
         result = await self.db.scalars(query)
         return [self._to_employee(orm) for orm in result.unique().all()]
 
-    async def count_members_for_organization(self, organization_id: uuid.UUID) -> int:
+    async def count_members_for_organization(
+        self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
+    ) -> int:
+        role_filters = (
+            [self.model.roles.contains([role]) for role in roles] if roles else []
+        )
         query = (
             select(func.count())
             .select_from(self.model)
-            .where(
-                self.model.organization_id == organization_id,
-                self.model.roles.contains([OrgRole.MEMBER]),
-            )
+            .where(self.model.organization_id == organization_id)
         )
+        if role_filters:
+            query = query.where(or_(*role_filters))
         return await self.db.scalar(query) or 0
 
     async def save(self, membership: Membership) -> Membership:

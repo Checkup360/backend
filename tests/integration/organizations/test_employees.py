@@ -14,7 +14,7 @@ async def _get_organization_by_slug(db_session_maker, slug: str) -> Organization
         return organization
 
 
-class TestDashboardEmployees:
+class TestOrganizationEmployees:
     @pytest.mark.asyncio
     async def test_org_admin_can_list_real_members(
         self,
@@ -44,7 +44,7 @@ class TestDashboardEmployees:
             role="member",
         )
 
-        response = client.get("/dashboard/employees")
+        response = client.get(f"/organizations/{organization.id}/employees?role=member")
 
         assert response.status_code == 200
         data = response.json()
@@ -88,7 +88,9 @@ class TestDashboardEmployees:
             role="member",
         )
 
-        response = client.get("/dashboard/employees")
+        response = client.get(
+            f"/organizations/{own_organization.id}/employees?role=member"
+        )
 
         assert response.status_code == 200
         assert [employee["email"] for employee in response.json()] == [
@@ -96,7 +98,7 @@ class TestDashboardEmployees:
         ]
 
     @pytest.mark.asyncio
-    async def test_org_admins_are_not_listed_as_employees(
+    async def test_org_admin_can_filter_admins_and_members(
         self,
         client,
         db_session_maker,
@@ -124,95 +126,136 @@ class TestDashboardEmployees:
             role="admin",
         )
 
-        response = client.get("/dashboard/employees")
+        members_response = client.get(
+            f"/organizations/{organization.id}/employees?role=member"
+        )
+        admins_response = client.get(
+            f"/organizations/{organization.id}/employees?role=admin"
+        )
 
-        assert response.status_code == 200
-        assert [employee["email"] for employee in response.json()] == [
+        assert members_response.status_code == 200
+        assert [employee["email"] for employee in members_response.json()] == [
             "listed.member@example.com"
+        ]
+        assert admins_response.status_code == 200
+        assert [employee["email"] for employee in admins_response.json()] == [
+            "dashboard-admin-filter@example.com",
+            "hidden.admin@example.com",
         ]
 
     @pytest.mark.asyncio
-    async def test_member_cannot_list_dashboard_employees(self, client, auth_scenario):
-        await auth_scenario.register_and_login(
-            email="dashboard-member@example.com",
-            memberships=[("member-dashboard-org", OrgRole.MEMBER)],
-        )
-
-        response = client.get("/dashboard/employees")
-
-        assert response.status_code == 403
-        assert response.json()["detail"] == "forbidden"
-
-    @pytest.mark.asyncio
-    async def test_unauthenticated_cannot_list_dashboard_employees(self, client):
-        response = client.get("/dashboard/employees")
-
-        assert response.status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_org_admin_can_get_total_employee_count(
+    async def test_org_admin_can_filter_multiple_roles(
         self,
         client,
         db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="dashboard-multi-role-admin@example.com",
+            memberships=[("multi-role-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "multi-role-org"
+        )
+        member = await make_user(email="multi.member@example.com")
+        await make_membership(
+            user_id=member.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees?role=member&role=admin"
+        )
+
+        assert response.status_code == 200
+        assert [employee["email"] for employee in response.json()] == [
+            "dashboard-multi-role-admin@example.com",
+            "multi.member@example.com",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_default_lists_all_employee_roles(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="dashboard-all-roles-admin@example.com",
+            memberships=[("all-roles-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "all-roles-org"
+        )
+        member = await make_user(email="all-roles.member@example.com")
+        await make_membership(
+            user_id=member.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.get(f"/organizations/{organization.id}/employees")
+
+        assert response.status_code == 200
+        assert [employee["email"] for employee in response.json()] == [
+            "all-roles.member@example.com",
+            "dashboard-all-roles-admin@example.com",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_admin_cannot_list_another_organizations_employees(
+        self,
+        client,
         auth_scenario,
         make_user,
         make_organization,
         make_membership,
     ):
         await auth_scenario.register_and_login(
-            email="dashboard-summary-admin@example.com",
-            memberships=[("summary-dashboard-org", OrgRole.ADMIN)],
-        )
-        organization = await _get_organization_by_slug(
-            db_session_maker, "summary-dashboard-org"
+            email="dashboard-wrong-org-admin@example.com",
+            memberships=[("wrong-org-admin-org", OrgRole.ADMIN)],
         )
         other_organization = await make_organization(
-            name="Other Summary Org", slug="other-summary-org"
+            name="Wrong Org Target", slug="wrong-org-target"
         )
-        member_a = await make_user(email="summary-a@example.com")
-        member_b = await make_user(email="summary-b@example.com")
-        another_admin = await make_user(email="summary-admin@example.com")
-        other_member = await make_user(email="summary-other@example.com")
-        await make_membership(
-            user_id=member_a.id,
-            organization_id=organization.id,
-            role="member",
-        )
-        await make_membership(
-            user_id=member_b.id,
-            organization_id=organization.id,
-            role="member",
-        )
-        await make_membership(
-            user_id=another_admin.id,
-            organization_id=organization.id,
-            role="admin",
-        )
+        other_member = await make_user(email="wrong-org.member@example.com")
         await make_membership(
             user_id=other_member.id,
             organization_id=other_organization.id,
             role="member",
         )
 
-        response = client.get("/dashboard/summary")
-
-        assert response.status_code == 200
-        assert response.json() == {"total_employees": 2}
-
-    @pytest.mark.asyncio
-    async def test_member_cannot_get_dashboard_summary(self, client, auth_scenario):
-        await auth_scenario.register_and_login(
-            email="dashboard-summary-member@example.com",
-            memberships=[("summary-member-org", OrgRole.MEMBER)],
-        )
-
-        response = client.get("/dashboard/summary")
+        response = client.get(f"/organizations/{other_organization.id}/employees")
 
         assert response.status_code == 403
         assert response.json()["detail"] == "forbidden"
 
     @pytest.mark.asyncio
-    async def test_unauthenticated_cannot_get_dashboard_summary(self, client):
-        response = client.get("/dashboard/summary")
+    async def test_member_cannot_list_organization_employees(
+        self, client, db_session_maker, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="dashboard-member@example.com",
+            memberships=[("member-dashboard-org", OrgRole.MEMBER)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "member-dashboard-org"
+        )
+
+        response = client.get(f"/organizations/{organization.id}/employees")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "forbidden"
+
+    @pytest.mark.asyncio
+    async def test_unauthenticated_cannot_list_organization_employees(self, client):
+        response = client.get(
+            "/organizations/00000000-0000-0000-0000-000000000000/employees"
+        )
 
         assert response.status_code == 401

@@ -37,18 +37,24 @@ class MembershipService:
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool:
         return await self.membership_repo.is_admin_of_any(user_id)
 
-    async def list_employees_for_admin(self, user_id: uuid.UUID) -> list[Employee]:
-        organization_id = await self.membership_repo.get_admin_organization_id(user_id)
-        if organization_id is None:
-            raise NotOrganizationAdminError()
+    async def list_employees_for_organization_admin(
+        self,
+        user_id: uuid.UUID,
+        organization_id: uuid.UUID,
+        roles: list[OrgRole] | None = None,
+    ) -> list[Employee]:
+        await self.get_admin_membership(user_id, organization_id)
+        return await self.membership_repo.list_members_for_organization(
+            organization_id, roles=roles
+        )
 
-        return await self.membership_repo.list_members_for_organization(organization_id)
-
-    async def count_employees_for_admin(self, user_id: uuid.UUID) -> int:
-        organization_id = await self.membership_repo.get_admin_organization_id(user_id)
-        if organization_id is None:
-            raise NotOrganizationAdminError()
-
+    async def count_employees_for_organization_admin(
+        self,
+        user_id: uuid.UUID,
+        organization_id: uuid.UUID,
+        roles: list[OrgRole] | None = None,
+    ) -> int:
+        await self.get_admin_membership(user_id, organization_id)
         return await self.membership_repo.count_members_for_organization(
-            organization_id
+            organization_id, roles=roles
         )
