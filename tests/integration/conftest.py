@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -100,20 +101,36 @@ class AuthScenario:
 
 @pytest.fixture(scope="session")
 def postgres_container():
-    with PostgresContainer("postgres:16-alpine", driver="asyncpg") as postgres:
+    postgres = PostgresContainer("postgres:16-alpine", driver="asyncpg")
+    postgres.with_command(
+        "postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off"
+    )
+    with postgres:
         yield postgres
 
 
-@pytest_asyncio.fixture()
-async def db_session_maker(postgres_container, monkeypatch):
+@pytest_asyncio.fixture(scope="session")
+async def pg_engine(postgres_container):
+    """Engine compartido por todos los tests. El schema se crea una sola vez."""
     database_url = postgres_container.get_connection_url()
 
-    engine = create_async_engine(
-        database_url,
-        poolclass=NullPool,
-    )
+    engine = create_async_engine(database_url, poolclass=NullPool)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield engine
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture()
+async def db_session_maker(pg_engine, monkeypatch):
     session_maker = async_sessionmaker(
-        bind=engine,
+        bind=pg_engine,
         class_=AsyncSession,
         expire_on_commit=False,
     )
@@ -122,20 +139,18 @@ async def db_session_maker(postgres_container, monkeypatch):
     from app.auth.middleware import db_session as auth_middleware
     import app.persistence.database as database_module
 
-    monkeypatch.setattr(database_module, "engine", engine)
     monkeypatch.setattr(database_module, "async_session_maker", session_maker)
     monkeypatch.setattr(auth_dependencies, "async_session_maker", session_maker)
     monkeypatch.setattr(auth_middleware, "async_session_maker", session_maker)
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    yield session_maker
 
-    try:
-        yield session_maker
-    finally:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-        await engine.dispose()
+    table_names = ", ".join(
+        f'"{t.schema}".' if t.schema else "" + f'"{t.name}"'
+        for t in Base.metadata.sorted_tables
+    )
+    async with pg_engine.begin() as conn:
+        await conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture()
@@ -152,8 +167,6 @@ def auth_scenario(client, db_session_maker):
 @pytest_asyncio.fixture()
 async def make_user(db_session_maker):
     async def _make_user(*, email: str = None, is_superuser: bool = False) -> User:
-        import uuid
-
         user = User(
             id=uuid.uuid4(),
             email=email or f"{uuid.uuid4()}@example.com",
@@ -265,6 +278,6 @@ async def make_invite(db_session_maker):
 
 @pytest_asyncio.fixture()
 async def db(db_session_maker):
-    """Fixture para obtener una sesión de BD de un contexto async."""
+    """Fixture para obtener una sesión de BD en un contexto async."""
     async with db_session_maker() as session:
         yield session
