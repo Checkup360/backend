@@ -10,7 +10,9 @@ from app.dependencies import (
     get_department_service,
     get_membership_service,
     get_organization_service,
+    get_member_details_repository,
 )
+from app.persistence.repositories.member_details import MemberDetailsRepository
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import (
     DepartmentInUseError,
@@ -83,6 +85,7 @@ class OrganizationEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: str
     roles: list[str]
+    status: str
     department: DepartmentResponse | None = None
 
 
@@ -254,6 +257,9 @@ async def assign_employee_department(
     request: AssignDepartmentRequest,
     current_user: User = Depends(current_active_user),
     department_service: DepartmentService = Depends(get_department_service),
+    member_details_repo: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
 ):
     try:
         employee = await department_service.assign_employee_department(
@@ -265,10 +271,14 @@ async def assign_employee_department(
     except Exception as exc:
         _map_department_error(exc)
 
+    onboarded = await member_details_repo.exists_for_user(employee.user.id)
+    status_val = "active" if onboarded else "onboarding"
+
     return OrganizationEmployeeResponse(
         id=employee.user.id,
         email=employee.user.email,
         roles=[r.value for r in employee.roles],
+        status=status_val,
         department=(
             DepartmentResponse(
                 id=employee.department.id,
@@ -288,8 +298,13 @@ async def assign_employee_department(
 async def list_organization_employees(
     organization_id: uuid.UUID,
     role: list[OrgRole] | None = Query(default=None),
+    department_id: uuid.UUID | None = Query(default=None),
+    status: str | None = Query(default=None),
     current_user: User = Depends(current_active_user),
     membership_service: MembershipService = Depends(get_membership_service),
+    member_details_repo: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
 ):
     try:
         employees = await membership_service.list_employees_for_organization_admin(
@@ -306,21 +321,37 @@ async def list_organization_employees(
             detail="forbidden",
         )
 
-    return [
-        OrganizationEmployeeResponse(
-            id=employee.user.id,
-            email=employee.user.email,
-            roles=[r.value for r in employee.roles],
-            department=(
-                DepartmentResponse(
-                    id=employee.department.id,
-                    organization_id=employee.department.organization_id,
-                    name=employee.department.name,
-                    slug=employee.department.slug,
-                )
-                if employee.department
-                else None
-            ),
+    res = []
+    for employee in employees:
+        onboarded = await member_details_repo.exists_for_user(employee.user.id)
+        status_val = "active" if onboarded else "onboarding"
+
+        # Apply department query parameter filter
+        if department_id is not None:
+            if not employee.department or employee.department.id != department_id:
+                continue
+
+        # Apply status query parameter filter
+        if status is not None:
+            if status_val.lower() != status.lower():
+                continue
+
+        res.append(
+            OrganizationEmployeeResponse(
+                id=employee.user.id,
+                email=employee.user.email,
+                roles=[r.value for r in employee.roles],
+                status=status_val,
+                department=(
+                    DepartmentResponse(
+                        id=employee.department.id,
+                        organization_id=employee.department.organization_id,
+                        name=employee.department.name,
+                        slug=employee.department.slug,
+                    )
+                    if employee.department
+                    else None
+                ),
+            )
         )
-        for employee in employees
-    ]
+    return res
