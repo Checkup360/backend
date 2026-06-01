@@ -10,7 +10,13 @@ from sqlalchemy.pool import NullPool
 
 from app.persistence.database import Base
 from app.main import app
-from app.persistence.models import InviteToken, Membership, Organization, User
+from app.persistence.models import (
+    Department,
+    InviteToken,
+    Membership,
+    Organization,
+    User,
+)
 from app.domain.entities.org_role import OrgRole
 from testcontainers.postgres import PostgresContainer
 
@@ -186,11 +192,13 @@ async def make_membership(db_session_maker):
         user_id,
         organization_id,
         role: str = "member",
+        department_id=None,
     ) -> Membership:
         membership = Membership(
             user_id=user_id,
             organization_id=organization_id,
             roles=[OrgRole(role)],
+            department_id=department_id,
         )
         async with db_session_maker() as session:
             session.add(membership)
@@ -199,6 +207,28 @@ async def make_membership(db_session_maker):
         return membership
 
     return _make_membership
+
+
+@pytest_asyncio.fixture()
+async def make_department(db_session_maker):
+    async def _make_department(
+        *,
+        organization_id,
+        name: str = "People",
+        slug: str = "people",
+    ) -> Department:
+        department = Department(
+            organization_id=organization_id,
+            name=name,
+            slug=slug,
+        )
+        async with db_session_maker() as session:
+            session.add(department)
+            await session.commit()
+            await session.refresh(department)
+        return department
+
+    return _make_department
 
 
 @pytest_asyncio.fixture()

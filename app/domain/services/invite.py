@@ -6,12 +6,14 @@ from app.core import settings
 from app.domain.entities import InviteToken, Membership
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import (
+    InviteDepartmentNotFoundError,
     InviteEmailMismatchError,
     InviteExhaustedError,
     InviteExpiredError,
     InviteNotFoundError,
     UserNotFoundError,
 )
+from app.persistence.repositories.department import DepartmentRepository
 from app.persistence.repositories.invite import InviteRepository
 from app.persistence.repositories.membership import MembershipRepository
 from app.persistence.repositories.user import UserRepository
@@ -27,6 +29,7 @@ def build_invite_token(
     expires_in_hours: int,
     max_uses: int,
     organization_id: uuid.UUID | None = None,
+    department_id: uuid.UUID | None = None,
     role: OrgRole | None = None,
     is_sysadmin: bool = False,
 ) -> InviteToken:
@@ -39,6 +42,7 @@ def build_invite_token(
         expires_at=expires_at,
         max_uses=max_uses,
         organization_id=organization_id,
+        department_id=department_id,
         role=role,
         is_sysadmin=is_sysadmin,
     )
@@ -50,10 +54,12 @@ class InviteService:
         invite_repo: InviteRepository,
         membership_repo: MembershipRepository,
         user_repo: UserRepository,
+        department_repo: DepartmentRepository | None = None,
     ):
         self.invite_repo = invite_repo
         self.membership_repo = membership_repo
         self.user_repo = user_repo
+        self.department_repo = department_repo
 
     async def create_invite(
         self,
@@ -62,14 +68,23 @@ class InviteService:
         expires_in_hours: int,
         max_uses: int,
         organization_id: uuid.UUID | None = None,
+        department_id: uuid.UUID | None = None,
         role: OrgRole | None = None,
         is_sysadmin: bool = False,
     ) -> InviteToken:
+        if department_id is not None and self.department_repo is not None:
+            department = await self.department_repo.get_by_organization(
+                organization_id, department_id
+            )
+            if not department:
+                raise InviteDepartmentNotFoundError()
+
         invite = build_invite_token(
             email=email,
             expires_in_hours=expires_in_hours,
             max_uses=max_uses,
             organization_id=organization_id,
+            department_id=department_id,
             role=role,
             is_sysadmin=is_sysadmin,
         )
@@ -125,6 +140,7 @@ class InviteService:
                     user_id=user.id,
                     organization_id=invite.organization_id,
                     roles=[invite_role],
+                    department_id=invite.department_id,
                 )
             else:
                 # Add role to existing membership if not already present
@@ -133,6 +149,8 @@ class InviteService:
                         invite_role
                     ]
                 membership = existing_membership
+                if invite.department_id is not None:
+                    membership.department_id = invite.department_id
 
             await self.membership_repo.save(membership)
         await self.invite_repo.update(invite_id, uses=invite.uses + 1)

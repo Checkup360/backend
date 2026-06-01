@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.domain.entities import Employee, Membership
+from app.domain.entities.department import Department
 from app.domain.entities.org_role import OrgRole
 from app.domain.entities.organization import Organization
 from app.domain.entities.user import User
@@ -65,6 +66,25 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         result = await self.db.scalars(query)
         return [self._to_employee(orm) for orm in result.unique().all()]
 
+    async def get_employee(
+        self, user_id: uuid.UUID, organization_id: uuid.UUID
+    ) -> Employee | None:
+        query = (
+            select(self.model)
+            .join(UserORM, UserORM.id == self.model.user_id)
+            .options(
+                joinedload(self.model.user),
+                joinedload(self.model.organization),
+                joinedload(self.model.department),
+            )
+            .where(
+                self.model.user_id == user_id,
+                self.model.organization_id == organization_id,
+            )
+        )
+        orm = await self.db.scalar(query)
+        return self._to_employee(orm) if orm else None
+
     async def count_members_for_organization(
         self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
     ) -> int:
@@ -93,6 +113,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         if orm is not None:
             roles = [r if isinstance(r, OrgRole) else OrgRole(r) for r in data["roles"]]
             orm.roles = roles
+            orm.department_id = data["department_id"]
             await self.db.commit()
             await self.db.refresh(orm)
             return self._to_domain(orm)
@@ -105,6 +126,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             user_id=orm.user_id,
             organization_id=orm.organization_id,
             roles=roles,
+            department_id=orm.department_id,
         )
 
     @staticmethod
@@ -123,6 +145,18 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
                 slug=orm.organization.slug,
             ),
             roles=roles,
+            department=(
+                Department(
+                    id=orm.department.id,
+                    organization_id=orm.department.organization_id,
+                    name=orm.department.name,
+                    slug=orm.department.slug,
+                    created_at=orm.department.created_at,
+                    updated_at=orm.department.updated_at,
+                )
+                if orm.department
+                else None
+            ),
         )
 
     def _from_domain(self, entity: Membership) -> dict:
@@ -130,4 +164,5 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             "user_id": entity.user_id,
             "organization_id": entity.organization_id,
             "roles": [r.value if isinstance(r, OrgRole) else r for r in entity.roles],
+            "department_id": entity.department_id,
         }

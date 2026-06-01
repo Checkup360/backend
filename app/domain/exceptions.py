@@ -32,6 +32,33 @@ class OrganizationSlugAlreadyExists(DomainError):
     pass
 
 
+class DepartmentSlugAlreadyExists(DomainError):
+    pass
+
+
+class DepartmentNotFoundError(DomainError):
+    pass
+
+
+class DepartmentInUseError(DomainError):
+    pass
+
+
+class DepartmentRequiredError(InviteError):
+    def __init__(self):
+        super().__init__("department_required")
+
+
+class InviteDepartmentNotFoundError(InviteError):
+    def __init__(self):
+        super().__init__("department_not_found")
+
+
+class DepartmentNotAllowedError(InviteError):
+    def __init__(self):
+        super().__init__("department_not_allowed_for_admin")
+
+
 class OrganizationNotFoundError(DomainError):
     pass
 

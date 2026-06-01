@@ -1,11 +1,20 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Enum
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.persistence.database import Base
 from app.domain.entities.org_role import OrgRole
+from app.persistence.models.department import Department
 from app.persistence.models.organization import Organization
 
 
@@ -27,12 +36,24 @@ class InviteToken(Base):
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id"), nullable=True, index=True
     )
+    department_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     role: Mapped[OrgRole | None] = mapped_column(Enum(OrgRole), nullable=True)
 
     is_sysadmin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     organization: Mapped[Organization | None] = relationship(
         "Organization", backref="invite_tokens"
+    )
+    department: Mapped[Department | None] = relationship(
+        "Department", overlaps="invite_tokens,organization"
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["department_id", "organization_id"],
+            ["departments.id", "departments.organization_id"],
+            name="fk_invite_tokens_department_org",
+        ),
     )
 
     @property

@@ -16,6 +16,7 @@ class InviteToken(BaseModel):
     expires_at: datetime
     organization_id: uuid.UUID | None = None
     organization: Organization | None = None
+    department_id: uuid.UUID | None = None
     role: OrgRole | None = None
     is_sysadmin: bool = False
 

@@ -42,12 +42,16 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
 
     async def delete(self, id: UUID) -> bool:
         from app.persistence.models.invite import InviteToken
+        from app.persistence.models.department import Department
 
         await self.db.execute(
             delete(Membership).where(Membership.organization_id == id)
         )
         await self.db.execute(
             delete(InviteToken).where(InviteToken.organization_id == id)
+        )
+        await self.db.execute(
+            delete(Department).where(Department.organization_id == id)
         )
         query = delete(self.model).where(self.model.id == id)
         result = await self.db.execute(query)

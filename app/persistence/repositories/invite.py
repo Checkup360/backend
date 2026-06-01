@@ -60,6 +60,7 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             uses=orm.uses,
             expires_at=orm.expires_at,
             organization_id=orm.organization_id,
+            department_id=orm.department_id,
             role=role,
             is_sysadmin=orm.is_sysadmin,
             organization=_organization_from_orm(orm),
@@ -74,6 +75,7 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             "uses": entity.uses,
             "expires_at": entity.expires_at,
             "organization_id": entity.organization_id,
+            "department_id": entity.department_id,
             "role": entity.role,
             "is_sysadmin": entity.is_sysadmin,
         }

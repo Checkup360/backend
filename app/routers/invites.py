@@ -35,6 +35,7 @@ class CreateOrganizationInviteRequest(BaseModel):
     expires_in_hours: int = 24
     max_uses: int = 1
     organization_id: uuid.UUID | None = None
+    department_id: uuid.UUID | None = None
     role: OrgRole
 
 
@@ -70,14 +71,21 @@ async def create_organization_invite(
     else:
         org_id = admin_entity.organization_id
 
-    invite = await service.create_invite(
-        email=body.email,
-        max_uses=body.max_uses,
-        expires_in_hours=body.expires_in_hours,
-        organization_id=org_id,
-        role=body.role,
-        is_sysadmin=False,
-    )
+    try:
+        invite = await service.create_invite(
+            email=body.email,
+            max_uses=body.max_uses,
+            expires_in_hours=body.expires_in_hours,
+            organization_id=org_id,
+            department_id=body.department_id,
+            role=body.role,
+            is_sysadmin=False,
+        )
+    except InviteError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=e.code,
+        )
 
     return CreateInviteResponse(
         token=invite.token,

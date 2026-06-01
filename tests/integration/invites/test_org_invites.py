@@ -37,6 +37,7 @@ class TestOrgInvites:
                 select(InviteToken).where(InviteToken.token == token)
             )
         assert invite.organization_id == organization.id
+        assert invite.department_id is None
         assert invite.role == OrgRole.MEMBER
         assert invite.email == "new@example.com"
         assert invite.is_sysadmin is False
@@ -152,5 +153,6 @@ class TestOrgInvites:
                 select(InviteToken).where(InviteToken.token == token)
             )
         assert invite.organization_id == organization.id
+        assert invite.department_id is None
         assert invite.role == OrgRole.MEMBER
         assert invite.is_sysadmin is False

@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.persistence.database import Base
+from app.persistence.models.department import Department
 from app.persistence.models.membership import Membership
 
 
@@ -19,5 +20,10 @@ class Organization(Base):
     )
 
     memberships: Mapped[list["Membership"]] = relationship(
-        "Membership", back_populates="organization"
+        "Membership",
+        back_populates="organization",
+        overlaps="department,memberships",
+    )
+    departments: Mapped[list["Department"]] = relationship(
+        "Department", back_populates="organization"
     )

@@ -115,3 +115,32 @@ async def test_check_invite_usable_edge_expiry_just_now():
 
     with pytest.raises(InviteExpiredError):
         await service.check_invite_usable("edge-token")
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_copies_department_id_to_membership():
+    invite_repo = AsyncMock()
+    membership_repo = AsyncMock()
+    user_repo = AsyncMock()
+    invite_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    organization_id = uuid.uuid4()
+    department_id = uuid.uuid4()
+    invite_repo.get.return_value = InviteToken(
+        id=invite_id,
+        token="department-token",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        organization_id=organization_id,
+        department_id=department_id,
+        role=OrgRole.MEMBER,
+    )
+    user_repo.get.return_value = type("User", (), {"id": user_id})()
+    membership_repo.get_by_user_and_org.return_value = None
+
+    service = invites_service.InviteService(invite_repo, membership_repo, user_repo)
+    await service.consume_invite(invite_id, user_id)
+
+    saved = membership_repo.save.call_args.args[0]
+    assert saved.department_id == department_id

@@ -1,10 +1,12 @@
 from fastapi import Depends
 
+from app.domain.services.department import DepartmentService
 from app.domain.services.invite import InviteService
 from app.domain.services.member_details import MemberDetailsService
 from app.domain.services.membership import MembershipService
 from app.domain.services.organization import OrganizationService
 from app.persistence.database import get_db
+from app.persistence.repositories.department import DepartmentRepository
 from app.persistence.repositories.invite import InviteRepository
 from app.persistence.repositories.member_details import MemberDetailsRepository
 from app.persistence.repositories.membership import MembershipRepository
@@ -16,6 +18,12 @@ async def get_invite_repository(
     db=Depends(get_db),
 ) -> InviteRepository:
     return InviteRepository(db)
+
+
+async def get_department_repository(
+    db=Depends(get_db),
+) -> DepartmentRepository:
+    return DepartmentRepository(db)
 
 
 async def get_membership_repository(
@@ -43,9 +51,10 @@ async def get_user_repository(db=Depends(get_db)):
 async def get_invite_service(
     invite_repo: InviteRepository = Depends(get_invite_repository),
     membership_repo: MembershipRepository = Depends(get_membership_repository),
+    department_repo: DepartmentRepository = Depends(get_department_repository),
     user_repo: UserRepository = Depends(get_user_repository),
 ) -> InviteService:
-    return InviteService(invite_repo, membership_repo, user_repo)
+    return InviteService(invite_repo, membership_repo, user_repo, department_repo)
 
 
 async def get_membership_service(
@@ -65,3 +74,11 @@ async def get_organization_service(
     repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> OrganizationService:
     return OrganizationService(repo)
+
+
+async def get_department_service(
+    department_repo: DepartmentRepository = Depends(get_department_repository),
+    membership_service: MembershipService = Depends(get_membership_service),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+) -> DepartmentService:
+    return DepartmentService(department_repo, membership_service, membership_repo)
