@@ -39,6 +39,11 @@ class DepartmentService:
         await self.membership_service.get_admin_membership(user_id, organization_id)
         return await self.department_repo.list_by_organization(organization_id)
 
+    async def list_departments_as_superuser(
+        self, organization_id: uuid.UUID
+    ) -> list[Department]:
+        return await self.department_repo.list_by_organization(organization_id)
+
     async def create_department(
         self, user_id: uuid.UUID, organization_id: uuid.UUID, name: str
     ) -> Department:
