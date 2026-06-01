@@ -156,3 +156,42 @@ class TestOrgInvites:
         assert invite.department_id is None
         assert invite.role == OrgRole.MEMBER
         assert invite.is_sysadmin is False
+
+    @pytest.mark.asyncio
+    async def test_org_admin_can_list_invites(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-list-invites@example.com",
+            memberships=[("list-invites-org", OrgRole.ADMIN)],
+        )
+
+        # Create two invites
+        client.post(
+            "/invites/organization",
+            json={
+                "email": "invite1@example.com",
+                "role": "member",
+            },
+        )
+        client.post(
+            "/invites/organization",
+            json={
+                "email": "invite2@example.com",
+                "role": "admin",
+            },
+        )
+
+        response = client.get("/invites/organization")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 2
+        emails = [item["email"] for item in data]
+        assert "invite1@example.com" in emails
+        assert "invite2@example.com" in emails
+        roles = [item["role"] for item in data]
+        assert "member" in roles
+        assert "admin" in roles

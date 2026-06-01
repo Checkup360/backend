@@ -299,7 +299,7 @@ async def list_organization_employees(
     organization_id: uuid.UUID,
     role: list[OrgRole] | None = Query(default=None),
     department_id: uuid.UUID | None = Query(default=None),
-    status: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
     current_user: User = Depends(current_active_user),
     membership_service: MembershipService = Depends(get_membership_service),
     member_details_repo: MemberDetailsRepository = Depends(
@@ -332,8 +332,8 @@ async def list_organization_employees(
                 continue
 
         # Apply status query parameter filter
-        if status is not None:
-            if status_val.lower() != status.lower():
+        if status_filter is not None:
+            if status_val.lower() != status_filter.lower():
                 continue
 
         res.append(

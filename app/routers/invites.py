@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -28,6 +29,19 @@ from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
 
 router = APIRouter(prefix="/invites", tags=["invites"])
+
+
+class OrganizationInviteResponse(BaseModel):
+    id: uuid.UUID
+    token: str
+    email: str | None = None
+    role: str | None = None
+    department_id: uuid.UUID | None = None
+    department_name: str | None = None
+    max_uses: int
+    uses: int
+    expires_at: datetime
+    invite_url: str
 
 
 class CreateOrganizationInviteRequest(BaseModel):
@@ -91,6 +105,52 @@ async def create_organization_invite(
         token=invite.token,
         invite_url=build_invite_url(invite.token),
     )
+
+
+@router.get("/organization", response_model=list[OrganizationInviteResponse])
+async def list_organization_invites(
+    organization_id: uuid.UUID | None = None,
+    service: InviteService = Depends(get_invite_service),
+    admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
+):
+    if isinstance(admin_entity, User):
+        if not organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="organization_id_required_for_sysadmin",
+            )
+        org_id = organization_id
+    else:
+        org_id = admin_entity.organization_id
+
+    from sqlalchemy.orm import selectinload
+    from sqlalchemy import select
+    from app.persistence.models.invite import InviteToken as InviteTokenORM
+
+    query = (
+        select(InviteTokenORM)
+        .options(selectinload(InviteTokenORM.department))
+        .where(InviteTokenORM.organization_id == org_id)
+        .order_by(InviteTokenORM.created_at.desc())
+    )
+    result = await service.invite_repo.db.scalars(query)
+    orms = result.all()
+
+    return [
+        OrganizationInviteResponse(
+            id=orm.id,
+            token=orm.token,
+            email=orm.email,
+            role=orm.role.value if orm.role else None,
+            department_id=orm.department_id,
+            department_name=orm.department.name if orm.department else None,
+            max_uses=orm.max_uses,
+            uses=orm.uses,
+            expires_at=orm.expires_at,
+            invite_url=build_invite_url(orm.token),
+        )
+        for orm in orms
+    ]
 
 
 @router.get("/{token}", response_model=InviteMetadataResponse)
