@@ -19,5 +19,8 @@ class OrganizationService:
     async def list_organizations(self) -> list[Organization]:
         return await self.repo.list()
 
+    async def get_organization(self, id: uuid.UUID) -> Organization | None:
+        return await self.repo.get(id)
+
     async def delete_organization(self, id: uuid.UUID) -> bool:
         return await self.repo.delete(id)

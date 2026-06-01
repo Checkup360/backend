@@ -59,6 +59,15 @@ class OrganizationResponse(BaseModel):
     collaborators_count: int
 
 
+class OrganizationSummaryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+    total_members: int
+    total_employees: int
+    total_admins: int
+
+
 class DepartmentRequest(BaseModel):
     name: str
 
@@ -136,6 +145,40 @@ async def create_organization(
         )
 
     return organization
+
+
+@router.get("/{organization_id}/summary", response_model=OrganizationSummaryResponse)
+async def get_organization_summary(
+    organization_id: uuid.UUID,
+    organization_service: OrganizationService = Depends(get_organization_service),
+    membership_service: MembershipService = Depends(get_membership_service),
+    _: User = Depends(require_superuser),
+):
+    organization = await organization_service.get_organization(organization_id)
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+
+    total_members = await membership_service.count_members_for_organization(
+        organization_id
+    )
+    total_employees = await membership_service.count_members_for_organization(
+        organization_id, roles=[OrgRole.MEMBER]
+    )
+    total_admins = await membership_service.count_members_for_organization(
+        organization_id, roles=[OrgRole.ADMIN]
+    )
+
+    return OrganizationSummaryResponse(
+        id=organization.id,
+        name=organization.name,
+        slug=organization.slug,
+        total_members=total_members,
+        total_employees=total_employees,
+        total_admins=total_admins,
+    )
 
 
 @router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)

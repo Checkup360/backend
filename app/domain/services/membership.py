@@ -58,3 +58,12 @@ class MembershipService:
         return await self.membership_repo.count_members_for_organization(
             organization_id, roles=roles
         )
+
+    async def count_members_for_organization(
+        self,
+        organization_id: uuid.UUID,
+        roles: list[OrgRole] | None = None,
+    ) -> int:
+        return await self.membership_repo.count_members_for_organization(
+            organization_id, roles=roles
+        )
