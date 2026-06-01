@@ -195,3 +195,46 @@ class TestOrgInvites:
         roles = [item["role"] for item in data]
         assert "member" in roles
         assert "admin" in roles
+
+    @pytest.mark.asyncio
+    async def test_org_admin_can_delete_only_own_org_invites(
+        self,
+        client,
+        db_session_maker,
+        make_invite,
+        make_organization,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-delete-invites@example.com",
+            memberships=[("delete-invites-org", OrgRole.ADMIN)],
+        )
+        async with db_session_maker() as session:
+            organization = await session.scalar(
+                select(Organization).where(Organization.slug == "delete-invites-org")
+            )
+        other_organization = await make_organization(slug="delete-invites-other-org")
+        own_invite = await make_invite(
+            email="delete-own@example.com",
+            organization_id=organization.id,
+            role=OrgRole.MEMBER,
+        )
+        other_invite = await make_invite(
+            email="keep-other@example.com",
+            organization_id=other_organization.id,
+            role=OrgRole.MEMBER,
+        )
+
+        response = client.request(
+            "DELETE",
+            "/invites/organization",
+            json={"ids": [str(own_invite.id), str(other_invite.id)]},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["deleted_count"] == 1
+        async with db_session_maker() as session:
+            deleted = await session.get(InviteToken, own_invite.id)
+            kept = await session.get(InviteToken, other_invite.id)
+        assert deleted is None
+        assert kept is not None

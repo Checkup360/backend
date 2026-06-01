@@ -1,6 +1,7 @@
-import uuid
 import datetime
-from fastapi import APIRouter, Depends
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
@@ -19,6 +20,14 @@ class CreateSysadminInviteRequest(BaseModel):
 class CreateInviteResponse(BaseModel):
     token: str
     invite_url: str
+
+
+class DeleteInvitesRequest(BaseModel):
+    ids: list[uuid.UUID]
+
+
+class DeleteInvitesResponse(BaseModel):
+    deleted_count: int
 
 
 @router.post("/invites", response_model=CreateInviteResponse)
@@ -88,3 +97,28 @@ async def list_sysadmin_invites(
         )
         for orm in orms
     ]
+
+
+@router.delete("/invites", response_model=DeleteInvitesResponse)
+async def delete_sysadmin_invites(
+    request: DeleteInvitesRequest,
+    service: InviteService = Depends(get_invite_service),
+    current_user: User = Depends(require_superuser),
+):
+    if not request.ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invite_ids_required",
+        )
+
+    from sqlalchemy import delete
+    from app.persistence.models.invite import InviteToken as InviteTokenORM
+
+    result = await service.invite_repo.db.execute(
+        delete(InviteTokenORM).where(
+            InviteTokenORM.id.in_(request.ids),
+            InviteTokenORM.is_sysadmin.is_(True),
+        )
+    )
+    await service.invite_repo.db.commit()
+    return DeleteInvitesResponse(deleted_count=result.rowcount or 0)

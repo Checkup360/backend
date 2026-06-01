@@ -60,6 +60,14 @@ class CreateInviteResponse(BaseModel):
     invite_url: str
 
 
+class DeleteInvitesRequest(BaseModel):
+    ids: list[uuid.UUID]
+
+
+class DeleteInvitesResponse(BaseModel):
+    deleted_count: int
+
+
 class InviteMetadataResponse(BaseModel):
     organization_id: uuid.UUID | None = None
     organization_name: str | None = None
@@ -162,6 +170,35 @@ async def list_organization_invites(
         )
         for orm in orms
     ]
+
+
+@router.delete("/organization", response_model=DeleteInvitesResponse)
+async def delete_organization_invites(
+    body: DeleteInvitesRequest,
+    service: InviteService = Depends(get_invite_service),
+    admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
+):
+    if not body.ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invite_ids_required",
+        )
+
+    from sqlalchemy import delete
+    from app.persistence.models.invite import InviteToken as InviteTokenORM
+
+    filters = [
+        InviteTokenORM.id.in_(body.ids),
+        InviteTokenORM.is_sysadmin.is_(False),
+    ]
+    if not isinstance(admin_entity, User):
+        filters.append(InviteTokenORM.organization_id == admin_entity.organization_id)
+
+    result = await service.invite_repo.db.execute(
+        delete(InviteTokenORM).where(*filters)
+    )
+    await service.invite_repo.db.commit()
+    return DeleteInvitesResponse(deleted_count=result.rowcount or 0)
 
 
 @router.get("/{token}", response_model=InviteMetadataResponse)

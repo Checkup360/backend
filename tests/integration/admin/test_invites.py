@@ -44,3 +44,35 @@ class TestAdminInvites:
         )
 
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_superuser_can_delete_sysadmin_invites_only(
+        self, client, db_session_maker, make_invite, make_organization, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="superuser-delete-admin-invites@example.com",
+            is_superuser=True,
+        )
+        organization = await make_organization(slug="delete-admin-invites-org")
+        sysadmin_invite = await make_invite(
+            email="delete-sysadmin@example.com",
+            is_sysadmin=True,
+        )
+        org_invite = await make_invite(
+            email="keep-org@example.com",
+            organization_id=organization.id,
+        )
+
+        response = client.request(
+            "DELETE",
+            "/admin/invites",
+            json={"ids": [str(sysadmin_invite.id), str(org_invite.id)]},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["deleted_count"] == 1
+        async with db_session_maker() as session:
+            deleted = await session.get(InviteToken, sysadmin_invite.id)
+            kept = await session.get(InviteToken, org_invite.id)
+        assert deleted is None
+        assert kept is not None
