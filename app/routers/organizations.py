@@ -181,7 +181,9 @@ async def list_departments(
             return await department_service.list_departments_as_superuser(
                 organization_id
             )
-        return await department_service.list_departments(current_user.id, organization_id)
+        return await department_service.list_departments(
+            current_user.id, organization_id
+        )
     except Exception as exc:
         _map_department_error(exc)
 
