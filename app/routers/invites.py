@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from starlette.responses import Response
@@ -36,6 +36,8 @@ class OrganizationInviteResponse(BaseModel):
     token: str
     email: str | None = None
     role: str | None = None
+    organization_id: uuid.UUID | None = None
+    organization_name: str | None = None
     department_id: uuid.UUID | None = None
     department_name: str | None = None
     max_uses: int
@@ -109,16 +111,12 @@ async def create_organization_invite(
 
 @router.get("/organization", response_model=list[OrganizationInviteResponse])
 async def list_organization_invites(
-    organization_id: uuid.UUID | None = None,
+    organization_id: uuid.UUID | None = Query(default=None),
+    role: str | None = Query(default=None),
     service: InviteService = Depends(get_invite_service),
     admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
 ):
     if isinstance(admin_entity, User):
-        if not organization_id:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="organization_id_required_for_sysadmin",
-            )
         org_id = organization_id
     else:
         org_id = admin_entity.organization_id
@@ -126,13 +124,24 @@ async def list_organization_invites(
     from sqlalchemy.orm import selectinload
     from sqlalchemy import select
     from app.persistence.models.invite import InviteToken as InviteTokenORM
+    from app.persistence.models.membership import OrgRole
 
-    query = (
-        select(InviteTokenORM)
-        .options(selectinload(InviteTokenORM.department))
-        .where(InviteTokenORM.organization_id == org_id)
-        .order_by(InviteTokenORM.created_at.desc())
+    query = select(InviteTokenORM).options(
+        selectinload(InviteTokenORM.department),
+        selectinload(InviteTokenORM.organization),
     )
+    if org_id is not None:
+        query = query.where(InviteTokenORM.organization_id == org_id)
+    else:
+        query = query.where(InviteTokenORM.is_sysadmin.is_(False))
+
+    if role is not None:
+        try:
+            query = query.where(InviteTokenORM.role == OrgRole(role.lower()))
+        except ValueError:
+            pass
+
+    query = query.order_by(InviteTokenORM.created_at.desc())
     result = await service.invite_repo.db.scalars(query)
     orms = result.all()
 
@@ -142,6 +151,8 @@ async def list_organization_invites(
             token=orm.token,
             email=orm.email,
             role=orm.role.value if orm.role else None,
+            organization_id=orm.organization_id,
+            organization_name=orm.organization.name if orm.organization else None,
             department_id=orm.department_id,
             department_name=orm.department.name if orm.department else None,
             max_uses=orm.max_uses,

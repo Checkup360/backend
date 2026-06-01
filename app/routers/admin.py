@@ -1,3 +1,5 @@
+import uuid
+import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -43,3 +45,46 @@ async def create_sysadmin_invite(
         token=invite.token,
         invite_url=build_invite_url(invite.token),
     )
+
+
+class SysadminInviteResponse(BaseModel):
+    id: uuid.UUID
+    token: str
+    email: str | None
+    max_uses: int
+    uses: int
+    expires_at: datetime.datetime
+    invite_url: str
+
+
+@router.get("/invites", response_model=list[SysadminInviteResponse])
+async def list_sysadmin_invites(
+    service: InviteService = Depends(get_invite_service),
+    current_user: User = Depends(require_superuser),
+):
+    """
+    Lista las invitaciones de sysadmin creadas en la plataforma.
+    """
+    from sqlalchemy import select
+    from app.persistence.models.invite import InviteToken as InviteTokenORM
+
+    query = (
+        select(InviteTokenORM)
+        .where(InviteTokenORM.is_sysadmin.is_(True))
+        .order_by(InviteTokenORM.created_at.desc())
+    )
+    result = await service.invite_repo.db.scalars(query)
+    orms = result.all()
+
+    return [
+        SysadminInviteResponse(
+            id=orm.id,
+            token=orm.token,
+            email=orm.email,
+            max_uses=orm.max_uses,
+            uses=orm.uses,
+            expires_at=orm.expires_at,
+            invite_url=build_invite_url(orm.token),
+        )
+        for orm in orms
+    ]
