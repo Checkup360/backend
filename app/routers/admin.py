@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
@@ -68,20 +68,35 @@ class SysadminInviteResponse(BaseModel):
 
 @router.get("/invites", response_model=list[SysadminInviteResponse])
 async def list_sysadmin_invites(
+    response: Response,
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     service: InviteService = Depends(get_invite_service),
     current_user: User = Depends(require_superuser),
 ):
     """
     Lista las invitaciones de sysadmin creadas en la plataforma.
     """
-    from sqlalchemy import select
+    from sqlalchemy import func, select
     from app.persistence.models.invite import InviteToken as InviteTokenORM
 
+    total = await service.invite_repo.db.scalar(
+        select(func.count())
+        .select_from(InviteTokenORM)
+        .where(InviteTokenORM.is_sysadmin.is_(True))
+    )
     query = (
         select(InviteTokenORM)
         .where(InviteTokenORM.is_sysadmin.is_(True))
         .order_by(InviteTokenORM.created_at.desc())
     )
+    response.headers["X-Total-Count"] = str(total or 0)
+    response.headers["X-Page-Size"] = str(page_size)
+    if page is not None:
+        response.headers["X-Page"] = str(page)
+        query = query.offset((page - 1) * page_size).limit(page_size)
+    else:
+        response.headers["X-Page"] = "1"
     result = await service.invite_repo.db.scalars(query)
     orms = result.all()
 

@@ -19,7 +19,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Location"],
+    expose_headers=["Location", "X-Total-Count", "X-Page", "X-Page-Size"],
 )
 
 app.include_router(organizations.router)

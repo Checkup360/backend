@@ -1,7 +1,7 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, field_validator
 
 from app.auth.authorization import require_superuser
@@ -100,7 +100,11 @@ class OrganizationEmployeeResponse(BaseModel):
 
 @router.get("/", response_model=list[OrganizationResponse])
 async def list_organizations(
+    response: Response,
     status_filter: str | None = Query(default=None, alias="status"),
+    search: str | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     service: OrganizationService = Depends(get_organization_service),
     current_user: User = Depends(require_superuser),
 ):
@@ -112,7 +116,22 @@ async def list_organizations(
             org_status = "active" if org.collaborators_count > 0 else "pending"
             if org_status == status_filter_lower:
                 res.append(org)
-        return res
+        orgs = res
+    if search is not None and search.strip():
+        search_lower = search.strip().lower()
+        orgs = [
+            org
+            for org in orgs
+            if search_lower in org.name.lower() or search_lower in org.slug.lower()
+        ]
+    total = len(orgs)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page-Size"] = str(page_size)
+    if page is not None:
+        response.headers["X-Page"] = str(page)
+        start = (page - 1) * page_size
+        return orgs[start : start + page_size]
+    response.headers["X-Page"] = "1"
     return orgs
 
 
@@ -350,9 +369,13 @@ async def assign_employee_department(
 )
 async def list_organization_employees(
     organization_id: uuid.UUID,
+    response: Response,
     role: list[OrgRole] | None = Query(default=None),
     department_id: uuid.UUID | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
+    search: str | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     current_user: User = Depends(current_active_user),
     membership_service: MembershipService = Depends(get_membership_service),
     member_details_repo: MemberDetailsRepository = Depends(
@@ -389,6 +412,17 @@ async def list_organization_employees(
             if status_val.lower() != status_filter.lower():
                 continue
 
+        if search is not None and search.strip():
+            search_lower = search.strip().lower()
+            department_name = (
+                employee.department.name if employee.department else "Unassigned"
+            )
+            if (
+                search_lower not in employee.user.email.lower()
+                and search_lower not in department_name.lower()
+            ):
+                continue
+
         res.append(
             OrganizationEmployeeResponse(
                 id=employee.user.id,
@@ -407,4 +441,12 @@ async def list_organization_employees(
                 ),
             )
         )
+    total = len(res)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page-Size"] = str(page_size)
+    if page is not None:
+        response.headers["X-Page"] = str(page)
+        start = (page - 1) * page_size
+        return res[start : start + page_size]
+    response.headers["X-Page"] = "1"
     return res

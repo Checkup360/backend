@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from starlette.responses import Response
 
 from app.auth.authorization import require_organization_admin_or_sysadmin
 from app.auth.machinery.backend import auth_backend
@@ -119,8 +118,11 @@ async def create_organization_invite(
 
 @router.get("/organization", response_model=list[OrganizationInviteResponse])
 async def list_organization_invites(
+    response: Response,
     organization_id: uuid.UUID | None = Query(default=None),
     role: str | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     service: InviteService = Depends(get_invite_service),
     admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
 ):
@@ -130,7 +132,7 @@ async def list_organization_invites(
         org_id = admin_entity.organization_id
 
     from sqlalchemy.orm import selectinload
-    from sqlalchemy import select
+    from sqlalchemy import func, select
     from app.persistence.models.invite import InviteToken as InviteTokenORM
     from app.persistence.models.membership import OrgRole
 
@@ -149,7 +151,16 @@ async def list_organization_invites(
         except ValueError:
             pass
 
+    count_query = select(func.count()).select_from(query.order_by(None).subquery())
+    total = await service.invite_repo.db.scalar(count_query)
     query = query.order_by(InviteTokenORM.created_at.desc())
+    response.headers["X-Total-Count"] = str(total or 0)
+    response.headers["X-Page-Size"] = str(page_size)
+    if page is not None:
+        response.headers["X-Page"] = str(page)
+        query = query.offset((page - 1) * page_size).limit(page_size)
+    else:
+        response.headers["X-Page"] = "1"
     result = await service.invite_repo.db.scalars(query)
     orms = result.all()
 
