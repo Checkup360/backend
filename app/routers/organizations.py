@@ -91,10 +91,20 @@ class OrganizationEmployeeResponse(BaseModel):
 
 @router.get("/", response_model=list[OrganizationResponse])
 async def list_organizations(
+    status_filter: str | None = Query(default=None, alias="status"),
     service: OrganizationService = Depends(get_organization_service),
     current_user: User = Depends(require_superuser),
 ):
-    return await service.list_organizations()
+    orgs = await service.list_organizations()
+    if status_filter is not None:
+        status_filter_lower = status_filter.lower()
+        res = []
+        for org in orgs:
+            org_status = "active" if org.collaborators_count > 0 else "pending"
+            if org_status == status_filter_lower:
+                res.append(org)
+        return res
+    return orgs
 
 
 @router.post(

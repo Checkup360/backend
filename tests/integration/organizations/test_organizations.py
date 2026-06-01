@@ -195,6 +195,34 @@ class TestOrganizations:
         assert org2_data.get("collaborators_count") == 0
 
     @pytest.mark.asyncio
+    async def test_superuser_can_list_organizations_filter_by_status(
+        self, client, make_organization, auth_scenario, make_user, make_membership
+    ):
+        await auth_scenario.register_and_login(
+            email="superuser-list-orgs-filter@example.com",
+            is_superuser=True,
+        )
+        org1 = await make_organization(name="Org 1", slug="org-1")
+        await make_organization(name="Org 2", slug="org-2")
+
+        user1 = await make_user()
+        await make_membership(user_id=user1.id, organization_id=org1.id)
+
+        # Filter by active status
+        res_active = client.get("/organizations/?status=active")
+        assert res_active.status_code == 200
+        active_data = res_active.json()
+        assert len(active_data) == 1
+        assert active_data[0]["slug"] == "org-1"
+
+        # Filter by pending status
+        res_pending = client.get("/organizations/?status=pending")
+        assert res_pending.status_code == 200
+        pending_data = res_pending.json()
+        assert len(pending_data) == 1
+        assert pending_data[0]["slug"] == "org-2"
+
+    @pytest.mark.asyncio
     async def test_non_superuser_cannot_list_organizations(self, client, auth_scenario):
         await auth_scenario.register_and_login(
             email="regular-list-orgs@example.com",
