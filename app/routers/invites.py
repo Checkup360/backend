@@ -121,6 +121,7 @@ async def list_organization_invites(
     response: Response,
     organization_id: uuid.UUID | None = Query(default=None),
     role: str | None = Query(default=None),
+    status: str | None = Query(default=None),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     service: InviteService = Depends(get_invite_service),
@@ -135,6 +136,7 @@ async def list_organization_invites(
     from sqlalchemy import func, select
     from app.persistence.models.invite import InviteToken as InviteTokenORM
     from app.persistence.models.membership import OrgRole
+    from datetime import timezone
 
     query = select(InviteTokenORM).options(
         selectinload(InviteTokenORM.department),
@@ -150,6 +152,22 @@ async def list_organization_invites(
             query = query.where(InviteTokenORM.role == OrgRole(role.lower()))
         except ValueError:
             pass
+
+    if status is not None:
+        status_val = status.lower()
+        now = datetime.now(timezone.utc)
+        if status_val == "used":
+            query = query.where(InviteTokenORM.uses >= InviteTokenORM.max_uses)
+        elif status_val == "expired":
+            query = query.where(
+                InviteTokenORM.uses < InviteTokenORM.max_uses,
+                InviteTokenORM.expires_at <= now,
+            )
+        elif status_val == "active":
+            query = query.where(
+                InviteTokenORM.uses < InviteTokenORM.max_uses,
+                InviteTokenORM.expires_at > now,
+            )
 
     count_query = select(func.count()).select_from(query.order_by(None).subquery())
     total = await service.invite_repo.db.scalar(count_query)
