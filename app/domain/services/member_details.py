@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 
 from app.domain.entities import MemberDetails
@@ -22,6 +23,9 @@ class MemberDetailsService:
         if not self.is_member_user(user):
             return False
         return not await self.repo.exists_for_user(user.id)
+
+    async def is_onboarded(self, user_id: uuid.UUID) -> bool:
+        return await self.repo.exists_for_user(user_id)
 
     async def complete_onboarding(
         self, user: User, date_of_birth: date

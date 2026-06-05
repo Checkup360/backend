@@ -10,9 +10,8 @@ from app.dependencies import (
     get_department_service,
     get_membership_service,
     get_organization_service,
-    get_member_details_repository,
+    get_member_details_service,
 )
-from app.persistence.repositories.member_details import MemberDetailsRepository
 from app.domain.entities.org_role import OrgRole
 from app.domain.exceptions import (
     DepartmentInUseError,
@@ -24,6 +23,7 @@ from app.domain.exceptions import (
 )
 from app.domain.services.department import DepartmentService
 from app.domain.services.membership import MembershipService
+from app.domain.services.member_details import MemberDetailsService
 from app.persistence.models import User
 from app.domain.services.organization import OrganizationService
 
@@ -352,9 +352,7 @@ async def assign_employee_department(
     request: AssignDepartmentRequest,
     current_user: User = Depends(current_active_user),
     department_service: DepartmentService = Depends(get_department_service),
-    member_details_repo: MemberDetailsRepository = Depends(
-        get_member_details_repository
-    ),
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
 ):
     try:
         employee = await department_service.assign_employee_department(
@@ -366,7 +364,7 @@ async def assign_employee_department(
     except Exception as exc:
         _map_department_error(exc)
 
-    onboarded = await member_details_repo.exists_for_user(employee.user.id)
+    onboarded = await member_details_service.is_onboarded(employee.user.id)
     status_val = "active" if onboarded else "onboarding"
 
     return OrganizationEmployeeResponse(
@@ -401,9 +399,7 @@ async def list_organization_employees(
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: User = Depends(current_active_user),
     membership_service: MembershipService = Depends(get_membership_service),
-    member_details_repo: MemberDetailsRepository = Depends(
-        get_member_details_repository
-    ),
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
 ):
     try:
         employees = await membership_service.list_employees_for_organization_admin(
@@ -422,7 +418,7 @@ async def list_organization_employees(
 
     res = []
     for employee in employees:
-        onboarded = await member_details_repo.exists_for_user(employee.user.id)
+        onboarded = await member_details_service.is_onboarded(employee.user.id)
         status_val = "active" if onboarded else "onboarding"
 
         # Apply department query parameter filter
