@@ -248,19 +248,42 @@ def _map_department_error(exc: Exception):
 @router.get("/{organization_id}/departments", response_model=list[DepartmentResponse])
 async def list_departments(
     organization_id: uuid.UUID,
+    response: Response,
+    search: str | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     current_user: User = Depends(current_active_user),
     department_service: DepartmentService = Depends(get_department_service),
 ):
     try:
         if current_user.is_superuser:
-            return await department_service.list_departments_as_superuser(
+            departments = await department_service.list_departments_as_superuser(
                 organization_id
             )
-        return await department_service.list_departments(
-            current_user.id, organization_id
-        )
+        else:
+            departments = await department_service.list_departments(
+                current_user.id, organization_id
+            )
     except Exception as exc:
         _map_department_error(exc)
+
+    if search is not None and search.strip():
+        search_lower = search.strip().lower()
+        departments = [
+            d
+            for d in departments
+            if search_lower in d.name.lower() or search_lower in d.slug.lower()
+        ]
+
+    total = len(departments)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page-Size"] = str(page_size)
+    if page is not None:
+        response.headers["X-Page"] = str(page)
+        start = (page - 1) * page_size
+        return departments[start : start + page_size]
+    response.headers["X-Page"] = "1"
+    return departments
 
 
 @router.post(
