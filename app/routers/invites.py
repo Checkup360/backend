@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+    BackgroundTasks,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
@@ -21,8 +30,16 @@ from app.schemas.invite import (
     RedeemInviteBody,
 )
 from app.schemas.user import UserCreate
-from app.dependencies import get_invite_service
+from app.dependencies import (
+    get_invite_service,
+    get_email_service,
+    get_organization_service,
+    get_department_service,
+)
 from app.domain.services.invite import InviteService, build_invite_url
+from app.domain.services.email_service import EmailService
+from app.domain.services.organization import OrganizationService
+from app.domain.services.department import DepartmentService
 
 from fastapi_users import exceptions
 from fastapi_users.router.common import ErrorCode
@@ -81,7 +98,11 @@ class RedeemResponse(BaseModel):
 @router.post("/organization", response_model=CreateInviteResponse)
 async def create_organization_invite(
     body: CreateOrganizationInviteRequest,
+    background_tasks: BackgroundTasks,
     service: InviteService = Depends(get_invite_service),
+    email_service: EmailService = Depends(get_email_service),
+    org_service: OrganizationService = Depends(get_organization_service),
+    dept_service: DepartmentService = Depends(get_department_service),
     admin_entity: Membership | User = Depends(require_organization_admin_or_sysadmin),
 ):
     if isinstance(admin_entity, User):
@@ -110,9 +131,37 @@ async def create_organization_invite(
             detail=e.code,
         )
 
+    invite_url = build_invite_url(invite.token)
+
+    if body.email:
+        organization_name = ""
+        department_name = ""
+        if org_id:
+            org = await org_service.get_organization(org_id)
+            if org:
+                organization_name = org.name
+        if body.department_id:
+            try:
+                dept_list = await dept_service.list_departments_as_superuser(org_id)
+                dept = next((d for d in dept_list if d.id == body.department_id), None)
+                if dept:
+                    department_name = dept.name
+            except Exception:
+                pass
+
+        background_tasks.add_task(
+            email_service.send_invite_email,
+            to_email=body.email,
+            invite_url=invite_url,
+            is_sysadmin=False,
+            role=body.role.value if hasattr(body.role, "value") else str(body.role),
+            organization_name=organization_name,
+            department_name=department_name,
+        )
+
     return CreateInviteResponse(
         token=invite.token,
-        invite_url=build_invite_url(invite.token),
+        invite_url=invite_url,
     )
 
 

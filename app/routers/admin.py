@@ -1,12 +1,21 @@
 import datetime
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+    BackgroundTasks,
+)
 from pydantic import BaseModel
 
 from app.auth.authorization import require_superuser
-from app.dependencies import get_invite_service
+from app.dependencies import get_invite_service, get_email_service
 from app.domain.services.invite import InviteService, build_invite_url
+from app.domain.services.email_service import EmailService
 from app.persistence.models import User
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -33,7 +42,9 @@ class DeleteInvitesResponse(BaseModel):
 @router.post("/invites", response_model=CreateInviteResponse)
 async def create_sysadmin_invite(
     request: CreateSysadminInviteRequest,
+    background_tasks: BackgroundTasks,
     service: InviteService = Depends(get_invite_service),
+    email_service: EmailService = Depends(get_email_service),
     current_user: User = Depends(require_superuser),
 ):
     """
@@ -50,9 +61,20 @@ async def create_sysadmin_invite(
         is_sysadmin=True,
     )
 
+    invite_url = build_invite_url(invite.token)
+
+    if request.email:
+        background_tasks.add_task(
+            email_service.send_invite_email,
+            to_email=request.email,
+            invite_url=invite_url,
+            is_sysadmin=True,
+            role="sysadmin",
+        )
+
     return CreateInviteResponse(
         token=invite.token,
-        invite_url=build_invite_url(invite.token),
+        invite_url=invite_url,
     )
 
 

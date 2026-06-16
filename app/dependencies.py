@@ -2,6 +2,7 @@ from fastapi import Depends
 
 from app.domain.services.department import DepartmentService
 from app.domain.services.invite import InviteService
+from app.domain.services.email_service import EmailService
 from app.domain.services.member_details import MemberDetailsService
 from app.domain.services.membership import MembershipService
 from app.domain.services.organization import OrganizationService
@@ -82,3 +83,7 @@ async def get_department_service(
     membership_repo: MembershipRepository = Depends(get_membership_repository),
 ) -> DepartmentService:
     return DepartmentService(department_repo, membership_service, membership_repo)
+
+
+def get_email_service() -> EmailService:
+    return EmailService()

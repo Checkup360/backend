@@ -15,6 +15,8 @@ class Settings:
     frontend_post_login_url: str
     frontend_url: str
     cookie_secure: bool
+    resend_api_key: str | None
+    resend_from_email: str
 
 
 def _require_env(key: str) -> str:
@@ -68,6 +70,8 @@ def get_settings() -> Settings:
             "true",
             "yes",
         ),
+        resend_api_key=os.getenv("RESEND_API_KEY"),
+        resend_from_email=os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
     )
 
 
