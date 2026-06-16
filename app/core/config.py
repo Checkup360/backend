@@ -15,8 +15,10 @@ class Settings:
     frontend_post_login_url: str
     frontend_url: str
     cookie_secure: bool
-    resend_api_key: str | None
-    resend_from_email: str
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
 
 
 def _require_env(key: str) -> str:
@@ -70,8 +72,10 @@ def get_settings() -> Settings:
             "true",
             "yes",
         ),
-        resend_api_key=os.getenv("RESEND_API_KEY"),
-        resend_from_email=os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
+        smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
+        smtp_port=int(os.getenv("SMTP_PORT", "587")),
+        smtp_user=os.getenv("SMTP_USER", ""),
+        smtp_password=os.getenv("SMTP_PASSWORD", ""),
     )
 
 

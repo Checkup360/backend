@@ -1,5 +1,6 @@
 import logging
-import resend
+import smtplib
+from email.message import EmailMessage
 
 from app.core.config import settings
 from app.core.email_templates import get_invite_email_html, get_invite_email_text
@@ -9,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
-        self.api_key = settings.resend_api_key
-        self.from_email = settings.resend_from_email
-        if self.api_key:
-            resend.api_key = self.api_key
+        self.smtp_host = settings.smtp_host
+        self.smtp_port = settings.smtp_port
+        self.smtp_user = settings.smtp_user
+        self.smtp_password = settings.smtp_password
 
     def send_invite_email(
         self,
@@ -23,9 +24,9 @@ class EmailService:
         organization_name: str = "",
         department_name: str = "",
     ) -> None:
-        if not self.api_key:
+        if not self.smtp_user or not self.smtp_password:
             logger.warning(
-                f"RESEND_API_KEY is not set. Simulating email send to {to_email} with URL: {invite_url}"
+                f"SMTP_USER or SMTP_PASSWORD is not set. Simulating email send to {to_email} with URL: {invite_url}"
             )
             return
 
@@ -46,16 +47,19 @@ class EmailService:
             department_name=department_name,
         )
 
+        msg = EmailMessage()
+        msg["Subject"] = "You have been invited to join CheckUp360"
+        msg["From"] = self.smtp_user
+        msg["To"] = to_email
+
+        msg.set_content(text_content)
+        msg.add_alternative(html_content, subtype="html")
+
         try:
-            r = resend.Emails.send(
-                {
-                    "from": self.from_email,
-                    "to": to_email,
-                    "subject": "Has sido invitado a unirte a la plataforma",
-                    "html": html_content,
-                    "text": text_content,
-                }
-            )
-            logger.info(f"Invitation sent to {to_email}. Resend response: {r}")
+            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            logger.info(f"Invitation sent to {to_email} via SMTP.")
         except Exception as e:
             logger.error(f"Error sending invitation email to {to_email}: {e}")
