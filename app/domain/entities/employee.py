@@ -1,12 +1,13 @@
-from pydantic import BaseModel
+from dataclasses import dataclass
 
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects import OrgRole
 from app.domain.entities.department import Department
 from app.domain.entities.organization import Organization
 from app.domain.entities.user import User
 
 
-class Employee(BaseModel):
+@dataclass
+class Employee:
     user: User
     organization: Organization
     roles: list[OrgRole]

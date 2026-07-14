@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.persistence.models import Organization
+from app.infrastructure.persistence.models import Organization
 
 
 class TestOrganizations:
@@ -262,8 +262,8 @@ class TestOrganizations:
         assert response.status_code == 204
 
         async with db_session_maker() as session:
-            from app.persistence.models import Organization, Membership
-            from app.persistence.models.invite import InviteToken
+            from app.infrastructure.persistence.models import Organization, Membership
+            from app.infrastructure.persistence.models.invite import InviteToken
             from sqlalchemy import select
 
             deleted_org = await session.get(Organization, org.id)

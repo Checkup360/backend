@@ -1,9 +1,9 @@
 import uuid
+from dataclasses import dataclass
 
-from pydantic import BaseModel
 
-
-class Organization(BaseModel):
+@dataclass
+class Organization:
     id: uuid.UUID
     name: str
     slug: str

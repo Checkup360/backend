@@ -1,9 +1,9 @@
 import uuid
+from dataclasses import dataclass
 from datetime import date
 
-from pydantic import BaseModel
 
-
-class MemberDetails(BaseModel):
+@dataclass
+class MemberDetails:
     user_id: uuid.UUID
     date_of_birth: date

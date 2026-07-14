@@ -1,9 +1,9 @@
 import uuid
+from dataclasses import dataclass
 
-from pydantic import BaseModel
 
-
-class User(BaseModel):
+@dataclass
+class User:
     id: uuid.UUID
     email: str
     is_superuser: bool = False

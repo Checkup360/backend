@@ -1,10 +1,10 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 
-from pydantic import BaseModel
 
-
-class Department(BaseModel):
+@dataclass
+class Department:
     id: uuid.UUID
     organization_id: uuid.UUID
     name: str

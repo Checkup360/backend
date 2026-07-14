@@ -36,7 +36,7 @@ case "$cmd" in
     run_migrations
     run_seed_if_configured
     echo "[entrypoint] starting uvicorn on 0.0.0.0:${PORT:-8000}"
-    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" "$@"
+    exec uvicorn app.presentation.main:app --host 0.0.0.0 --port "${PORT:-8000}" "$@"
     ;;
   migrate)
     exec alembic upgrade head

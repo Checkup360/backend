@@ -5,11 +5,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.manager import UserManager
-from app.persistence.models import User, Organization
-from app.persistence.models.invite import InviteToken
-from app.domain.entities.org_role import OrgRole
-from app.persistence.models.membership import Membership
+from app.infrastructure.authentication.manager import UserManager
+from app.infrastructure.persistence.models import User, Organization
+from app.infrastructure.persistence.models.invite import InviteToken
+from app.domain.value_objects.org_role import OrgRole
+from app.infrastructure.persistence.models.membership import Membership
 
 
 async def create_user(

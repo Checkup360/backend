@@ -4,11 +4,11 @@ import pytest_asyncio
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.manager import UserManager
-from app.persistence.models import OAuthAccount, User
-from app.persistence.repositories.invite import InviteRepository
-from app.persistence.repositories.membership import MembershipRepository
-from app.persistence.repositories.user import UserRepository
+from app.infrastructure.authentication.manager import UserManager
+from app.infrastructure.persistence.models import OAuthAccount, User
+from app.infrastructure.persistence.repositories.invite import InviteRepository
+from app.infrastructure.persistence.repositories.membership import MembershipRepository
+from app.infrastructure.persistence.repositories.user import UserRepository
 from app.domain.services.invite import InviteService
 
 

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.domain.entities import InviteToken
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects.org_role import OrgRole
 
 
 class TestInviteTokenFromRequest:

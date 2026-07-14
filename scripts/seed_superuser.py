@@ -5,9 +5,9 @@ import uuid
 from fastapi_users.password import PasswordHelper
 from sqlalchemy import select
 
-from app.persistence.database import async_session_maker
-from app.persistence.models import Membership, Organization, User
-from app.domain.entities.org_role import OrgRole
+from app.infrastructure.persistence.database import async_session_maker
+from app.infrastructure.persistence.models import Membership, Organization, User
+from app.domain.value_objects.org_role import OrgRole
 
 _password_helper = PasswordHelper()
 

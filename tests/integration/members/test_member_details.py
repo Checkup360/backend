@@ -3,8 +3,8 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.domain.entities.org_role import OrgRole
-from app.persistence.models import MemberDetails
+from app.domain.value_objects.org_role import OrgRole
+from app.infrastructure.persistence.models import MemberDetails
 
 
 class TestMemberDetailsOnboarding:

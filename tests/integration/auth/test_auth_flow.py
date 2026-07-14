@@ -1,9 +1,11 @@
 import pytest
+from urllib.parse import parse_qs, urlparse
 from sqlalchemy import select
 
-from app.core import settings
-from app.persistence.models import Membership, Organization, User
-from app.domain.entities.org_role import OrgRole
+from app.infrastructure.config import settings
+from app.infrastructure.email import SmtpEmailSender
+from app.infrastructure.persistence.models import Membership, Organization, User
+from app.domain.value_objects.org_role import OrgRole
 
 
 def redeem(client, token: str, email: str, password: str = "SuperSecure123!"):
@@ -191,3 +193,56 @@ class TestLoginEndpoint:
         assert data["is_sysadmin"] is False
         assert data["membership"] is None
         assert data["requires_onboarding"] is False
+
+
+class TestPasswordResetEndpoint:
+    @pytest.mark.asyncio
+    async def test_reset_link_changes_password(self, client, make_invite, monkeypatch):
+        invite = await make_invite(
+            token="password-reset-invite",
+            email="reset@example.com",
+            expires_in_hours=1,
+        )
+        redeem(client, invite.token, "reset@example.com")
+        client.cookies.clear()
+
+        sent_urls: list[str] = []
+
+        def capture_reset_email(self, to_email: str, reset_url: str) -> None:
+            assert to_email == "reset@example.com"
+            sent_urls.append(reset_url)
+
+        monkeypatch.setattr(
+            SmtpEmailSender,
+            "send_password_reset_email",
+            capture_reset_email,
+        )
+
+        forgot_response = client.post(
+            "/auth/forgot-password",
+            json={"email": "reset@example.com"},
+        )
+        assert forgot_response.status_code == 202
+        assert len(sent_urls) == 1
+
+        token = parse_qs(urlparse(sent_urls[0]).query)["token"][0]
+        reset_response = client.post(
+            "/auth/reset-password",
+            json={"token": token, "password": "NewSecure123!"},
+        )
+        assert reset_response.status_code == 200
+
+        login_response = client.post(
+            "/auth/login",
+            data={"username": "reset@example.com", "password": "NewSecure123!"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303
+
+    def test_unknown_email_has_generic_response(self, client):
+        response = client.post(
+            "/auth/forgot-password",
+            json={"email": "unknown@example.com"},
+        )
+        assert response.status_code == 202
+        assert response.json() is None

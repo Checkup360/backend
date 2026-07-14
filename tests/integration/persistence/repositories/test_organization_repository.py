@@ -1,7 +1,9 @@
 import pytest
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.persistence.repositories.organization import OrganizationRepository
+from app.infrastructure.persistence.repositories.organization import (
+    OrganizationRepository,
+)
 
 
 @pytest.mark.asyncio

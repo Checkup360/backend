@@ -5,14 +5,15 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.domain.entities import InviteToken
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
     InviteExhaustedError,
     InviteExpiredError,
     InviteNotFoundError,
 )
+from app.application.use_cases.invitations import InviteUrlBuilder
 from app.domain.services import invite as invites_service
-from app.persistence.repositories.invite import InviteRepository
+from app.infrastructure.persistence.repositories.invite import InviteRepository
 
 
 def test_build_invite_token_sets_all_fields():
@@ -37,7 +38,8 @@ def test_build_invite_token_sets_all_fields():
 
 
 def test_build_invite_url_uses_frontend_url():
-    assert invites_service.build_invite_url("abc123").endswith("/invite/abc123")
+    builder = InviteUrlBuilder("https://app.example.com/")
+    assert builder.build("abc123") == "https://app.example.com/invite/abc123"
 
 
 @pytest.mark.asyncio

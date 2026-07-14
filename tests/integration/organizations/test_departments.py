@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import select
 
-from app.domain.entities.org_role import OrgRole
-from app.persistence.models import InviteToken, Membership, Organization
+from app.domain.value_objects.org_role import OrgRole
+from app.infrastructure.persistence.models import InviteToken, Membership, Organization
 
 
 async def _get_organization_by_slug(db_session_maker, slug: str) -> Organization:

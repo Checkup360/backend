@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 
-from app.auth.authorization import (
+from app.presentation.api.authorization import (
     require_completed_member_onboarding,
     require_organization_admin,
     require_superuser,
     require_org_admin_any,
 )
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects.org_role import OrgRole
 
 
 def test_require_superuser_returns_user():

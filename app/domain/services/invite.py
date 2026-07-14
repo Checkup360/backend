@@ -2,9 +2,8 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from app.core import settings
 from app.domain.entities import InviteToken, Membership
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects import OrgRole
 from app.domain.exceptions import (
     InviteDepartmentNotFoundError,
     InviteEmailMismatchError,
@@ -13,14 +12,12 @@ from app.domain.exceptions import (
     InviteNotFoundError,
     UserNotFoundError,
 )
-from app.persistence.repositories.department import DepartmentRepository
-from app.persistence.repositories.invite import InviteRepository
-from app.persistence.repositories.membership import MembershipRepository
-from app.persistence.repositories.user import UserRepository
-
-
-def build_invite_url(token: str) -> str:
-    return f"{settings.frontend_url.rstrip('/')}/invite/{token}"
+from app.domain.repositories import (
+    DepartmentRepository,
+    InviteRepository,
+    MembershipRepository,
+    UserRepository,
+)
 
 
 def build_invite_token(
@@ -73,6 +70,8 @@ class InviteService:
         is_sysadmin: bool = False,
     ) -> InviteToken:
         if department_id is not None and self.department_repo is not None:
+            if organization_id is None:
+                raise InviteDepartmentNotFoundError()
             department = await self.department_repo.get_by_organization(
                 organization_id, department_id
             )

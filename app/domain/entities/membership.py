@@ -1,11 +1,11 @@
 import uuid
+from dataclasses import dataclass
 
-from pydantic import BaseModel
-
-from app.domain.entities.org_role import OrgRole
+from app.domain.value_objects import OrgRole
 
 
-class Membership(BaseModel):
+@dataclass
+class Membership:
     user_id: uuid.UUID
     organization_id: uuid.UUID
     roles: list[OrgRole]

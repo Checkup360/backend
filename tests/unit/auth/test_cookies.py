@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from app.auth.machinery.cookies import (
+from app.infrastructure.authentication.machinery.cookies import (
     apply_pending_invite_cookie,
     clear_pending_invite_cookie,
 )
