@@ -1,0 +1,16 @@
+import uuid
+from typing import Protocol
+
+from app.domain.entities import Organization
+
+
+class OrganizationRepository(Protocol):
+    async def get(self, id: uuid.UUID) -> Organization | None: ...
+
+    async def get_by_slug(self, slug: str) -> Organization | None: ...
+
+    async def create(self, **values) -> Organization: ...
+
+    async def list(self) -> list[Organization]: ...
+
+    async def delete(self, id: uuid.UUID) -> bool: ...
