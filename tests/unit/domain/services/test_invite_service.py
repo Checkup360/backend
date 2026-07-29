@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -216,6 +216,181 @@ async def test_validate_invite_success():
     )
     repo.get_by_token.return_value = token
     service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
-
     result = await service.validate_invite("valid-token", "owner@example.com")
     assert result == token
+
+
+# --- Create Invite Tests ---
+
+
+@pytest.mark.asyncio
+async def test_create_invite_with_dept_missing_org_raises_error():
+    from app.domain.exceptions import InviteDepartmentNotFoundError
+
+    dept_repo = AsyncMock()
+    service = invites_service.InviteService(
+        AsyncMock(), AsyncMock(), AsyncMock(), department_repo=dept_repo
+    )
+
+    with pytest.raises(InviteDepartmentNotFoundError):
+        await service.create_invite(
+            email="user@example.com",
+            expires_in_hours=24,
+            max_uses=1,
+            organization_id=None,
+            department_id=uuid.uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_invite_with_non_existent_dept_raises_error():
+    from app.domain.exceptions import InviteDepartmentNotFoundError
+
+    dept_repo = AsyncMock()
+    dept_repo.get_by_organization.return_value = None
+    service = invites_service.InviteService(
+        AsyncMock(), AsyncMock(), AsyncMock(), department_repo=dept_repo
+    )
+
+    with pytest.raises(InviteDepartmentNotFoundError):
+        await service.create_invite(
+            email="user@example.com",
+            expires_in_hours=24,
+            max_uses=1,
+            organization_id=uuid.uuid4(),
+            department_id=uuid.uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_invite_success():
+    invite_repo = AsyncMock()
+    dept_repo = AsyncMock()
+    dept_repo.get_by_organization.return_value = MagicMock()
+    created_token = MagicMock()
+    invite_repo.save.return_value = created_token
+
+    org_id = uuid.uuid4()
+    dept_id = uuid.uuid4()
+
+    service = invites_service.InviteService(
+        invite_repo, AsyncMock(), AsyncMock(), department_repo=dept_repo
+    )
+    result = await service.create_invite(
+        email="user@example.com",
+        expires_in_hours=24,
+        max_uses=1,
+        organization_id=org_id,
+        department_id=dept_id,
+        role=OrgRole.MEMBER,
+    )
+
+    assert result == created_token
+    invite_repo.save.assert_awaited_once()
+
+
+# --- Consume Invite Tests ---
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_not_found_raises():
+    invite_repo = AsyncMock()
+    invite_repo.get.return_value = None
+    service = invites_service.InviteService(invite_repo, AsyncMock(), AsyncMock())
+
+    with pytest.raises(InviteNotFoundError):
+        await service.consume_invite(uuid.uuid4(), uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_exhausted_raises():
+    invite_repo = AsyncMock()
+    invite_repo.get.return_value = InviteToken(
+        id=uuid.uuid4(),
+        token="tok",
+        uses=1,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    service = invites_service.InviteService(invite_repo, AsyncMock(), AsyncMock())
+
+    with pytest.raises(InviteExhaustedError):
+        await service.consume_invite(uuid.uuid4(), uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_user_not_found_raises():
+    from app.domain.exceptions import UserNotFoundError
+
+    invite_repo = AsyncMock()
+    user_repo = AsyncMock()
+    invite_repo.get.return_value = InviteToken(
+        id=uuid.uuid4(),
+        token="tok",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    user_repo.get.return_value = None
+    service = invites_service.InviteService(invite_repo, AsyncMock(), user_repo)
+
+    with pytest.raises(UserNotFoundError):
+        await service.consume_invite(uuid.uuid4(), uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_sysadmin_updates_user():
+    invite_repo = AsyncMock()
+    user_repo = AsyncMock()
+    invite_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+
+    invite_repo.get.return_value = InviteToken(
+        id=invite_id,
+        token="sysadmin-tok",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        is_sysadmin=True,
+    )
+    user_repo.get.return_value = MagicMock(id=user_id)
+
+    service = invites_service.InviteService(invite_repo, AsyncMock(), user_repo)
+    await service.consume_invite(invite_id, user_id)
+
+    user_repo.update.assert_awaited_once_with(user_id, is_superuser=True)
+    invite_repo.update.assert_awaited_once_with(invite_id, uses=1)
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_updates_existing_membership_roles_and_dept():
+    invite_repo = AsyncMock()
+    membership_repo = AsyncMock()
+    user_repo = AsyncMock()
+
+    invite_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    dept_id = uuid.uuid4()
+
+    invite_repo.get.return_value = InviteToken(
+        id=invite_id,
+        token="role-tok",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        organization_id=org_id,
+        department_id=dept_id,
+        role=OrgRole.ADMIN,
+    )
+    user_repo.get.return_value = MagicMock(id=user_id)
+    existing_membership = MagicMock(roles=[OrgRole.MEMBER], department_id=None)
+    membership_repo.get_by_user_and_org.return_value = existing_membership
+
+    service = invites_service.InviteService(invite_repo, membership_repo, user_repo)
+    await service.consume_invite(invite_id, user_id)
+
+    assert OrgRole.ADMIN in existing_membership.roles
+    assert existing_membership.department_id == dept_id
+    membership_repo.save.assert_awaited_once_with(existing_membership)
+    invite_repo.update.assert_awaited_once_with(invite_id, uses=1)
