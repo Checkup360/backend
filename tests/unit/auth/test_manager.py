@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import HTTPException
 import uuid
@@ -259,3 +261,156 @@ class TestConsumeInviteByID:
         saved = membership_repo_mock.save.call_args[0][0]
         assert OrgRole.ADMIN in saved.roles
         invite_repo_mock.update.assert_called_once_with(sample_invite_org.id, uses=1)
+
+
+class TestUserManagerCallbacks:
+    @pytest.mark.asyncio
+    async def test_on_after_forgot_password(self, user_manager, sample_user):
+        mock_reset = AsyncMock()
+        user_manager.request_password_reset = mock_reset
+
+        await user_manager.on_after_forgot_password(sample_user, "reset_token_123")
+
+        mock_reset.execute.assert_awaited_once_with(
+            "user@example.com", "reset_token_123"
+        )
+
+    @pytest.mark.asyncio
+    async def test_validate_password_policy_rejection(self, user_manager, sample_user):
+        mock_policy = MagicMock()
+        mock_policy.get_validation_error.return_value = "Password too simple"
+        user_manager.password_reset_policy = mock_policy
+
+        from fastapi_users import exceptions
+
+        with pytest.raises(exceptions.InvalidPasswordException) as exc_info:
+            await user_manager.validate_password("weak", sample_user)
+        assert exc_info.value.reason == "Password too simple"
+
+    @pytest.mark.asyncio
+    async def test_on_after_login_consumes_invite_and_clears_cookie(
+        self, user_manager, sample_user, request_mock, invite_repo_mock, user_repo_mock
+    ):
+        invite_id = uuid.uuid4()
+        request_mock.state.invite_pending_consumption_id = invite_id
+        request_mock.cookies = {"pending_invite": "cookie_val"}
+
+        invite_repo_mock.get.return_value = InviteToken(
+            id=invite_id,
+            token="cookie_val",
+            uses=0,
+            max_uses=1,
+            expires_at=datetime.now(timezone.utc),
+            is_sysadmin=True,
+        )
+        user_repo_mock.get.return_value = sample_user
+
+        response = MagicMock()
+        response.delete_cookie = MagicMock()
+
+        await user_manager.on_after_login(sample_user, request_mock, response)
+
+        assert getattr(request_mock.state, "invite_pending_consumption_id") is None
+        response.delete_cookie.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_assert_invite_valid_for_email_raises_invite_fail(
+        self, user_manager, request_mock, invite_repo_mock
+    ):
+        from app.domain.exceptions import InviteExpiredError
+
+        request_mock.cookies = {"pending_invite": "expired_token"}
+        user_manager.invite_service.validate_invite = AsyncMock(
+            side_effect=InviteExpiredError()
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await user_manager._assert_invite_valid_for_email(
+                request_mock, "user@example.com"
+            )
+
+        assert exc_info.value.status_code == 303
+        assert "invite_expired" in exc_info.value.headers.get("Location", "")
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_existing_user_with_invite(
+        self, user_manager, sample_user, request_mock, sample_invite_org
+    ):
+        user_manager.user_db.get_by_oauth_account = AsyncMock(return_value=sample_user)
+        user_manager._assert_invite_valid_for_email = AsyncMock(
+            return_value=sample_invite_org
+        )
+        user_manager._has_invite_token = MagicMock(return_value=True)
+
+        with patch(
+            "fastapi_users.BaseUserManager.oauth_callback", new_callable=AsyncMock
+        ) as mock_super_oauth:
+            mock_super_oauth.return_value = sample_user
+            res = await user_manager.oauth_callback(
+                "google", "token", "acc123", "user@example.com", request=request_mock
+            )
+            assert res == sample_user
+            assert (
+                request_mock.state.invite_pending_consumption_id == sample_invite_org.id
+            )
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_new_user(
+        self, user_manager, sample_user, request_mock, sample_invite_org
+    ):
+        user_manager.user_db.get_by_oauth_account = AsyncMock(return_value=None)
+        user_manager._assert_invite_valid_for_email = AsyncMock(
+            return_value=sample_invite_org
+        )
+
+        with patch(
+            "fastapi_users.BaseUserManager.oauth_callback", new_callable=AsyncMock
+        ) as mock_super_oauth:
+            mock_super_oauth.return_value = sample_user
+            res = await user_manager.oauth_callback(
+                "google", "token", "acc123", "user@example.com", request=request_mock
+            )
+            assert res == sample_user
+            assert request_mock.state.invite_already_validated is True
+
+    @pytest.mark.asyncio
+    async def test_create_user_with_invite_and_consume(
+        self, user_manager, sample_user, request_mock, sample_invite_org
+    ):
+        user_create = MagicMock()
+        user_create.email = "new@example.com"
+        user_manager._assert_invite_valid_for_email = AsyncMock(
+            return_value=sample_invite_org
+        )
+        user_manager._consume_invite_by_id = AsyncMock()
+
+        with patch(
+            "fastapi_users.BaseUserManager.create", new_callable=AsyncMock
+        ) as mock_super_create:
+            mock_super_create.return_value = sample_user
+            created = await user_manager.create(user_create, request=request_mock)
+            assert created == sample_user
+            user_manager._consume_invite_by_id.assert_called_once_with(
+                sample_invite_org.id, sample_user
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_user_exception_clears_pending_invite_id(
+        self, user_manager, request_mock, sample_invite_org
+    ):
+        user_create = MagicMock()
+        user_create.email = "new@example.com"
+        user_manager._assert_invite_valid_for_email = AsyncMock(
+            return_value=sample_invite_org
+        )
+
+        with patch(
+            "fastapi_users.BaseUserManager.create", new_callable=AsyncMock
+        ) as mock_super_create:
+            mock_super_create.side_effect = Exception("User creation failed")
+            with pytest.raises(Exception, match="User creation failed"):
+                await user_manager.create(user_create, request=request_mock)
+            assert (
+                getattr(request_mock.state, "invite_pending_consumption_id", None)
+                is None
+            )
