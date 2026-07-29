@@ -35,7 +35,7 @@ class TestMemberDetailsOnboarding:
 
         response = client.post(
             "/members/me/details",
-            json={"date_of_birth": "1990-06-15"},
+            json={"date_of_birth": "1990-06-15", "phone_number": "+541112345678"},
         )
 
         assert response.status_code == 200
@@ -48,6 +48,7 @@ class TestMemberDetailsOnboarding:
 
         assert details is not None
         assert details.date_of_birth == date(1990, 6, 15)
+        assert details.phone_number == "+541112345678"
 
         me_response = client.get("/auth/me")
         assert me_response.status_code == 200
@@ -67,7 +68,10 @@ class TestMemberDetailsOnboarding:
 
         response = client.post(
             "/members/me/details",
-            json={"date_of_birth": future_date.isoformat()},
+            json={
+                "date_of_birth": future_date.isoformat(),
+                "phone_number": "+541112345678",
+            },
         )
 
         assert response.status_code == 422

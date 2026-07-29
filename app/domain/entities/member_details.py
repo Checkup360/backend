@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 
@@ -7,3 +7,6 @@ from datetime import date
 class MemberDetails:
     user_id: uuid.UUID
     date_of_birth: date
+    first_name: str = field(default="")
+    last_name: str = field(default="")
+    phone_number: str | None = field(default=None)

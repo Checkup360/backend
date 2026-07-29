@@ -96,15 +96,18 @@ async def test_complete_onboarding_success():
     repo = AsyncMock()
     user = make_user()
     dob = date(1990, 5, 15)
-    expected_details = MemberDetails(user_id=user.id, date_of_birth=dob)
+    phone = "+541112345678"
+    expected_details = MemberDetails(
+        user_id=user.id, date_of_birth=dob, phone_number=phone
+    )
     repo.save.return_value = expected_details
 
     service = MemberDetailsService(repo)
-    result = await service.complete_onboarding(user, dob)
+    result = await service.complete_onboarding(user, dob, phone_number=phone)
 
     assert result == expected_details
     repo.save.assert_awaited_once_with(
-        MemberDetails(user_id=user.id, date_of_birth=dob)
+        MemberDetails(user_id=user.id, date_of_birth=dob, phone_number=phone)
     )
 
 
@@ -114,6 +117,10 @@ async def test_complete_onboarding_rejects_future_date():
     service = MemberDetailsService(repo)
 
     with pytest.raises(ValueError, match="date_of_birth_in_future"):
-        await service.complete_onboarding(make_user(), date.today() + timedelta(days=1))
+        await service.complete_onboarding(
+            make_user(),
+            date.today() + timedelta(days=1),
+            phone_number="+541112345678",
+        )
 
     repo.save.assert_not_awaited()

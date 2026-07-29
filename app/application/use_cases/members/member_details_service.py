@@ -38,12 +38,46 @@ class MemberDetailsService:
     async def is_onboarded(self, user_id: uuid.UUID) -> bool:
         return await self.repo.exists_for_user(user_id)
 
+    async def get_profile(self, user_id: uuid.UUID) -> MemberDetails | None:
+        return await self.repo.get_by_user(user_id)
+
     async def complete_onboarding(
-        self, user: MemberUser, date_of_birth: date
+        self,
+        user: MemberUser,
+        date_of_birth: date,
+        phone_number: str,
+        first_name: str = "",
+        last_name: str = "",
     ) -> MemberDetails:
         if date_of_birth > date.today():
             raise ValueError("date_of_birth_in_future")
 
         return await self.repo.save(
-            MemberDetails(user_id=user.id, date_of_birth=date_of_birth)
+            MemberDetails(
+                user_id=user.id,
+                date_of_birth=date_of_birth,
+                first_name=first_name,
+                last_name=last_name,
+                phone_number=phone_number,
+            )
         )
+
+    async def update_profile(
+        self,
+        user_id: uuid.UUID,
+        first_name: str,
+        last_name: str,
+        phone_number: str | None,
+    ) -> MemberDetails:
+        details = await self.repo.get_by_user(user_id)
+        if details is None:
+            raise ValueError("member_details_not_found")
+
+        updated = MemberDetails(
+            user_id=user_id,
+            date_of_birth=details.date_of_birth,
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=phone_number,
+        )
+        return await self.repo.save(updated)

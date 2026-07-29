@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey
+from sqlalchemy import Date, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -16,6 +16,9 @@ class MemberDetails(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), primary_key=True)
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
+    first_name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    phone_number: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
