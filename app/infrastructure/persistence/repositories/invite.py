@@ -15,30 +15,30 @@ from app.infrastructure.persistence.repositories.base import BaseRepository
 def _organization_from_orm(orm: InviteTokenORM):
     if orm.organization_id is None:
         return None
+    org = orm.__dict__.get("organization")
+    if org is None:
+        return None
+    from app.domain.entities import Organization
+
+    return Organization(
+        id=org.id,
+        name=org.name,
+        slug=org.slug,
+    )
 
 
 def _department_from_orm(orm: InviteTokenORM) -> Department | None:
-    department = orm.__dict__.get("department")
-    if department is None:
+    dept = orm.__dict__.get("department")
+    if dept is None:
         return None
     return Department(
-        id=department.id,
-        organization_id=department.organization_id,
-        name=department.name,
-        slug=department.slug,
-        created_at=department.created_at,
-        updated_at=department.updated_at,
+        id=dept.id,
+        organization_id=dept.organization_id,
+        name=dept.name,
+        slug=dept.slug,
+        created_at=dept.created_at,
+        updated_at=dept.updated_at,
     )
-    try:
-        from app.domain.entities import Organization
-
-        return Organization(
-            id=orm.organization.id,
-            name=orm.organization.name,
-            slug=orm.organization.slug,
-        )
-    except Exception:
-        return None
 
 
 class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
