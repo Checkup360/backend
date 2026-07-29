@@ -146,3 +146,76 @@ async def test_consume_invite_copies_department_id_to_membership():
 
     saved = membership_repo.save.call_args.args[0]
     assert saved.department_id == department_id
+
+
+@pytest.mark.asyncio
+async def test_check_invite_usable_expired_naive_datetime():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="expired-naive-token",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now() - timedelta(hours=2),  # naive datetime in past
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    with pytest.raises(InviteExpiredError):
+        await service.check_invite_usable("expired-naive-token")
+
+
+@pytest.mark.asyncio
+async def test_validate_invite_raises_expired():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="expired-token",
+        email="user@example.com",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    with pytest.raises(InviteExpiredError):
+        await service.validate_invite("expired-token", "user@example.com")
+
+
+@pytest.mark.asyncio
+async def test_validate_invite_email_mismatch_raises():
+    from app.domain.exceptions import InviteEmailMismatchError
+
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="valid-token",
+        email="owner@example.com",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    with pytest.raises(InviteEmailMismatchError):
+        await service.validate_invite("valid-token", "imposter@example.com")
+
+
+@pytest.mark.asyncio
+async def test_validate_invite_success():
+    repo = AsyncMock(spec=InviteRepository)
+    token = InviteToken(
+        id=uuid.uuid4(),
+        token="valid-token",
+        email="owner@example.com",
+        uses=0,
+        max_uses=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    repo.get_by_token.return_value = token
+    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+
+    result = await service.validate_invite("valid-token", "owner@example.com")
+    assert result == token

@@ -5,24 +5,32 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.domain.value_objects.org_role import OrgRole
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
+from app.domain.entities import MemberDetails
+from app.domain.value_objects.org_role import OrgRole
 
 
-def make_user(*, is_superuser=False, roles=None):
+def make_user(*, is_superuser=False, roles=None, has_membership=True):
     membership = None
-    if roles is not None:
-        membership = SimpleNamespace(roles=roles)
-    elif not is_superuser:
-        membership = SimpleNamespace(roles=[OrgRole.MEMBER])
+    if has_membership:
+        if roles is not None:
+            membership = SimpleNamespace(roles=roles)
+        elif not is_superuser:
+            membership = SimpleNamespace(roles=[OrgRole.MEMBER])
 
     return SimpleNamespace(
         id=uuid.uuid4(),
         is_superuser=is_superuser,
         membership=membership,
     )
+
+
+def test_is_member_user_returns_false_when_membership_is_none():
+    user = make_user(has_membership=False)
+    service = MemberDetailsService(AsyncMock())
+    assert service.is_member_user(user) is False
 
 
 @pytest.mark.asyncio
@@ -68,6 +76,36 @@ async def test_does_not_require_onboarding_for_sysadmin_or_non_member():
         assert await service.requires_onboarding(user) is False
 
     repo.exists_for_user.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_is_onboarded_delegates_to_repo():
+    repo = AsyncMock()
+    repo.exists_for_user.return_value = True
+    user_id = uuid.uuid4()
+
+    service = MemberDetailsService(repo)
+    result = await service.is_onboarded(user_id)
+
+    assert result is True
+    repo.exists_for_user.assert_awaited_once_with(user_id)
+
+
+@pytest.mark.asyncio
+async def test_complete_onboarding_success():
+    repo = AsyncMock()
+    user = make_user()
+    dob = date(1990, 5, 15)
+    expected_details = MemberDetails(user_id=user.id, date_of_birth=dob)
+    repo.save.return_value = expected_details
+
+    service = MemberDetailsService(repo)
+    result = await service.complete_onboarding(user, dob)
+
+    assert result == expected_details
+    repo.save.assert_awaited_once_with(
+        MemberDetails(user_id=user.id, date_of_birth=dob)
+    )
 
 
 @pytest.mark.asyncio

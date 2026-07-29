@@ -181,3 +181,21 @@ async def test_count_employees_for_organization_admin_without_admin_membership_r
     with pytest.raises(NotOrganizationAdminError):
         await service.count_employees_for_organization_admin(user_id, org_id)
     membership_repo.count_members_for_organization.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_count_members_for_organization_direct_call():
+    membership_repo = AsyncMock()
+    org_repo = AsyncMock()
+    org_id = uuid.uuid4()
+    membership_repo.count_members_for_organization.return_value = 12
+
+    service = MembershipService(membership_repo, org_repo)
+    result = await service.count_members_for_organization(
+        org_id, roles=[OrgRole.MEMBER]
+    )
+
+    assert result == 12
+    membership_repo.count_members_for_organization.assert_awaited_once_with(
+        org_id, roles=[OrgRole.MEMBER]
+    )

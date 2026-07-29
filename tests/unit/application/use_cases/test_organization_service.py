@@ -51,3 +51,64 @@ async def test_list_organizations():
     assert orgs[0].collaborators_count == 5
     assert orgs[1].collaborators_count == 0
     repo.list.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_organization_returns_org_when_found():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_mock = MagicMock(id=org_id, name="Found Org")
+    repo.get.return_value = org_mock
+
+    service = OrganizationService(repo)
+    result = await service.get_organization(org_id)
+
+    assert result == org_mock
+    repo.get.assert_awaited_once_with(org_id)
+
+
+@pytest.mark.asyncio
+async def test_get_organization_returns_none_when_not_found():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    repo.get.return_value = None
+
+    service = OrganizationService(repo)
+    result = await service.get_organization(org_id)
+
+    assert result is None
+    repo.get.assert_awaited_once_with(org_id)
+
+
+@pytest.mark.asyncio
+async def test_delete_organization_returns_true_on_success():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    repo.delete.return_value = True
+
+    service = OrganizationService(repo)
+    result = await service.delete_organization(org_id)
+
+    assert result is True
+    repo.delete.assert_awaited_once_with(org_id)
+
+
+@pytest.mark.asyncio
+async def test_delete_organization_returns_false_when_not_found():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    repo.delete.return_value = False
+
+    service = OrganizationService(repo)
+    result = await service.delete_organization(org_id)
+
+    assert result is False
+    repo.delete.assert_awaited_once_with(org_id)

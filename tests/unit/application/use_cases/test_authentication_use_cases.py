@@ -18,6 +18,19 @@ async def test_request_password_reset_sends_encoded_link():
     )
 
 
+@pytest.mark.asyncio
+async def test_request_password_reset_strips_trailing_slash_from_origin():
+    email_sender = MagicMock()
+    use_case = RequestPasswordReset(email_sender, "https://app.example.com///")
+
+    await use_case.execute("test@example.com", "token123")
+
+    email_sender.send_password_reset_email.assert_called_once_with(
+        "test@example.com",
+        "https://app.example.com/reset-password?token=token123",
+    )
+
+
 @pytest.mark.parametrize(
     ("password", "expected_error"),
     [
