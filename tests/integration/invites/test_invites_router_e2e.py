@@ -121,6 +121,27 @@ class TestInvitesRouterE2E:
         assert res_invalid_pass.json()["detail"]["code"] == "REGISTER_INVALID_PASSWORD"
 
     @pytest.mark.asyncio
+    async def test_redeem_invite_when_already_logged_in(
+        self, client, make_invite, make_organization, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="logged-in-redeemer@example.com",
+        )
+        org = await make_organization(slug="logged-in-redeem-org")
+        invite = await make_invite(
+            email="logged-in-redeemer@example.com",
+            organization_id=org.id,
+            role=OrgRole.MEMBER,
+        )
+
+        res = client.post(
+            f"/invites/{invite.token}/redeem",
+            json={},
+        )
+        assert res.status_code == 200
+        assert res.json()["ok"] is True
+
+    @pytest.mark.asyncio
     async def test_delete_org_invites_empty_ids(self, client, auth_scenario):
         await auth_scenario.register_and_login(
             email="org-admin-del-empty@example.com",

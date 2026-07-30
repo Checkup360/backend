@@ -124,3 +124,38 @@ async def test_complete_onboarding_rejects_future_date():
         )
 
     repo.save.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_profile_success_and_not_found():
+    repo = AsyncMock()
+    user_id = uuid.uuid4()
+    existing = MemberDetails(
+        user_id=user_id,
+        date_of_birth=date(1992, 1, 1),
+        first_name="OldFirst",
+        last_name="OldLast",
+    )
+    repo.get_by_user.return_value = existing
+    repo.save.side_effect = lambda details: details
+
+    service = MemberDetailsService(repo)
+    updated = await service.update_profile(
+        user_id=user_id,
+        first_name="NewFirst",
+        last_name="NewLast",
+        phone_number="+541199998888",
+    )
+
+    assert updated.first_name == "NewFirst"
+    assert updated.last_name == "NewLast"
+    assert updated.phone_number == "+541199998888"
+
+    repo.get_by_user.return_value = None
+    with pytest.raises(ValueError, match="member_details_not_found"):
+        await service.update_profile(
+            user_id=user_id,
+            first_name="NewFirst",
+            last_name="NewLast",
+            phone_number=None,
+        )
