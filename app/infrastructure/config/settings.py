@@ -19,6 +19,7 @@ class Settings:
     smtp_port: int
     smtp_user: str
     smtp_password: str
+    motor_api_url: str
 
 
 def _require_env(key: str) -> str:
@@ -76,6 +77,7 @@ def get_settings() -> Settings:
         smtp_port=int(os.getenv("SMTP_PORT", "587")),
         smtp_user=os.getenv("SMTP_USER", ""),
         smtp_password=os.getenv("SMTP_PASSWORD", ""),
+        motor_api_url=os.getenv("MOTOR_API_URL", "http://localhost:8001"),
     )
 
 

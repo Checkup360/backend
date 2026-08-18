@@ -7,7 +7,13 @@ from app.infrastructure.authentication.middleware.pending_invite import (
     PendingInviteCookieMiddleware,
 )
 from app.infrastructure.config import settings
-from app.presentation.api.routers import admin, auth, invites, members, organizations
+from app.presentation.api.routers import (
+    admin,
+    auth,
+    invites,
+    members,
+    organizations,
+)
 
 app = FastAPI()
 

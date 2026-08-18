@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+import httpx
 from fastapi import Depends
 
 from app.application.interfaces import EmailSender
@@ -8,6 +10,8 @@ from app.application.use_cases.invitations import (
     InviteUrlBuilder,
     ListInvites,
 )
+from app.application.interfaces.risk_scoring_service import RiskScoringService
+from app.infrastructure.external.motor_api_adapter import HttpMotorScoringAdapter
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.domain.services.invite import InviteService
 from app.application.use_cases.members.member_details_service import (
@@ -141,3 +145,8 @@ def get_delete_invites(
     repository: InviteRepository = Depends(get_invite_repository),
 ) -> DeleteInvites:
     return DeleteInvites(repository)
+
+
+async def get_risk_scoring_service() -> AsyncGenerator[RiskScoringService, None]:
+    async with httpx.AsyncClient() as client:
+        yield HttpMotorScoringAdapter(settings.motor_api_url, client)
