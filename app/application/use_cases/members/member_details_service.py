@@ -4,6 +4,7 @@ from typing import Protocol
 
 from app.domain.entities import MemberDetails, Membership
 from app.domain.repositories import MemberDetailsRepository
+from app.domain.services.member_health_topics import calculate_member_priority_topics
 from app.domain.value_objects import OrgRole
 
 
@@ -40,6 +41,9 @@ class MemberDetailsService:
 
     async def get_profile(self, user_id: uuid.UUID) -> MemberDetails | None:
         return await self.repo.get_by_user(user_id)
+
+    def get_priority_topics(self, details: MemberDetails | None) -> list[str]:
+        return calculate_member_priority_topics(details)
 
     async def complete_onboarding(
         self,

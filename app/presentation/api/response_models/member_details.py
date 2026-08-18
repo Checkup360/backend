@@ -12,3 +12,4 @@ class MemberProfileResponse(BaseModel):
     last_name: str
     phone_number: str | None
     date_of_birth: date
+    priority_topics: list[str] = []

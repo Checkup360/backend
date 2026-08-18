@@ -52,11 +52,13 @@ async def get_my_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="profile_not_found",
         )
+    priority_topics = service.get_priority_topics(profile)
     return MemberProfileResponse(
         first_name=profile.first_name,
         last_name=profile.last_name,
         phone_number=profile.phone_number,
         date_of_birth=profile.date_of_birth,
+        priority_topics=priority_topics,
     )
 
 
@@ -79,9 +81,11 @@ async def update_my_profile(
             detail=str(e),
         )
 
+    priority_topics = service.get_priority_topics(updated)
     return MemberProfileResponse(
         first_name=updated.first_name,
         last_name=updated.last_name,
         phone_number=updated.phone_number,
         date_of_birth=updated.date_of_birth,
+        priority_topics=priority_topics,
     )
