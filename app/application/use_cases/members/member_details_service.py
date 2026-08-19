@@ -49,7 +49,7 @@ class MemberDetailsService:
         self,
         user: MemberUser,
         date_of_birth: date,
-        phone_number: str,
+        phone_number: str | None = None,
         first_name: str = "",
         last_name: str = "",
     ) -> MemberDetails:

@@ -10,7 +10,7 @@ class MemberDetailsCreate(BaseModel):
     date_of_birth: date
     first_name: str = ""
     last_name: str = ""
-    phone_number: str
+    phone_number: str | None = None
 
     @field_validator("date_of_birth")
     @classmethod
