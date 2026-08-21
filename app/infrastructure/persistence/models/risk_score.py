@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Float
 from sqlalchemy.dialects.postgresql import UUID
@@ -24,7 +23,7 @@ class RiskScoreModel(Base):
     normalized_value = Column(Float, nullable=True)
     explanation = Column(String, nullable=True)
     contributing_factors = Column(JSON, nullable=False, default=dict)
-    evaluated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    evaluated_at = Column(DateTime(timezone=True), nullable=False)
 
     # Relationships
     user = relationship("User", backref="risk_scores")
