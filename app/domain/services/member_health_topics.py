@@ -15,6 +15,7 @@ CMS_DISEASE_TOPICS: list[str] = [
 
 def calculate_member_priority_topics(
     member_details: MemberDetails | None,
+    today: date,
     available_topics: Sequence[str] = CMS_DISEASE_TOPICS,
 ) -> list[str]:
     """
@@ -27,7 +28,6 @@ def calculate_member_priority_topics(
         return list(available_topics)
 
     # Cálculo de edad para determinar riesgos preventivos primarios
-    today = date.today()
     age = (
         today.year
         - member_details.date_of_birth.year

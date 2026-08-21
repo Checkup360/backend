@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -10,6 +10,18 @@ from app.application.use_cases.members.member_details_service import (
 )
 from app.domain.entities import MemberDetails
 from app.domain.value_objects.org_role import OrgRole
+from app.domain.services.time_provider import TimeProvider
+
+
+_FROZEN_TODAY = date(2025, 6, 15)
+
+
+class FrozenTimeProvider(TimeProvider):
+    def utcnow(self) -> datetime:
+        return datetime(2025, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+    def today(self) -> date:
+        return _FROZEN_TODAY
 
 
 def make_user(*, is_superuser=False, roles=None, has_membership=True):
@@ -29,7 +41,7 @@ def make_user(*, is_superuser=False, roles=None, has_membership=True):
 
 def test_is_member_user_returns_false_when_membership_is_none():
     user = make_user(has_membership=False)
-    service = MemberDetailsService(AsyncMock())
+    service = MemberDetailsService(AsyncMock(), FrozenTimeProvider())
     assert service.is_member_user(user) is False
 
 
@@ -43,7 +55,7 @@ async def test_requires_onboarding_for_member_user_without_details():
         make_user(roles=[OrgRole.MEMBER, OrgRole.ADMIN]),
     ]
 
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
 
     for user in users:
         assert await service.requires_onboarding(user) is True
@@ -56,7 +68,7 @@ async def test_does_not_require_onboarding_for_member_with_details():
     repo.exists_for_user.return_value = True
     user = make_user(roles=[OrgRole.MEMBER])
 
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
 
     assert await service.requires_onboarding(user) is False
 
@@ -64,7 +76,7 @@ async def test_does_not_require_onboarding_for_member_with_details():
 @pytest.mark.asyncio
 async def test_does_not_require_onboarding_for_sysadmin_or_non_member():
     repo = AsyncMock()
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
 
     users = [
         make_user(is_superuser=True, roles=[OrgRole.MEMBER]),
@@ -84,7 +96,7 @@ async def test_is_onboarded_delegates_to_repo():
     repo.exists_for_user.return_value = True
     user_id = uuid.uuid4()
 
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
     result = await service.is_onboarded(user_id)
 
     assert result is True
@@ -102,7 +114,7 @@ async def test_complete_onboarding_success():
     )
     repo.save.return_value = expected_details
 
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
     result = await service.complete_onboarding(user, dob, phone_number=phone)
 
     assert result == expected_details
@@ -114,7 +126,7 @@ async def test_complete_onboarding_success():
 @pytest.mark.asyncio
 async def test_complete_onboarding_rejects_future_date():
     repo = AsyncMock()
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
 
     with pytest.raises(ValueError, match="date_of_birth_in_future"):
         await service.complete_onboarding(
@@ -139,7 +151,7 @@ async def test_update_profile_success_and_not_found():
     repo.get_by_user.return_value = existing
     repo.save.side_effect = lambda details: details
 
-    service = MemberDetailsService(repo)
+    service = MemberDetailsService(repo, FrozenTimeProvider())
     updated = await service.update_profile(
         user_id=user_id,
         first_name="NewFirst",

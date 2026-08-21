@@ -1,7 +1,8 @@
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
+from app.domain.services.time_provider import TimeProvider
 from app.domain.entities import InviteToken, Membership
 from app.domain.value_objects import OrgRole
 from app.domain.exceptions import (
@@ -29,9 +30,10 @@ def build_invite_token(
     department_id: uuid.UUID | None = None,
     role: OrgRole | None = None,
     is_sysadmin: bool = False,
+    time_provider: TimeProvider,
 ) -> InviteToken:
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
+    expires_at = time_provider.utcnow() + timedelta(hours=expires_in_hours)
     return InviteToken(
         id=uuid.uuid4(),
         token=token,
@@ -52,11 +54,13 @@ class InviteService:
         membership_repo: MembershipRepository,
         user_repo: UserRepository,
         department_repo: DepartmentRepository | None = None,
+        time_provider: TimeProvider | None = None,
     ):
         self.invite_repo = invite_repo
         self.membership_repo = membership_repo
         self.user_repo = user_repo
         self.department_repo = department_repo
+        self.time_provider = time_provider
 
     async def create_invite(
         self,
@@ -86,6 +90,7 @@ class InviteService:
             department_id=department_id,
             role=role,
             is_sysadmin=is_sysadmin,
+            time_provider=self.time_provider,
         )
         return await self.invite_repo.save(invite)
 
@@ -98,7 +103,7 @@ class InviteService:
         expires_at = invite.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at < datetime.now(timezone.utc):
+        if expires_at < self.time_provider.utcnow():
             raise InviteExpiredError()
         return invite
 

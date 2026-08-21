@@ -1,11 +1,11 @@
 import uuid
-from datetime import date
 
 from app.application.dto.risk_scoring import HealthDataDTO, ScoreResultDTO
 from app.application.interfaces.risk_scoring_service import RiskScoringService
 from app.domain.repositories.member_details import MemberDetailsRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.entities.risk_score import RiskScore
+from app.domain.services.time_provider import TimeProvider
 
 
 class SubmitAssessmentUseCase:
@@ -14,10 +14,12 @@ class SubmitAssessmentUseCase:
         risk_scoring_service: RiskScoringService,
         member_details_repository: MemberDetailsRepository,
         risk_score_repository: RiskScoreRepository,
+        time_provider: TimeProvider,
     ) -> None:
         self._risk_scoring_service = risk_scoring_service
         self._member_details_repository = member_details_repository
         self._risk_score_repository = risk_score_repository
+        self._time_provider = time_provider
 
     async def execute(
         self,
@@ -31,7 +33,7 @@ class SubmitAssessmentUseCase:
             raise ValueError("Member details not found. Please complete onboarding.")
 
         # Calculate age
-        today = date.today()
+        today = self._time_provider.today()
         dob = member_details.date_of_birth
         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
@@ -73,6 +75,7 @@ class SubmitAssessmentUseCase:
                 normalized_value=result.normalized_value,
                 explanation=result.explanation,
                 contributing_factors=result.contributing_factors,
+                evaluated_at=self._time_provider.utcnow(),
             )
             await self._risk_score_repository.save(score_entity)
 

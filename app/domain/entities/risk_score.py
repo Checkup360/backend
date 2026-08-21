@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import uuid
 from datetime import datetime
 
@@ -13,4 +13,4 @@ class RiskScore:
     normalized_value: float | None
     explanation: str | None
     contributing_factors: dict[str, any]
-    evaluated_at: datetime = field(default_factory=datetime.utcnow)
+    evaluated_at: datetime

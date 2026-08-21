@@ -4,6 +4,7 @@ from typing import Protocol
 
 from app.domain.entities import MemberDetails, Membership
 from app.domain.repositories import MemberDetailsRepository
+from app.domain.services.time_provider import TimeProvider
 from app.domain.services.member_health_topics import calculate_member_priority_topics
 from app.domain.value_objects import OrgRole
 
@@ -20,8 +21,9 @@ class MemberUser(Protocol):
 
 
 class MemberDetailsService:
-    def __init__(self, repo: MemberDetailsRepository):
+    def __init__(self, repo: MemberDetailsRepository, time_provider: TimeProvider):
         self.repo = repo
+        self.time_provider = time_provider
 
     def is_member_user(self, user: MemberUser) -> bool:
         if user.is_superuser:
@@ -43,7 +45,9 @@ class MemberDetailsService:
         return await self.repo.get_by_user(user_id)
 
     def get_priority_topics(self, details: MemberDetails | None) -> list[str]:
-        return calculate_member_priority_topics(details)
+        return calculate_member_priority_topics(
+            details, today=self.time_provider.today()
+        )
 
     async def complete_onboarding(
         self,
@@ -53,7 +57,7 @@ class MemberDetailsService:
         first_name: str = "",
         last_name: str = "",
     ) -> MemberDetails:
-        if date_of_birth > date.today():
+        if date_of_birth > self.time_provider.today():
             raise ValueError("date_of_birth_in_future")
 
         return await self.repo.save(

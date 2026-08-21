@@ -4,6 +4,8 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.interfaces import EmailSender
+from app.domain.services.time_provider import TimeProvider
+from app.infrastructure.time.system_time_provider import SystemTimeProvider
 from app.application.dto import AuthenticatedUser
 from app.domain.entities import Membership
 from app.application.use_cases.invitations import (
@@ -113,13 +115,20 @@ async def get_user_repository(db=Depends(get_db)):
     return UserRepository(db)
 
 
+def get_time_provider() -> TimeProvider:
+    return SystemTimeProvider()
+
+
 async def get_invite_service(
     invite_repo: InviteRepository = Depends(get_invite_repository),
     membership_repo: MembershipRepository = Depends(get_membership_repository),
     department_repo: DepartmentRepository = Depends(get_department_repository),
     user_repo: UserRepository = Depends(get_user_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
 ) -> InviteService:
-    return InviteService(invite_repo, membership_repo, user_repo, department_repo)
+    return InviteService(
+        invite_repo, membership_repo, user_repo, department_repo, time_provider
+    )
 
 
 async def get_membership_service(
@@ -131,8 +140,9 @@ async def get_membership_service(
 
 async def get_member_details_service(
     repo: MemberDetailsRepository = Depends(get_member_details_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
 ) -> MemberDetailsService:
-    return MemberDetailsService(repo)
+    return MemberDetailsService(repo, time_provider)
 
 
 async def get_member_biometrics_service(
@@ -192,9 +202,13 @@ async def get_submit_assessment_use_case(
         get_member_details_repository
     ),
     risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
 ) -> SubmitAssessmentUseCase:
     return SubmitAssessmentUseCase(
-        risk_scoring_service, member_details_repository, risk_score_repository
+        risk_scoring_service,
+        member_details_repository,
+        risk_score_repository,
+        time_provider,
     )
 
 

@@ -10,6 +10,7 @@ from app.infrastructure.persistence.repositories.invite import InviteRepository
 from app.infrastructure.persistence.repositories.membership import MembershipRepository
 from app.infrastructure.persistence.repositories.user import UserRepository
 from app.domain.services.invite import InviteService
+from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
 
 class FakeRequest:
@@ -27,7 +28,9 @@ async def user_manager(db: AsyncSession):
     invite_repo = InviteRepository(db)
     membership_repo = MembershipRepository(db)
     user_repo = UserRepository(db)
-    invite_service = InviteService(invite_repo, membership_repo, user_repo)
+    invite_service = InviteService(
+        invite_repo, membership_repo, user_repo, time_provider=SystemTimeProvider()
+    )
     return UserManager(user_db, invite_service)
 
 

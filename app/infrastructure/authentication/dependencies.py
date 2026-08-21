@@ -15,6 +15,7 @@ from app.infrastructure.persistence.repositories.invite import InviteRepository
 from app.infrastructure.persistence.repositories.membership import MembershipRepository
 from app.infrastructure.persistence.repositories.user import UserRepository
 from httpx_oauth.clients.google import GoogleOAuth2
+from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
@@ -44,6 +45,7 @@ async def get_invite_service_for_auth(
         MembershipRepository(session),
         UserRepository(session),
         DepartmentRepository(session),
+        time_provider=SystemTimeProvider(),
     )
 
 

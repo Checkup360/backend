@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,11 +13,52 @@ from app.domain.exceptions import (
 )
 from app.application.use_cases.invitations import InviteUrlBuilder
 from app.domain.services import invite as invites_service
+from app.domain.services.time_provider import TimeProvider
 from app.infrastructure.persistence.repositories.invite import InviteRepository
+
+
+_FROZEN_NOW = datetime(2025, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+_FROZEN_TODAY = _FROZEN_NOW.date()
+
+
+class FrozenTimeProvider(TimeProvider):
+    def utcnow(self) -> datetime:
+        return _FROZEN_NOW
+
+    def today(self) -> date:
+        return _FROZEN_TODAY
+
+
+@pytest.fixture
+def frozen_time() -> FrozenTimeProvider:
+    return FrozenTimeProvider()
+
+
+def make_service(
+    invite_repo=None,
+    membership_repo=None,
+    user_repo=None,
+    department_repo=None,
+    time_provider=None,
+) -> invites_service.InviteService:
+    return invites_service.InviteService(
+        invite_repo=invite_repo or AsyncMock(),
+        membership_repo=membership_repo or AsyncMock(),
+        user_repo=user_repo or AsyncMock(),
+        department_repo=department_repo,
+        time_provider=time_provider or FrozenTimeProvider(),
+    )
 
 
 def test_build_invite_token_sets_all_fields():
     organization_id = uuid.UUID("36b57de5-8fac-4dd5-a470-9e687545a363")
+
+    class FrozenTime(TimeProvider):
+        def utcnow(self) -> datetime:
+            return datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+        def today(self):
+            return date(2025, 1, 1)
 
     invite = invites_service.build_invite_token(
         email="user@example.com",
@@ -26,6 +67,7 @@ def test_build_invite_token_sets_all_fields():
         organization_id=organization_id,
         role=OrgRole.ADMIN,
         is_sysadmin=True,
+        time_provider=FrozenTime(),
     )
 
     assert invite.token
@@ -35,6 +77,9 @@ def test_build_invite_token_sets_all_fields():
     assert invite.role == OrgRole.ADMIN
     assert invite.is_sysadmin is True
     assert invite.expires_at.tzinfo is not None
+    assert invite.expires_at == datetime(
+        2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+    ) + timedelta(hours=12)
 
 
 def test_build_invite_url_uses_frontend_url():
@@ -46,7 +91,7 @@ def test_build_invite_url_uses_frontend_url():
 async def test_check_invite_usable_not_found():
     repo = AsyncMock(spec=InviteRepository)
     repo.get_by_token.return_value = None
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteNotFoundError):
         await service.check_invite_usable("no-such-token")
@@ -60,10 +105,10 @@ async def test_check_invite_usable_used():
         token="used-token",
         uses=1,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteExhaustedError):
         await service.check_invite_usable("used-token")
@@ -77,10 +122,10 @@ async def test_check_invite_usable_expired():
         token="expired-token",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        expires_at=_FROZEN_NOW - timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteExpiredError):
         await service.check_invite_usable("expired-token")
@@ -94,26 +139,29 @@ async def test_check_invite_usable_valid():
         token="valid-token",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     await service.check_invite_usable("valid-token")
 
 
 @pytest.mark.asyncio
-async def test_check_invite_usable_edge_expiry_just_now():
+async def test_check_invite_usable_edge_expiry_just_expired():
+    """An invite that expired exactly 1 second ago must not be usable."""
     repo = AsyncMock(spec=InviteRepository)
+    from datetime import timedelta as td
+
     token = InviteToken(
         id=uuid.uuid4(),
         token="edge-token",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc),
+        expires_at=_FROZEN_NOW - td(seconds=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteExpiredError):
         await service.check_invite_usable("edge-token")
@@ -133,7 +181,7 @@ async def test_consume_invite_copies_department_id_to_membership():
         token="department-token",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
         organization_id=organization_id,
         department_id=department_id,
         role=OrgRole.MEMBER,
@@ -141,7 +189,9 @@ async def test_consume_invite_copies_department_id_to_membership():
     user_repo.get.return_value = type("User", (), {"id": user_id})()
     membership_repo.get_by_user_and_org.return_value = None
 
-    service = invites_service.InviteService(invite_repo, membership_repo, user_repo)
+    service = make_service(
+        invite_repo=invite_repo, membership_repo=membership_repo, user_repo=user_repo
+    )
     await service.consume_invite(invite_id, user_id)
 
     saved = membership_repo.save.call_args.args[0]
@@ -156,10 +206,11 @@ async def test_check_invite_usable_expired_naive_datetime():
         token="expired-naive-token",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now() - timedelta(hours=2),  # naive datetime in past
+        expires_at=_FROZEN_NOW.replace(tzinfo=None)
+        - timedelta(hours=2),  # naive datetime in past
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteExpiredError):
         await service.check_invite_usable("expired-naive-token")
@@ -174,10 +225,10 @@ async def test_validate_invite_raises_expired():
         email="user@example.com",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        expires_at=_FROZEN_NOW - timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteExpiredError):
         await service.validate_invite("expired-token", "user@example.com")
@@ -194,10 +245,10 @@ async def test_validate_invite_email_mismatch_raises():
         email="owner@example.com",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
 
     with pytest.raises(InviteEmailMismatchError):
         await service.validate_invite("valid-token", "imposter@example.com")
@@ -212,10 +263,10 @@ async def test_validate_invite_success():
         email="owner@example.com",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
     repo.get_by_token.return_value = token
-    service = invites_service.InviteService(repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=repo)
     result = await service.validate_invite("valid-token", "owner@example.com")
     assert result == token
 
@@ -228,9 +279,7 @@ async def test_create_invite_with_dept_missing_org_raises_error():
     from app.domain.exceptions import InviteDepartmentNotFoundError
 
     dept_repo = AsyncMock()
-    service = invites_service.InviteService(
-        AsyncMock(), AsyncMock(), AsyncMock(), department_repo=dept_repo
-    )
+    service = make_service(department_repo=dept_repo)
 
     with pytest.raises(InviteDepartmentNotFoundError):
         await service.create_invite(
@@ -248,9 +297,7 @@ async def test_create_invite_with_non_existent_dept_raises_error():
 
     dept_repo = AsyncMock()
     dept_repo.get_by_organization.return_value = None
-    service = invites_service.InviteService(
-        AsyncMock(), AsyncMock(), AsyncMock(), department_repo=dept_repo
-    )
+    service = make_service(department_repo=dept_repo)
 
     with pytest.raises(InviteDepartmentNotFoundError):
         await service.create_invite(
@@ -273,9 +320,7 @@ async def test_create_invite_success():
     org_id = uuid.uuid4()
     dept_id = uuid.uuid4()
 
-    service = invites_service.InviteService(
-        invite_repo, AsyncMock(), AsyncMock(), department_repo=dept_repo
-    )
+    service = make_service(invite_repo=invite_repo, department_repo=dept_repo)
     result = await service.create_invite(
         email="user@example.com",
         expires_in_hours=24,
@@ -296,7 +341,7 @@ async def test_create_invite_success():
 async def test_consume_invite_not_found_raises():
     invite_repo = AsyncMock()
     invite_repo.get.return_value = None
-    service = invites_service.InviteService(invite_repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=invite_repo)
 
     with pytest.raises(InviteNotFoundError):
         await service.consume_invite(uuid.uuid4(), uuid.uuid4())
@@ -310,9 +355,9 @@ async def test_consume_invite_exhausted_raises():
         token="tok",
         uses=1,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
-    service = invites_service.InviteService(invite_repo, AsyncMock(), AsyncMock())
+    service = make_service(invite_repo=invite_repo)
 
     with pytest.raises(InviteExhaustedError):
         await service.consume_invite(uuid.uuid4(), uuid.uuid4())
@@ -329,10 +374,10 @@ async def test_consume_invite_user_not_found_raises():
         token="tok",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
     )
     user_repo.get.return_value = None
-    service = invites_service.InviteService(invite_repo, AsyncMock(), user_repo)
+    service = make_service(invite_repo=invite_repo, user_repo=user_repo)
 
     with pytest.raises(UserNotFoundError):
         await service.consume_invite(uuid.uuid4(), uuid.uuid4())
@@ -350,12 +395,12 @@ async def test_consume_invite_sysadmin_updates_user():
         token="sysadmin-tok",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
         is_sysadmin=True,
     )
     user_repo.get.return_value = MagicMock(id=user_id)
 
-    service = invites_service.InviteService(invite_repo, AsyncMock(), user_repo)
+    service = make_service(invite_repo=invite_repo, user_repo=user_repo)
     await service.consume_invite(invite_id, user_id)
 
     user_repo.update.assert_awaited_once_with(user_id, is_superuser=True)
@@ -378,7 +423,7 @@ async def test_consume_invite_updates_existing_membership_roles_and_dept():
         token="role-tok",
         uses=0,
         max_uses=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=_FROZEN_NOW + timedelta(hours=1),
         organization_id=org_id,
         department_id=dept_id,
         role=OrgRole.ADMIN,
@@ -387,7 +432,9 @@ async def test_consume_invite_updates_existing_membership_roles_and_dept():
     existing_membership = MagicMock(roles=[OrgRole.MEMBER], department_id=None)
     membership_repo.get_by_user_and_org.return_value = existing_membership
 
-    service = invites_service.InviteService(invite_repo, membership_repo, user_repo)
+    service = make_service(
+        invite_repo=invite_repo, membership_repo=membership_repo, user_repo=user_repo
+    )
     await service.consume_invite(invite_id, user_id)
 
     assert OrgRole.ADMIN in existing_membership.roles
