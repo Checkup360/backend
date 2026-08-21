@@ -13,6 +13,7 @@ from app.presentation.api.routers import (
     invites,
     members,
     organizations,
+    assessments,
 )
 
 app = FastAPI()
@@ -34,6 +35,7 @@ app.include_router(organizations.router)
 app.include_router(auth.router)
 app.include_router(invites.router)
 app.include_router(members.router)
+app.include_router(assessments.router)
 app.include_router(admin.router)
 
 

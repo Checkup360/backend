@@ -1,6 +1,7 @@
 from typing import AsyncGenerator
 import httpx
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.interfaces import EmailSender
 from app.application.dto import AuthenticatedUser
@@ -21,6 +22,10 @@ from app.application.use_cases.memberships.membership_service import MembershipS
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
+from app.application.use_cases.assessments.submit_assessment import (
+    SubmitAssessmentUseCase,
+)
+from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
 from app.infrastructure.persistence.database import get_db
 from app.infrastructure.persistence.repositories.department import DepartmentRepository
 from app.infrastructure.persistence.repositories.invite import InviteRepository
@@ -31,6 +36,10 @@ from app.infrastructure.persistence.repositories.membership import MembershipRep
 from app.infrastructure.persistence.repositories.organization import (
     OrganizationRepository,
 )
+from app.infrastructure.persistence.repositories.risk_score import (
+    SQLAlchemyRiskScoreRepository,
+)
+from app.domain.repositories.risk_score import RiskScoreRepository
 from app.infrastructure.persistence.repositories.user import UserRepository
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
@@ -150,3 +159,27 @@ def get_delete_invites(
 async def get_risk_scoring_service() -> AsyncGenerator[RiskScoringService, None]:
     async with httpx.AsyncClient() as client:
         yield HttpMotorScoringAdapter(settings.motor_api_url, client)
+
+
+async def get_risk_score_repository(
+    db: AsyncSession = Depends(get_db),
+) -> RiskScoreRepository:
+    return SQLAlchemyRiskScoreRepository(db)
+
+
+async def get_submit_assessment_use_case(
+    risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
+    member_details_repository: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
+    risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
+) -> SubmitAssessmentUseCase:
+    return SubmitAssessmentUseCase(
+        risk_scoring_service, member_details_repository, risk_score_repository
+    )
+
+
+async def get_get_assessments_use_case(
+    risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
+) -> GetAssessmentsUseCase:
+    return GetAssessmentsUseCase(risk_score_repository)

@@ -4,6 +4,7 @@ from app.infrastructure.persistence.models.member_details import MemberDetails
 from app.infrastructure.persistence.models.user import OAuthAccount, User
 from app.infrastructure.persistence.models.organization import Organization
 from app.infrastructure.persistence.models.membership import Membership
+from app.infrastructure.persistence.models.risk_score import RiskScoreModel
 
 __all__ = [
     "InviteToken",
@@ -13,4 +14,5 @@ __all__ = [
     "User",
     "Organization",
     "Membership",
+    "RiskScoreModel",
 ]
