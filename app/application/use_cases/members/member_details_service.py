@@ -72,6 +72,7 @@ class MemberDetailsService:
         first_name: str,
         last_name: str,
         phone_number: str | None,
+        date_of_birth: date,
     ) -> MemberDetails:
         details = await self.repo.get_by_user(user_id)
         if details is None:
@@ -79,7 +80,7 @@ class MemberDetailsService:
 
         updated = MemberDetails(
             user_id=user_id,
-            date_of_birth=details.date_of_birth,
+            date_of_birth=date_of_birth,
             first_name=first_name,
             last_name=last_name,
             phone_number=phone_number,

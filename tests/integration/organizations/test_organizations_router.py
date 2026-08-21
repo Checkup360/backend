@@ -4,7 +4,7 @@ import pytest
 from app.domain.value_objects.org_role import OrgRole
 
 
-class TestOrganizationsRouterE2E:
+class TestOrganizationsRouter:
     @pytest.mark.asyncio
     async def test_list_organizations_filters_search_and_pagination(
         self, client, make_organization, auth_scenario

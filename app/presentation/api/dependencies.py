@@ -15,6 +15,9 @@ from app.application.interfaces.risk_scoring_service import RiskScoringService
 from app.infrastructure.external.motor_api_adapter import HttpMotorScoringAdapter
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.domain.services.invite import InviteService
+from app.application.use_cases.members.member_biometrics_service import (
+    MemberBiometricsService,
+)
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
@@ -39,8 +42,12 @@ from app.infrastructure.persistence.repositories.organization import (
 from app.infrastructure.persistence.repositories.risk_score import (
     SQLAlchemyRiskScoreRepository,
 )
-from app.domain.repositories.risk_score import RiskScoreRepository
 from app.infrastructure.persistence.repositories.user import UserRepository
+from app.infrastructure.persistence.repositories.member_biometrics import (
+    SQLAlchemyMemberBiometricsRepository,
+)
+from app.domain.repositories.member_biometrics import MemberBiometricsRepository
+from app.domain.repositories.risk_score import RiskScoreRepository
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
 from app.infrastructure.authentication.machinery.users import current_active_user
@@ -90,6 +97,12 @@ async def get_member_details_repository(
     return MemberDetailsRepository(db)
 
 
+async def get_member_biometrics_repository(
+    db=Depends(get_db),
+) -> MemberBiometricsRepository:
+    return SQLAlchemyMemberBiometricsRepository(db)
+
+
 async def get_organization_repository(
     db=Depends(get_db),
 ) -> OrganizationRepository:
@@ -120,6 +133,12 @@ async def get_member_details_service(
     repo: MemberDetailsRepository = Depends(get_member_details_repository),
 ) -> MemberDetailsService:
     return MemberDetailsService(repo)
+
+
+async def get_member_biometrics_service(
+    repo: MemberBiometricsRepository = Depends(get_member_biometrics_repository),
+) -> MemberBiometricsService:
+    return MemberBiometricsService(repo)
 
 
 async def get_organization_service(

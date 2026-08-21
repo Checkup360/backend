@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, relationship
 
 from app.infrastructure.persistence.database import Base
 from app.infrastructure.persistence.models.member_details import MemberDetails
+from app.infrastructure.persistence.models.member_biometrics import MemberBiometrics
 from app.infrastructure.persistence.models.membership import Membership
 
 
@@ -22,4 +23,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     )
     member_details: Mapped["MemberDetails | None"] = relationship(
         "MemberDetails", back_populates="user", lazy="joined", uselist=False
+    )
+    member_biometrics: Mapped["MemberBiometrics | None"] = relationship(
+        "MemberBiometrics", back_populates="user", lazy="joined", uselist=False
     )

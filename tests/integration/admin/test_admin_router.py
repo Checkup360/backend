@@ -1,7 +1,7 @@
 import pytest
 
 
-class TestAdminRouterE2E:
+class TestAdminRouter:
     @pytest.mark.asyncio
     async def test_list_sysadmin_invites_with_pagination_and_status(
         self, client, make_invite, auth_scenario

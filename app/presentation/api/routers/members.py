@@ -1,12 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.application.dto import AuthenticatedUser
-from app.presentation.api.dependencies import get_member_details_service
+from app.presentation.api.dependencies import (
+    get_member_details_service,
+    get_member_biometrics_service,
+)
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
+from app.application.use_cases.members.member_biometrics_service import (
+    MemberBiometricsService,
+)
 from app.presentation.api.dependencies import get_current_user
-from app.presentation.api.request_models import MemberDetailsCreate, MemberProfileUpdate
+from app.presentation.api.request_models.onboarding import OnboardingRequest
+from app.presentation.api.request_models.member_details import MemberProfileUpdate
 from app.presentation.api.response_models import (
     MemberDetailsCreated,
     MemberProfileResponse,
@@ -17,20 +24,30 @@ router = APIRouter(prefix="/members", tags=["members"])
 
 @router.post("/me/details", response_model=MemberDetailsCreated)
 async def create_my_member_details(
-    body: MemberDetailsCreate,
+    body: OnboardingRequest,
     user: AuthenticatedUser = Depends(get_current_user),
-    service: MemberDetailsService = Depends(get_member_details_service),
+    details_service: MemberDetailsService = Depends(get_member_details_service),
+    biometrics_service: MemberBiometricsService = Depends(
+        get_member_biometrics_service
+    ),
 ) -> MemberDetailsCreated:
-    if not service.is_member_user(user):
+    if not details_service.is_member_user(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     try:
-        await service.complete_onboarding(
+        await details_service.complete_onboarding(
             user,
             body.date_of_birth,
             first_name=body.first_name,
             last_name=body.last_name,
             phone_number=body.phone_number,
+        )
+
+        await biometrics_service.update_biometrics(
+            user_id=user.id,
+            biological_sex=body.biological_sex,
+            height=body.height,
+            weight=body.weight,
         )
     except ValueError as e:
         raise HTTPException(
@@ -44,15 +61,15 @@ async def create_my_member_details(
 @router.get("/me/profile", response_model=MemberProfileResponse)
 async def get_my_profile(
     user: AuthenticatedUser = Depends(get_current_user),
-    service: MemberDetailsService = Depends(get_member_details_service),
+    details_service: MemberDetailsService = Depends(get_member_details_service),
 ) -> MemberProfileResponse:
-    profile = await service.get_profile(user.id)
+    profile = await details_service.get_profile(user.id)
     if profile is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="profile_not_found",
         )
-    priority_topics = service.get_priority_topics(profile)
+    priority_topics = details_service.get_priority_topics(profile)
     return MemberProfileResponse(
         first_name=profile.first_name,
         last_name=profile.last_name,
@@ -66,14 +83,15 @@ async def get_my_profile(
 async def update_my_profile(
     body: MemberProfileUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
-    service: MemberDetailsService = Depends(get_member_details_service),
+    details_service: MemberDetailsService = Depends(get_member_details_service),
 ) -> MemberProfileResponse:
     try:
-        updated = await service.update_profile(
+        updated = await details_service.update_profile(
             user_id=user.id,
             first_name=body.first_name,
             last_name=body.last_name,
             phone_number=body.phone_number,
+            date_of_birth=body.date_of_birth,
         )
     except ValueError as e:
         raise HTTPException(
@@ -81,7 +99,7 @@ async def update_my_profile(
             detail=str(e),
         )
 
-    priority_topics = service.get_priority_topics(updated)
+    priority_topics = details_service.get_priority_topics(updated)
     return MemberProfileResponse(
         first_name=updated.first_name,
         last_name=updated.last_name,

@@ -92,15 +92,18 @@ class TestRequestModelsValidation:
             first_name="Bob",
             last_name="Jones",
             phone_number="+1 (555) 000-1111",
+            date_of_birth=date(1990, 5, 20),
         )
         assert up.first_name == "Bob"
         assert up.phone_number == "+1 (555) 000-1111"
+        assert up.date_of_birth == date(1990, 5, 20)
 
         with pytest.raises(ValidationError):
             MemberProfileUpdate(
                 first_name="Bob",
                 last_name="Jones",
                 phone_number="abc",
+                date_of_birth=date(1990, 5, 20),
             )
 
     def test_create_organization_request(self):

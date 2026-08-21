@@ -3,7 +3,7 @@ from fastapi_users.password import PasswordHelper
 from app.domain.value_objects.org_role import OrgRole
 
 
-class TestInvitesRouterE2E:
+class TestInvitesRouter:
     @pytest.mark.asyncio
     async def test_sysadmin_create_org_invite_missing_org_id(
         self, client, auth_scenario

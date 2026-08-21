@@ -1,7 +1,7 @@
 import pytest
 
 
-class TestMembersRouterE2E:
+class TestMembersRouter:
     @pytest.mark.asyncio
     async def test_non_member_cannot_create_member_details(self, client, auth_scenario):
         await auth_scenario.register_and_login(
@@ -45,6 +45,7 @@ class TestMembersRouterE2E:
                 "first_name": "NewFirst",
                 "last_name": "NewLast",
                 "phone_number": "+541112345678",
+                "date_of_birth": "1990-01-01",
             },
         )
         assert res.status_code == 404
