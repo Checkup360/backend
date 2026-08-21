@@ -54,6 +54,7 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
             },
         )
         await self.db.execute(stmt)
+        await self.db.commit()
 
     def _to_entity(self, model: MemberBiometricsModel) -> MemberBiometricsEntity:
         return MemberBiometricsEntity(

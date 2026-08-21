@@ -11,6 +11,9 @@ from app.presentation.api.response_models.member_details import (
     MemberDetailsCreated,
     MemberProfileResponse,
 )
+from app.presentation.api.response_models.member_biometrics import (
+    MemberBiometricsResponse,
+)
 from app.presentation.api.response_models.user import UserRead
 
 __all__ = [
@@ -22,4 +25,5 @@ __all__ = [
     "OrganizationMembership",
     "PrepareGoogleSessionResponse",
     "UserRead",
+    "MemberBiometricsResponse",
 ]

@@ -5,3 +5,9 @@ class MemberBiometricsCreate(BaseModel):
     biological_sex: str | None = None
     height: float | None = None
     weight: float | None = None
+
+
+class MemberBiometricsUpdate(BaseModel):
+    biological_sex: str | None = None
+    height: float | None = None
+    weight: float | None = None

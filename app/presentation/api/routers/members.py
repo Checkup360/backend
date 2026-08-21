@@ -14,9 +14,11 @@ from app.application.use_cases.members.member_biometrics_service import (
 from app.presentation.api.dependencies import get_current_user
 from app.presentation.api.request_models.onboarding import OnboardingRequest
 from app.presentation.api.request_models.member_details import MemberProfileUpdate
+from app.presentation.api.request_models.member_biometrics import MemberBiometricsUpdate
 from app.presentation.api.response_models import (
     MemberDetailsCreated,
     MemberProfileResponse,
+    MemberBiometricsResponse,
 )
 
 router = APIRouter(prefix="/members", tags=["members"])
@@ -106,4 +108,60 @@ async def update_my_profile(
         phone_number=updated.phone_number,
         date_of_birth=updated.date_of_birth,
         priority_topics=priority_topics,
+    )
+
+
+@router.get("/me/biometrics", response_model=MemberBiometricsResponse)
+async def get_my_biometrics(
+    user: AuthenticatedUser = Depends(get_current_user),
+    biometrics_service: MemberBiometricsService = Depends(
+        get_member_biometrics_service
+    ),
+) -> MemberBiometricsResponse:
+    biometrics = await biometrics_service.get_biometrics(user.id)
+    if biometrics is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="biometrics_not_found",
+        )
+    return MemberBiometricsResponse(
+        biological_sex=biometrics.biological_sex,
+        height=biometrics.height,
+        weight=biometrics.weight,
+        waist_circumference=biometrics.waist_circumference,
+        neck_circumference=biometrics.neck_circumference,
+    )
+
+
+@router.patch("/me/biometrics", response_model=MemberBiometricsResponse)
+async def update_my_biometrics(
+    body: MemberBiometricsUpdate,
+    user: AuthenticatedUser = Depends(get_current_user),
+    biometrics_service: MemberBiometricsService = Depends(
+        get_member_biometrics_service
+    ),
+) -> MemberBiometricsResponse:
+    # First, verify the user has an established profile before saving biometrics
+    # (they should have gone through onboarding). If not, we could return 404.
+    # We rely on the service to just update or insert.
+    await biometrics_service.update_biometrics(
+        user_id=user.id,
+        biological_sex=body.biological_sex,
+        height=body.height,
+        weight=body.weight,
+    )
+
+    biometrics = await biometrics_service.get_biometrics(user.id)
+    if not biometrics:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="biometrics_not_found",
+        )
+
+    return MemberBiometricsResponse(
+        biological_sex=biometrics.biological_sex,
+        height=biometrics.height,
+        weight=biometrics.weight,
+        waist_circumference=biometrics.waist_circumference,
+        neck_circumference=biometrics.neck_circumference,
     )
