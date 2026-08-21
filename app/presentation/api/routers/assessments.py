@@ -20,6 +20,15 @@ from app.presentation.api.response_models.assessments import (
 router = APIRouter(prefix="/members/me/assessments", tags=["assessments"])
 
 
+def _format_score_display_name(name: str) -> str:
+    lower = name.lower()
+    if "findrisc" in lower:
+        return "Diabetes"
+    if "stop" in lower and "bang" in lower:
+        return "Sleep Apnea"
+    return name
+
+
 @router.post("/evaluate", response_model=AssessmentsResponse)
 async def evaluate_assessments(
     body: ClinicalAssessmentRequest,
@@ -64,7 +73,7 @@ async def evaluate_assessments(
     response_results = [
         AssessmentResultResponse(
             score_id=res.score_id,
-            score_name=res.score_name,
+            score_name=_format_score_display_name(res.score_name),
             risk_level=res.risk_level,
             raw_value=res.raw_value,
             normalized_value=res.normalized_value,
@@ -90,12 +99,13 @@ async def get_assessments(
     response_results = [
         AssessmentResultResponse(
             score_id=str(res.id),
-            score_name=res.score_name,
+            score_name=_format_score_display_name(res.score_name),
             risk_level=res.risk_level,
             raw_value=res.raw_value,
             normalized_value=res.normalized_value,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
+            evaluated_at=res.evaluated_at,
         )
         for res in results
     ]

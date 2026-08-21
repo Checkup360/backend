@@ -47,7 +47,7 @@ class TestAssessmentsRouter:
         mock_use_case.execute.return_value = [
             ScoreResultDTO(
                 score_id="sb-1",
-                score_name="stop_bang",
+                score_name="Sleep Apnea",
                 domain="clinical",
                 status="completed",
                 risk_level="High",
@@ -55,7 +55,7 @@ class TestAssessmentsRouter:
             ),
             ScoreResultDTO(
                 score_id="fr-1",
-                score_name="findrisc",
+                score_name="Diabetes",
                 domain="clinical",
                 status="completed",
                 risk_level="Low",
@@ -93,9 +93,9 @@ class TestAssessmentsRouter:
         data = res.json()
         assert "results" in data
         assert len(data["results"]) == 2
-        assert data["results"][0]["score_name"] == "stop_bang"
+        assert data["results"][0]["score_name"] == "Sleep Apnea"
         assert data["results"][0]["risk_level"] == "High"
-        assert data["results"][1]["score_name"] == "findrisc"
+        assert data["results"][1]["score_name"] == "Diabetes"
         assert data["results"][1]["risk_level"] == "Low"
 
         # Verify the mock was called correctly

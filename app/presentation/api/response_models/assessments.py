@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Any
+from datetime import datetime
 
 
 class AssessmentResultResponse(BaseModel):
@@ -10,6 +11,7 @@ class AssessmentResultResponse(BaseModel):
     normalized_value: float | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = {}
+    evaluated_at: datetime | None = None
 
 
 class AssessmentsResponse(BaseModel):
