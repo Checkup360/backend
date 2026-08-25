@@ -65,6 +65,7 @@ class SubmitAssessmentUseCase:
         )
 
         # Save scores to database
+        now = self._time_provider.utcnow()
         for result in results:
             score_entity = RiskScore(
                 id=uuid.uuid4(),
@@ -75,7 +76,7 @@ class SubmitAssessmentUseCase:
                 normalized_value=result.normalized_value,
                 explanation=result.explanation,
                 contributing_factors=result.contributing_factors,
-                evaluated_at=self._time_provider.utcnow(),
+                evaluated_at=now,
             )
             await self._risk_score_repository.save(score_entity)
 
