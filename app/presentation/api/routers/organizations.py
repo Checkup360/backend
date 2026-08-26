@@ -11,6 +11,7 @@ from app.presentation.api.dependencies import (
     get_membership_service,
     get_organization_service,
     get_member_details_service,
+    get_get_assessments_use_case,
 )
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
@@ -29,6 +30,7 @@ from app.application.use_cases.members.member_details_service import (
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
+from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
 from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
@@ -40,6 +42,11 @@ from app.presentation.api.response_models.organization import (
     OrganizationResponse,
     OrganizationSummaryResponse,
 )
+from app.presentation.api.response_models.assessments import (
+    AssessmentsResponse,
+    AssessmentResultResponse,
+)
+from app.presentation.api.routers.assessments import _format_score_display_name
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
@@ -415,3 +422,49 @@ async def list_organization_employees(
         return res[start : start + page_size]
     response.headers["X-Page"] = "1"
     return res
+
+
+@router.get(
+    "/{organization_id}/employees/{user_id}/assessments",
+    response_model=AssessmentsResponse,
+)
+async def get_employee_assessments(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    membership_service: MembershipService = Depends(get_membership_service),
+    assessments_use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
+) -> AssessmentsResponse:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+    results = await assessments_use_case.execute(user_id=user_id)
+
+    response_results = [
+        AssessmentResultResponse(
+            score_id=str(res.id),
+            score_name=_format_score_display_name(res.score_name),
+            risk_level=res.risk_level,
+            raw_value=res.raw_value,
+            normalized_value=res.normalized_value,
+            explanation=res.explanation,
+            contributing_factors=res.contributing_factors,
+            evaluated_at=res.evaluated_at,
+        )
+        for res in results
+    ]
+
+    return AssessmentsResponse(results=response_results)

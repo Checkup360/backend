@@ -259,3 +259,34 @@ class TestOrganizationEmployees:
         )
 
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_org_admin_can_get_employee_assessments(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="assessments-admin@example.com",
+            memberships=[("assessments-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "assessments-org"
+        )
+        employee = await make_user(email="assessed.employee@example.com")
+        await make_membership(
+            user_id=employee.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees/{employee.id}/assessments"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "results" in data
