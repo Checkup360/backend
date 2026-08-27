@@ -1,7 +1,19 @@
+from unittest.mock import AsyncMock
 import pytest
+
+from app.presentation.api.dependencies import get_risk_scoring_service
+from app.presentation.main import app
 
 
 class TestMemberFormsRouter:
+    @pytest.fixture(autouse=True)
+    def mock_risk_scoring_service(self):
+        mock_service = AsyncMock()
+        mock_service.get_catalog.return_value = []
+        app.dependency_overrides[get_risk_scoring_service] = lambda: mock_service
+        yield mock_service
+        app.dependency_overrides.pop(get_risk_scoring_service, None)
+
     @pytest.mark.asyncio
     async def test_get_unsupported_form_type_returns_400(self, client, auth_scenario):
         await auth_scenario.register_and_login(
@@ -62,3 +74,24 @@ class TestMemberFormsRouter:
         data_habits = res_habits.json()
         assert data_habits["form_type"] == "habits"
         assert "daily_physical_activity" in data_habits["updated_fields"]
+
+    @pytest.mark.asyncio
+    async def test_put_biometrics_in_centimeters(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="cm-height@example.com",
+            memberships=None,
+        )
+
+        res_put = client.put(
+            "/members/me/forms/biometrics",
+            json={
+                "biological_sex": "M",
+                "height": 124,
+                "weight": 15,
+            },
+        )
+        assert res_put.status_code == 200
+
+        res_get = client.get("/members/me/forms/biometrics")
+        assert res_get.status_code == 200
+        assert res_get.json()["data"]["height"] == 124
