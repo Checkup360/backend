@@ -46,7 +46,10 @@ from app.presentation.api.response_models.assessments import (
     AssessmentsResponse,
     AssessmentResultResponse,
 )
-from app.presentation.api.routers.assessments import _format_score_display_name
+from app.presentation.api.routers.assessments import (
+    _format_score_display_name,
+    compute_overall_summary,
+)
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
@@ -467,4 +470,10 @@ async def get_employee_assessments(
         for res in results
     ]
 
-    return AssessmentsResponse(results=response_results)
+    overall_score, overall_risk_level = compute_overall_summary(response_results)
+
+    return AssessmentsResponse(
+        overall_score=overall_score,
+        overall_risk_level=overall_risk_level,
+        results=response_results,
+    )

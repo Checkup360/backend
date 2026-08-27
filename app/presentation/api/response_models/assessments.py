@@ -15,4 +15,6 @@ class AssessmentResultResponse(BaseModel):
 
 
 class AssessmentsResponse(BaseModel):
+    overall_score: float | None = None
+    overall_risk_level: str | None = None
     results: list[AssessmentResultResponse]

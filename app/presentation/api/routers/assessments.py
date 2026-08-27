@@ -29,6 +29,44 @@ def _format_score_display_name(name: str) -> str:
     return name
 
 
+def compute_overall_summary(
+    results: list[AssessmentResultResponse],
+) -> tuple[float | None, str | None]:
+    if not results:
+        return None, None
+
+    # Filter to latest result per unique score_name
+    latest_by_score: dict[str, AssessmentResultResponse] = {}
+    for r in results:
+        key = r.score_name.lower()
+        if key not in latest_by_score:
+            latest_by_score[key] = r
+        else:
+            existing_time = latest_by_score[key].evaluated_at
+            current_time = r.evaluated_at
+            if current_time and existing_time and current_time > existing_time:
+                latest_by_score[key] = r
+
+    scores = [
+        r.normalized_value
+        for r in latest_by_score.values()
+        if r.normalized_value is not None
+    ]
+    if not scores:
+        return None, None
+
+    overall_score = round(sum(scores) / len(scores), 1)
+
+    if overall_score >= 85:
+        risk_level = "Low risk"
+    elif overall_score >= 60:
+        risk_level = "Moderate risk"
+    else:
+        risk_level = "Needs attention"
+
+    return overall_score, risk_level
+
+
 @router.post("/evaluate", response_model=AssessmentsResponse)
 async def evaluate_assessments(
     body: ClinicalAssessmentRequest,
@@ -83,7 +121,13 @@ async def evaluate_assessments(
         for res in results
     ]
 
-    return AssessmentsResponse(results=response_results)
+    overall_score, overall_risk_level = compute_overall_summary(response_results)
+
+    return AssessmentsResponse(
+        overall_score=overall_score,
+        overall_risk_level=overall_risk_level,
+        results=response_results,
+    )
 
 
 @router.get("", response_model=AssessmentsResponse)
@@ -110,4 +154,10 @@ async def get_assessments(
         for res in results
     ]
 
-    return AssessmentsResponse(results=response_results)
+    overall_score, overall_risk_level = compute_overall_summary(response_results)
+
+    return AssessmentsResponse(
+        overall_score=overall_score,
+        overall_risk_level=overall_risk_level,
+        results=response_results,
+    )

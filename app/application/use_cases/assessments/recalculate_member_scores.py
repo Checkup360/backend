@@ -93,6 +93,7 @@ class RecalculateMemberScoresUseCase:
         existing_score_ids = {s.score_name.lower(): s for s in existing_scores}
 
         updated_set = set(updated_fields) if updated_fields is not None else None
+        now = datetime.now(timezone.utc)
         evaluated_scores: list[RiskScore] = []
 
         for item in catalog:
@@ -136,7 +137,7 @@ class RecalculateMemberScoresUseCase:
                     normalized_value=res.normalized_value,
                     explanation=res.explanation,
                     contributing_factors=res.contributing_factors,
-                    evaluated_at=datetime.now(timezone.utc),
+                    evaluated_at=now,
                 )
                 await self._risk_score_repo.save(entity)
                 evaluated_scores.append(entity)
