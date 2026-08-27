@@ -42,7 +42,7 @@ class TestAssessmentsRouter:
             memberships=[("my-org", "member")],
         )
 
-        # Mock the use case so we don't actually hit the external Motor engine
+        # Mock the use case so we don't actually hit the external Engine service
         mock_use_case = AsyncMock(spec=SubmitAssessmentUseCase)
         mock_use_case.execute.return_value = [
             ScoreResultDTO(

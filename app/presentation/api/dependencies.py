@@ -14,7 +14,7 @@ from app.application.use_cases.invitations import (
     ListInvites,
 )
 from app.application.interfaces.risk_scoring_service import RiskScoringService
-from app.infrastructure.external.motor_api_adapter import HttpMotorScoringAdapter
+from app.infrastructure.external.engine_api_adapter import HttpEngineScoringAdapter
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.domain.services.invite import InviteService
 from app.application.use_cases.members.member_health_data_service import (
@@ -191,7 +191,7 @@ def get_delete_invites(
 
 async def get_risk_scoring_service() -> AsyncGenerator[RiskScoringService, None]:
     async with httpx.AsyncClient() as client:
-        yield HttpMotorScoringAdapter(settings.motor_api_url, client)
+        yield HttpEngineScoringAdapter(settings.engine_api_url, client)
 
 
 async def get_risk_score_repository(

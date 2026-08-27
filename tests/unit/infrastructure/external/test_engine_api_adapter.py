@@ -4,14 +4,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.application.dto.risk_scoring import HealthDataDTO
-from app.infrastructure.external.motor_api_adapter import HttpMotorScoringAdapter
+from app.infrastructure.external.engine_api_adapter import HttpEngineScoringAdapter
 
 
 @pytest.mark.asyncio
 async def test_get_catalog_success() -> None:
-    motor_url = "http://fake-motor:8000"
+    engine_url = "http://fake-engine:8000"
     client = httpx.AsyncClient()
-    adapter = HttpMotorScoringAdapter(motor_api_url=motor_url, client=client)
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
 
     mock_response = httpx.Response(
         status_code=200,
@@ -24,7 +24,7 @@ async def test_get_catalog_success() -> None:
                 "optional_fields": ["smoker"],
             }
         ],
-        request=httpx.Request("GET", f"{motor_url}/risk-scores/catalog"),
+        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
     )
 
     with patch.object(client, "get", new_callable=AsyncMock) as mock_get:
@@ -39,9 +39,9 @@ async def test_get_catalog_success() -> None:
 
 @pytest.mark.asyncio
 async def test_evaluate_single_score_success() -> None:
-    motor_url = "http://fake-motor:8000"
+    engine_url = "http://fake-engine:8000"
     client = httpx.AsyncClient()
-    adapter = HttpMotorScoringAdapter(motor_api_url=motor_url, client=client)
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
 
     mock_response = httpx.Response(
         status_code=200,
@@ -56,7 +56,7 @@ async def test_evaluate_single_score_success() -> None:
             "explanation": "Moderate risk of type 2 diabetes.",
             "contributing_factors": {"age": 2},
         },
-        request=httpx.Request("POST", f"{motor_url}/risk-scores/findrisc"),
+        request=httpx.Request("POST", f"{engine_url}/risk-scores/findrisc"),
     )
 
     with patch.object(client, "post", new_callable=AsyncMock) as mock_post:
@@ -73,9 +73,9 @@ async def test_evaluate_single_score_success() -> None:
 
 @pytest.mark.asyncio
 async def test_evaluate_risk_success() -> None:
-    motor_url = "http://fake-motor:8000"
+    engine_url = "http://fake-engine:8000"
     client = httpx.AsyncClient()
-    adapter = HttpMotorScoringAdapter(motor_api_url=motor_url, client=client)
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
 
     health_data = HealthDataDTO(age=45, sex="M")
 
@@ -92,7 +92,7 @@ async def test_evaluate_risk_success() -> None:
             "explanation": "Moderate risk of type 2 diabetes.",
             "contributing_factors": {"age": 2},
         },
-        request=httpx.Request("POST", f"{motor_url}/risk-scores/findrisc"),
+        request=httpx.Request("POST", f"{engine_url}/risk-scores/findrisc"),
     )
 
     with patch.object(client, "post", new_callable=AsyncMock) as mock_post:

@@ -1,4 +1,4 @@
-"""DTOs for interacting with the external Risk Scoring Engine (Motor)."""
+"""DTOs for interacting with the external Risk Scoring Engine."""
 
 from dataclasses import dataclass, field
 from typing import Any
