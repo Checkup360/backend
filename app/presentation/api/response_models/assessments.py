@@ -14,7 +14,19 @@ class AssessmentResultResponse(BaseModel):
     evaluated_at: datetime | None = None
 
 
-class AssessmentsResponse(BaseModel):
+class AssessmentSessionResponse(BaseModel):
+    id: str
+    evaluated_at: datetime
     overall_score: float | None = None
     overall_risk_level: str | None = None
     results: list[AssessmentResultResponse]
+
+
+class AssessmentsResponse(BaseModel):
+    overall_score: float | None = None
+    overall_risk_level: str | None = None
+    total_sessions: int = 0
+    page: int = 1
+    limit: int = 10
+    sessions: list[AssessmentSessionResponse] = []
+    results: list[AssessmentResultResponse] = []

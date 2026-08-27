@@ -48,7 +48,7 @@ from app.presentation.api.response_models.assessments import (
 )
 from app.presentation.api.routers.assessments import (
     _format_score_display_name,
-    compute_overall_summary,
+    build_assessments_response,
 )
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
@@ -434,6 +434,8 @@ async def list_organization_employees(
 async def get_employee_assessments(
     organization_id: uuid.UUID,
     user_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
     membership_service: MembershipService = Depends(get_membership_service),
     assessments_use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
@@ -470,10 +472,4 @@ async def get_employee_assessments(
         for res in results
     ]
 
-    overall_score, overall_risk_level = compute_overall_summary(response_results)
-
-    return AssessmentsResponse(
-        overall_score=overall_score,
-        overall_risk_level=overall_risk_level,
-        results=response_results,
-    )
+    return build_assessments_response(response_results, page=page, limit=limit)

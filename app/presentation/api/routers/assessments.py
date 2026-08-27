@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.dto import AuthenticatedUser
 from app.presentation.api.dependencies import (
@@ -15,6 +16,7 @@ from app.presentation.api.request_models.assessments import ClinicalAssessmentRe
 from app.presentation.api.response_models.assessments import (
     AssessmentsResponse,
     AssessmentResultResponse,
+    AssessmentSessionResponse,
 )
 
 router = APIRouter(prefix="/members/me/assessments", tags=["assessments"])
@@ -67,6 +69,99 @@ def compute_overall_summary(
     return overall_score, risk_level
 
 
+def build_assessment_sessions(
+    results: list[AssessmentResultResponse],
+) -> list[AssessmentSessionResponse]:
+    if not results:
+        return []
+
+    sorted_results = sorted(
+        results,
+        key=lambda r: r.evaluated_at.timestamp() if r.evaluated_at else 0,
+        reverse=True,
+    )
+
+    buckets: dict[int, list[AssessmentResultResponse]] = {}
+    for r in sorted_results:
+        raw_ts = int(r.evaluated_at.timestamp()) if r.evaluated_at else 0
+        bucket_ts = (raw_ts // 2) * 2
+        if bucket_ts not in buckets:
+            buckets[bucket_ts] = []
+        buckets[bucket_ts].append(r)
+
+    bucket_timestamps = sorted(buckets.keys(), reverse=True)
+    sessions: list[AssessmentSessionResponse] = []
+
+    for idx, b_ts in enumerate(bucket_timestamps):
+        b_results = buckets[b_ts]
+        primary_eval_at = b_results[0].evaluated_at or datetime.fromtimestamp(
+            b_ts, tz=timezone.utc
+        )
+
+        active_at_time: dict[str, AssessmentResultResponse] = {}
+        for r in sorted_results:
+            if r.evaluated_at and r.evaluated_at <= primary_eval_at:
+                s_key = r.score_name.lower()
+                if s_key not in active_at_time:
+                    active_at_time[s_key] = r
+
+        session_results = list(active_at_time.values())
+        overall_score, overall_risk_level = compute_overall_summary(session_results)
+
+        session_id = f"session_{b_ts}_{idx}"
+        sessions.append(
+            AssessmentSessionResponse(
+                id=session_id,
+                evaluated_at=primary_eval_at,
+                overall_score=overall_score,
+                overall_risk_level=overall_risk_level,
+                results=session_results,
+            )
+        )
+
+    return sessions
+
+
+def build_assessments_response(
+    results: list[AssessmentResultResponse],
+    page: int = 1,
+    limit: int = 10,
+) -> AssessmentsResponse:
+    all_sessions = build_assessment_sessions(results)
+    total_sessions = len(all_sessions)
+
+    current_overall_score, current_overall_risk_level = compute_overall_summary(results)
+
+    start = (page - 1) * limit
+    paginated_sessions = all_sessions[start : start + limit]
+
+    latest_results_map: dict[str, AssessmentResultResponse] = {}
+    for r in results:
+        s_key = r.score_name.lower()
+        if s_key not in latest_results_map:
+            latest_results_map[s_key] = r
+        else:
+            time_new = r.evaluated_at.timestamp() if r.evaluated_at else 0
+            time_old = (
+                latest_results_map[s_key].evaluated_at.timestamp()
+                if latest_results_map[s_key].evaluated_at
+                else 0
+            )
+            if time_new > time_old:
+                latest_results_map[s_key] = r
+    latest_results = list(latest_results_map.values())
+
+    return AssessmentsResponse(
+        overall_score=current_overall_score,
+        overall_risk_level=current_overall_risk_level,
+        total_sessions=total_sessions,
+        page=page,
+        limit=limit,
+        sessions=paginated_sessions,
+        results=latest_results,
+    )
+
+
 @router.post("/evaluate", response_model=AssessmentsResponse)
 async def evaluate_assessments(
     body: ClinicalAssessmentRequest,
@@ -117,21 +212,19 @@ async def evaluate_assessments(
             normalized_value=res.normalized_value,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
+            evaluated_at=getattr(res, "evaluated_at", None)
+            or datetime.now(timezone.utc),
         )
         for res in results
     ]
 
-    overall_score, overall_risk_level = compute_overall_summary(response_results)
-
-    return AssessmentsResponse(
-        overall_score=overall_score,
-        overall_risk_level=overall_risk_level,
-        results=response_results,
-    )
+    return build_assessments_response(response_results, page=1, limit=10)
 
 
 @router.get("", response_model=AssessmentsResponse)
 async def get_assessments(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     user: AuthenticatedUser = Depends(get_current_user),
     use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
 ) -> AssessmentsResponse:
@@ -154,10 +247,4 @@ async def get_assessments(
         for res in results
     ]
 
-    overall_score, overall_risk_level = compute_overall_summary(response_results)
-
-    return AssessmentsResponse(
-        overall_score=overall_score,
-        overall_risk_level=overall_risk_level,
-        results=response_results,
-    )
+    return build_assessments_response(response_results, page=page, limit=limit)
