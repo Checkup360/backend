@@ -1,17 +1,17 @@
 import uuid
 
-from app.domain.entities import MemberBiometrics
-from app.domain.repositories import MemberBiometricsRepository
+from app.domain.entities import MemberHealthData
+from app.domain.repositories import MemberHealthDataRepository
 
 
-class MemberBiometricsService:
-    def __init__(self, repo: MemberBiometricsRepository):
+class MemberHealthDataService:
+    def __init__(self, repo: MemberHealthDataRepository):
         self.repo = repo
 
-    async def get_biometrics(self, user_id: uuid.UUID) -> MemberBiometrics | None:
+    async def get_health_data(self, user_id: uuid.UUID) -> MemberHealthData | None:
         return await self.repo.get_by_user(user_id)
 
-    async def update_biometrics(
+    async def update_health_data(
         self,
         user_id: uuid.UUID,
         biological_sex: str | None = None,
@@ -27,10 +27,10 @@ class MemberBiometricsService:
         fruits_vegetables: bool | None = None,
         previous_high_glucose: bool | None = None,
         family_diabetes: str | None = None,
-    ) -> MemberBiometrics:
+    ) -> MemberHealthData:
         existing = await self.repo.get_by_user(user_id)
         if existing is None:
-            existing = MemberBiometrics(user_id=user_id)
+            existing = MemberHealthData(user_id=user_id)
 
         if biological_sex is not None:
             existing.biological_sex = biological_sex

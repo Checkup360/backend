@@ -17,8 +17,8 @@ from app.application.interfaces.risk_scoring_service import RiskScoringService
 from app.infrastructure.external.motor_api_adapter import HttpMotorScoringAdapter
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.domain.services.invite import InviteService
-from app.application.use_cases.members.member_biometrics_service import (
-    MemberBiometricsService,
+from app.application.use_cases.members.member_health_data_service import (
+    MemberHealthDataService,
 )
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
@@ -49,10 +49,10 @@ from app.infrastructure.persistence.repositories.risk_score import (
     SQLAlchemyRiskScoreRepository,
 )
 from app.infrastructure.persistence.repositories.user import UserRepository
-from app.infrastructure.persistence.repositories.member_biometrics import (
-    SQLAlchemyMemberBiometricsRepository,
+from app.infrastructure.persistence.repositories.member_health_data import (
+    SQLAlchemyMemberHealthDataRepository,
 )
-from app.domain.repositories.member_biometrics import MemberBiometricsRepository
+from app.domain.repositories.member_health_data import MemberHealthDataRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
@@ -103,10 +103,10 @@ async def get_member_details_repository(
     return MemberDetailsRepository(db)
 
 
-async def get_member_biometrics_repository(
+async def get_member_health_data_repository(
     db=Depends(get_db),
-) -> MemberBiometricsRepository:
-    return SQLAlchemyMemberBiometricsRepository(db)
+) -> MemberHealthDataRepository:
+    return SQLAlchemyMemberHealthDataRepository(db)
 
 
 async def get_organization_repository(
@@ -149,10 +149,10 @@ async def get_member_details_service(
     return MemberDetailsService(repo, time_provider)
 
 
-async def get_member_biometrics_service(
-    repo: MemberBiometricsRepository = Depends(get_member_biometrics_repository),
-) -> MemberBiometricsService:
-    return MemberBiometricsService(repo)
+async def get_member_health_data_service(
+    repo: MemberHealthDataRepository = Depends(get_member_health_data_repository),
+) -> MemberHealthDataService:
+    return MemberHealthDataService(repo)
 
 
 async def get_organization_service(
@@ -223,13 +223,13 @@ async def get_get_assessments_use_case(
 
 
 async def get_recalculate_member_scores_use_case(
-    biometrics_repo: MemberBiometricsRepository = Depends(
-        get_member_biometrics_repository
+    health_data_repo: MemberHealthDataRepository = Depends(
+        get_member_health_data_repository
     ),
     details_repo: MemberDetailsRepository = Depends(get_member_details_repository),
     risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
     risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
 ) -> RecalculateMemberScoresUseCase:
     return RecalculateMemberScoresUseCase(
-        biometrics_repo, details_repo, risk_score_repo, risk_scoring_service
+        health_data_repo, details_repo, risk_score_repo, risk_scoring_service
     )

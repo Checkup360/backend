@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class MemberBiometrics:
+class MemberHealthData:
     user_id: uuid.UUID
     biological_sex: str | None = field(default=None)
     height: float | None = field(default=None)

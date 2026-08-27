@@ -7,14 +7,14 @@ from app.application.use_cases.assessments.recalculate_member_scores import (
 )
 from app.presentation.api.dependencies import (
     get_member_details_service,
-    get_member_biometrics_service,
+    get_member_health_data_service,
     get_recalculate_member_scores_use_case,
 )
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
-from app.application.use_cases.members.member_biometrics_service import (
-    MemberBiometricsService,
+from app.application.use_cases.members.member_health_data_service import (
+    MemberHealthDataService,
 )
 from app.presentation.api.dependencies import get_current_user
 from app.presentation.api.request_models.onboarding import OnboardingRequest
@@ -40,8 +40,8 @@ async def create_my_member_details(
     body: OnboardingRequest,
     user: AuthenticatedUser = Depends(get_current_user),
     details_service: MemberDetailsService = Depends(get_member_details_service),
-    biometrics_service: MemberBiometricsService = Depends(
-        get_member_biometrics_service
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
     ),
 ) -> MemberDetailsCreated:
     if not details_service.is_member_user(user):
@@ -56,7 +56,7 @@ async def create_my_member_details(
             phone_number=body.phone_number,
         )
 
-        await biometrics_service.update_biometrics(
+        await health_data_service.update_health_data(
             user_id=user.id,
             biological_sex=body.biological_sex,
             height=body.height,
@@ -125,11 +125,11 @@ async def update_my_profile(
 @router.get("/me/biometrics", response_model=MemberBiometricsResponse)
 async def get_my_biometrics(
     user: AuthenticatedUser = Depends(get_current_user),
-    biometrics_service: MemberBiometricsService = Depends(
-        get_member_biometrics_service
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
     ),
 ) -> MemberBiometricsResponse:
-    biometrics = await biometrics_service.get_biometrics(user.id)
+    biometrics = await health_data_service.get_health_data(user.id)
     if biometrics is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -148,21 +148,18 @@ async def get_my_biometrics(
 async def update_my_biometrics(
     body: MemberBiometricsUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
-    biometrics_service: MemberBiometricsService = Depends(
-        get_member_biometrics_service
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
     ),
 ) -> MemberBiometricsResponse:
-    # First, verify the user has an established profile before saving biometrics
-    # (they should have gone through onboarding). If not, we could return 404.
-    # We rely on the service to just update or insert.
-    await biometrics_service.update_biometrics(
+    await health_data_service.update_health_data(
         user_id=user.id,
         biological_sex=body.biological_sex,
         height=body.height,
         weight=body.weight,
     )
 
-    biometrics = await biometrics_service.get_biometrics(user.id)
+    biometrics = await health_data_service.get_health_data(user.id)
     if not biometrics:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -201,8 +198,8 @@ FORM_FIELDS_MAP: dict[str, list[str]] = {
 async def get_my_form_data(
     form_type: str,
     user: AuthenticatedUser = Depends(get_current_user),
-    biometrics_service: MemberBiometricsService = Depends(
-        get_member_biometrics_service
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
     ),
 ) -> MemberFormResponse:
     if form_type not in FORM_FIELDS_MAP:
@@ -212,11 +209,11 @@ async def get_my_form_data(
         )
 
     allowed_fields = FORM_FIELDS_MAP[form_type]
-    biometrics = await biometrics_service.get_biometrics(user.id)
+    health_data = await health_data_service.get_health_data(user.id)
     data: dict[str, Any] = {}
-    if biometrics:
+    if health_data:
         for field in allowed_fields:
-            val = getattr(biometrics, field, None)
+            val = getattr(health_data, field, None)
             if val is not None:
                 data[field] = val
 
@@ -228,8 +225,8 @@ async def update_my_form_data(
     form_type: str,
     body: MemberFormUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
-    biometrics_service: MemberBiometricsService = Depends(
-        get_member_biometrics_service
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
     ),
     recalculate_use_case: RecalculateMemberScoresUseCase = Depends(
         get_recalculate_member_scores_use_case
@@ -248,7 +245,7 @@ async def update_my_form_data(
     }
 
     if update_kwargs:
-        await biometrics_service.update_biometrics(user.id, **update_kwargs)
+        await health_data_service.update_health_data(user.id, **update_kwargs)
 
     updated_keys = list(update_kwargs.keys())
     newly_evaluated = await recalculate_use_case.execute(

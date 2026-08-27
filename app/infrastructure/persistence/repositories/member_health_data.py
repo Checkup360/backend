@@ -3,27 +3,25 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.member_biometrics import (
-    MemberBiometrics as MemberBiometricsEntity,
+from app.domain.entities.member_health_data import (
+    MemberHealthData as MemberHealthDataEntity,
 )
-from app.domain.repositories.member_biometrics import MemberBiometricsRepository
-from app.infrastructure.persistence.models.member_biometrics import (
-    MemberBiometrics as MemberBiometricsModel,
+from app.domain.repositories.member_health_data import MemberHealthDataRepository
+from app.infrastructure.persistence.models.member_health_data import (
+    MemberHealthData as MemberHealthDataModel,
 )
 from app.infrastructure.persistence.repositories.base import BaseRepository
 
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-
-class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepository):
+class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepository):
     def __init__(self, db: AsyncSession):
-        super().__init__(MemberBiometricsModel, db)
+        super().__init__(MemberHealthDataModel, db)
 
-    async def get_by_user(self, user_id: uuid.UUID) -> MemberBiometricsEntity | None:
-        stmt = select(MemberBiometricsModel).where(
-            MemberBiometricsModel.user_id == user_id
+    async def get_by_user(self, user_id: uuid.UUID) -> MemberHealthDataEntity | None:
+        stmt = select(MemberHealthDataModel).where(
+            MemberHealthDataModel.user_id == user_id
         )
         result = await self.db.execute(stmt)
         model = result.scalar_one_or_none()
@@ -32,25 +30,25 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
 
         return self._to_entity(model)
 
-    async def save(self, biometrics: MemberBiometricsEntity) -> None:
+    async def save(self, health_data: MemberHealthDataEntity) -> None:
         values: dict[str, Any] = {
-            "user_id": biometrics.user_id,
-            "biological_sex": biometrics.biological_sex,
-            "height": biometrics.height,
-            "weight": biometrics.weight,
-            "waist_circumference": biometrics.waist_circumference,
-            "neck_circumference": biometrics.neck_circumference,
-            "snoring": biometrics.snoring,
-            "tired": biometrics.tired,
-            "observed_apnea": biometrics.observed_apnea,
-            "hypertension_medication": biometrics.hypertension_medication,
-            "daily_physical_activity": biometrics.daily_physical_activity,
-            "fruits_vegetables": biometrics.fruits_vegetables,
-            "previous_high_glucose": biometrics.previous_high_glucose,
-            "family_diabetes": biometrics.family_diabetes,
+            "user_id": health_data.user_id,
+            "biological_sex": health_data.biological_sex,
+            "height": health_data.height,
+            "weight": health_data.weight,
+            "waist_circumference": health_data.waist_circumference,
+            "neck_circumference": health_data.neck_circumference,
+            "snoring": health_data.snoring,
+            "tired": health_data.tired,
+            "observed_apnea": health_data.observed_apnea,
+            "hypertension_medication": health_data.hypertension_medication,
+            "daily_physical_activity": health_data.daily_physical_activity,
+            "fruits_vegetables": health_data.fruits_vegetables,
+            "previous_high_glucose": health_data.previous_high_glucose,
+            "family_diabetes": health_data.family_diabetes,
         }
 
-        stmt = insert(MemberBiometricsModel).values(**values)
+        stmt = insert(MemberHealthDataModel).values(**values)
         stmt = stmt.on_conflict_do_update(
             index_elements=["user_id"],
             set_={
@@ -72,8 +70,8 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
         await self.db.execute(stmt)
         await self.db.commit()
 
-    def _to_entity(self, model: MemberBiometricsModel) -> MemberBiometricsEntity:
-        return MemberBiometricsEntity(
+    def _to_entity(self, model: MemberHealthDataModel) -> MemberHealthDataEntity:
+        return MemberHealthDataEntity(
             user_id=model.user_id,
             biological_sex=model.biological_sex,
             height=model.height,

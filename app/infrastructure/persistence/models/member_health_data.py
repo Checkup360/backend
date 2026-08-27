@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from app.infrastructure.persistence.models.user import User
 
 
-class MemberBiometrics(Base):
-    __tablename__ = "member_biometrics"
+class MemberHealthData(Base):
+    __tablename__ = "member_health_data"
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), primary_key=True)
     biological_sex: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -38,4 +38,4 @@ class MemberBiometrics(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="member_biometrics")
+    user: Mapped["User"] = relationship("User", back_populates="member_health_data")

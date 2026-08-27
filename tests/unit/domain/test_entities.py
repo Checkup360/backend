@@ -110,11 +110,11 @@ def test_user_dataclass_defaults():
     assert user.is_active is True
 
 
-def test_member_biometrics_dataclass():
-    from app.domain.entities.member_biometrics import MemberBiometrics
+def test_member_health_data_dataclass():
+    from app.domain.entities.member_health_data import MemberHealthData
 
     user_id = uuid.uuid4()
-    bio = MemberBiometrics(
+    health = MemberHealthData(
         user_id=user_id,
         biological_sex="M",
         height=1.75,
@@ -130,17 +130,17 @@ def test_member_biometrics_dataclass():
         previous_high_glucose=False,
         family_diabetes="first_degree",
     )
-    assert bio.user_id == user_id
-    assert bio.biological_sex == "M"
-    assert bio.height == 1.75
-    assert bio.weight == 80.0
-    assert bio.waist_circumference == 90.0
-    assert bio.neck_circumference == 40.0
-    assert bio.snoring is True
-    assert bio.tired is False
-    assert bio.observed_apnea is False
-    assert bio.hypertension_medication is True
-    assert bio.daily_physical_activity is True
-    assert bio.fruits_vegetables is True
-    assert bio.previous_high_glucose is False
-    assert bio.family_diabetes == "first_degree"
+    assert health.user_id == user_id
+    assert health.biological_sex == "M"
+    assert health.height == 1.75
+    assert health.weight == 80.0
+    assert health.waist_circumference == 90.0
+    assert health.neck_circumference == 40.0
+    assert health.snoring is True
+    assert health.tired is False
+    assert health.observed_apnea is False
+    assert health.hypertension_medication is True
+    assert health.daily_physical_activity is True
+    assert health.fruits_vegetables is True
+    assert health.previous_high_glucose is False
+    assert health.family_diabetes == "first_degree"

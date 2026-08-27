@@ -10,7 +10,7 @@ from app.application.dto.risk_scoring import ScoreCatalogItemDTO, ScoreResultDTO
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
-from app.domain.entities.member_biometrics import MemberBiometrics
+from app.domain.entities.member_health_data import MemberHealthData
 from app.domain.entities.member_details import MemberDetails
 
 
@@ -32,7 +32,7 @@ async def test_recalculate_skips_when_no_biometrics():
 @pytest.mark.asyncio
 async def test_recalculate_filters_incomplete_scores():
     user_id = uuid.uuid4()
-    biometrics = MemberBiometrics(
+    health_data = MemberHealthData(
         user_id=user_id,
         biological_sex="M",
         height=1.75,
@@ -41,7 +41,7 @@ async def test_recalculate_filters_incomplete_scores():
     )
 
     biometrics_repo = AsyncMock()
-    biometrics_repo.get_by_user.return_value = biometrics
+    biometrics_repo.get_by_user.return_value = health_data
 
     details_repo = AsyncMock()
     details_repo.get_by_user.return_value = MemberDetails(
@@ -79,7 +79,7 @@ async def test_recalculate_filters_incomplete_scores():
 @pytest.mark.asyncio
 async def test_recalculate_computes_and_saves_complete_scores():
     user_id = uuid.uuid4()
-    biometrics = MemberBiometrics(
+    health_data = MemberHealthData(
         user_id=user_id,
         biological_sex="M",
         height=1.75,
@@ -93,7 +93,7 @@ async def test_recalculate_computes_and_saves_complete_scores():
     )
 
     biometrics_repo = AsyncMock()
-    biometrics_repo.get_by_user.return_value = biometrics
+    biometrics_repo.get_by_user.return_value = health_data
 
     details_repo = AsyncMock()
     details_repo.get_by_user.return_value = MemberDetails(
