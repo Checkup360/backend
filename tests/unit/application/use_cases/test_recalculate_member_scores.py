@@ -49,7 +49,7 @@ async def test_recalculate_filters_incomplete_scores():
     )
 
     risk_score_repo = AsyncMock()
-    risk_score_repo.get_latest_scores_for_user.return_value = []
+    risk_score_repo.get_by_user_id.return_value = []
 
     scoring_service = AsyncMock()
     scoring_service.get_catalog.return_value = [
@@ -101,7 +101,7 @@ async def test_recalculate_computes_and_saves_complete_scores():
     )
 
     risk_score_repo = AsyncMock()
-    risk_score_repo.get_latest_scores_for_user.return_value = []
+    risk_score_repo.get_by_user_id.return_value = []
 
     scoring_service = AsyncMock()
     scoring_service.get_catalog.return_value = [

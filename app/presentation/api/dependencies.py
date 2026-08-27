@@ -31,7 +31,11 @@ from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
 )
 from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
+from app.application.use_cases.assessments.recalculate_member_scores import (
+    RecalculateMemberScoresUseCase,
+)
 from app.infrastructure.persistence.database import get_db
+
 from app.infrastructure.persistence.repositories.department import DepartmentRepository
 from app.infrastructure.persistence.repositories.invite import InviteRepository
 from app.infrastructure.persistence.repositories.member_details import (
@@ -216,3 +220,16 @@ async def get_get_assessments_use_case(
     risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
 ) -> GetAssessmentsUseCase:
     return GetAssessmentsUseCase(risk_score_repository)
+
+
+async def get_recalculate_member_scores_use_case(
+    biometrics_repo: MemberBiometricsRepository = Depends(
+        get_member_biometrics_repository
+    ),
+    details_repo: MemberDetailsRepository = Depends(get_member_details_repository),
+    risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
+    risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
+) -> RecalculateMemberScoresUseCase:
+    return RecalculateMemberScoresUseCase(
+        biometrics_repo, details_repo, risk_score_repo, risk_scoring_service
+    )

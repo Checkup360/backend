@@ -84,9 +84,7 @@ class RecalculateMemberScoresUseCase:
             health_data["family_diabetes"] = biometrics.family_diabetes
 
         catalog = await self._risk_scoring_service.get_catalog()
-        existing_scores = await self._risk_score_repo.get_latest_scores_for_user(
-            user_id
-        )
+        existing_scores = await self._risk_score_repo.get_by_user_id(user_id)
         existing_score_ids = {s.score_name.lower(): s for s in existing_scores}
 
         updated_set = set(updated_fields) if updated_fields is not None else None
