@@ -9,7 +9,7 @@ class MemberFormUpdate(BaseModel):
 
     # Biometrics fields
     biological_sex: Literal["M", "F"] | None = Field(default=None)
-    height: float | None = Field(default=None, gt=0, lt=300)
+    height: float | None = Field(default=None, gt=0, lt=300, description="Height in cm")
     weight: float | None = Field(default=None, gt=0, lt=500)
     waist_circumference: float | None = Field(default=None, gt=0, lt=300)
     neck_circumference: float | None = Field(default=None, gt=0, lt=100)

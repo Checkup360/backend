@@ -59,7 +59,8 @@ class RecalculateMemberScoresUseCase:
         if member_health.biological_sex is not None:
             health_data["sex"] = member_health.biological_sex
         if member_health.height is not None:
-            health_data["height"] = member_health.height
+            h = float(member_health.height)
+            health_data["height"] = h / 100.0 if h > 3.0 else h
         if member_health.weight is not None:
             health_data["weight"] = member_health.weight
         if member_health.waist_circumference is not None:

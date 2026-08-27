@@ -87,7 +87,7 @@ class TestMemberFormsRouter:
             json={
                 "biological_sex": "M",
                 "height": 124,
-                "weight": 15,
+                "weight": 15.0,
             },
         )
         assert res_put.status_code == 200
