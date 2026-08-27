@@ -112,3 +112,43 @@ async def test_delete_organization_returns_false_when_not_found():
 
     assert result is False
     repo.delete.assert_awaited_once_with(org_id)
+
+
+@pytest.mark.asyncio
+async def test_get_score_weights_returns_defaults_when_not_set():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_mock = MagicMock(id=org_id, score_weights=None)
+    repo.get.return_value = org_mock
+
+    service = OrganizationService(repo)
+    weights = await service.get_score_weights(org_id)
+
+    assert weights == {"diabetes": 50.0, "sleep_apnea": 50.0}
+
+
+@pytest.mark.asyncio
+async def test_update_score_weights_success():
+    import uuid
+
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_mock = MagicMock(id=org_id, score_weights=None)
+    repo.get.return_value = org_mock
+
+    updated_mock = MagicMock(
+        id=org_id, score_weights={"diabetes": 70.0, "sleep_apnea": 30.0}
+    )
+    repo.update_score_weights.return_value = updated_mock
+
+    service = OrganizationService(repo)
+    result = await service.update_score_weights(
+        org_id, {"diabetes": 70.0, "sleep_apnea": 30.0}
+    )
+
+    assert result.score_weights == {"diabetes": 70.0, "sleep_apnea": 30.0}
+    repo.update_score_weights.assert_awaited_once_with(
+        org_id, {"diabetes": 70.0, "sleep_apnea": 30.0}
+    )

@@ -35,12 +35,14 @@ from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
     DepartmentRequest,
+    ScoreWeightsRequest,
 )
 from app.presentation.api.response_models.organization import (
     DepartmentResponse,
     OrganizationEmployeeResponse,
     OrganizationResponse,
     OrganizationSummaryResponse,
+    ScoreWeightsResponse,
 )
 from app.presentation.api.response_models.assessments import (
     AssessmentsResponse,
@@ -439,6 +441,7 @@ async def get_employee_assessments(
     current_user: AuthenticatedUser = Depends(get_current_user),
     membership_service: MembershipService = Depends(get_membership_service),
     assessments_use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
+    organization_service: OrganizationService = Depends(get_organization_service),
 ) -> AssessmentsResponse:
     try:
         if not current_user.is_superuser:
@@ -472,4 +475,69 @@ async def get_employee_assessments(
         for res in results
     ]
 
-    return build_assessments_response(response_results, page=page, limit=limit)
+    score_weights = await organization_service.get_score_weights(organization_id)
+    return build_assessments_response(
+        response_results, page=page, limit=limit, score_weights=score_weights
+    )
+
+
+@router.get("/{organization_id}/score-weights", response_model=ScoreWeightsResponse)
+async def get_organization_score_weights(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    organization_service: OrganizationService = Depends(get_organization_service),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        weights = await organization_service.get_score_weights(organization_id)
+        return ScoreWeightsResponse(score_weights=weights)
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.put("/{organization_id}/score-weights", response_model=ScoreWeightsResponse)
+async def update_organization_score_weights(
+    organization_id: uuid.UUID,
+    request: ScoreWeightsRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    organization_service: OrganizationService = Depends(get_organization_service),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        updated_org = await organization_service.update_score_weights(
+            organization_id, request.score_weights
+        )
+        return ScoreWeightsResponse(
+            score_weights=updated_org.score_weights or request.score_weights
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )

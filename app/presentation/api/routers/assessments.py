@@ -6,11 +6,16 @@ from app.presentation.api.dependencies import (
     get_current_user,
     get_submit_assessment_use_case,
     get_get_assessments_use_case,
+    get_organization_service,
 )
 from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
 )
 from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
+from app.application.use_cases.organizations.organization_service import (
+    OrganizationService,
+)
+from app.domain.services.risk_score_calculator import calculate_weighted_overall_score
 from app.application.dto.risk_scoring import HealthDataDTO
 from app.presentation.api.request_models.assessments import ClinicalAssessmentRequest
 from app.presentation.api.response_models.assessments import (
@@ -33,44 +38,14 @@ def _format_score_display_name(name: str) -> str:
 
 def compute_overall_summary(
     results: list[AssessmentResultResponse],
+    weights: dict[str, float] | None = None,
 ) -> tuple[float | None, str | None]:
-    if not results:
-        return None, None
-
-    # Filter to latest result per unique score_name
-    latest_by_score: dict[str, AssessmentResultResponse] = {}
-    for r in results:
-        key = r.score_name.lower()
-        if key not in latest_by_score:
-            latest_by_score[key] = r
-        else:
-            existing_time = latest_by_score[key].evaluated_at
-            current_time = r.evaluated_at
-            if current_time and existing_time and current_time > existing_time:
-                latest_by_score[key] = r
-
-    scores = [
-        r.normalized_value
-        for r in latest_by_score.values()
-        if r.normalized_value is not None
-    ]
-    if not scores:
-        return None, None
-
-    overall_score = round(sum(scores) / len(scores), 1)
-
-    if overall_score >= 85:
-        risk_level = "Low risk"
-    elif overall_score >= 60:
-        risk_level = "Moderate risk"
-    else:
-        risk_level = "Needs attention"
-
-    return overall_score, risk_level
+    return calculate_weighted_overall_score(results, weights)
 
 
 def build_assessment_sessions(
     results: list[AssessmentResultResponse],
+    score_weights: dict[str, float] | None = None,
 ) -> list[AssessmentSessionResponse]:
     if not results:
         return []
@@ -106,7 +81,9 @@ def build_assessment_sessions(
                     active_at_time[s_key] = r
 
         session_results = list(active_at_time.values())
-        overall_score, overall_risk_level = compute_overall_summary(session_results)
+        overall_score, overall_risk_level = compute_overall_summary(
+            session_results, score_weights
+        )
 
         session_id = f"session_{b_ts}_{idx}"
         sessions.append(
@@ -126,11 +103,14 @@ def build_assessments_response(
     results: list[AssessmentResultResponse],
     page: int = 1,
     limit: int = 10,
+    score_weights: dict[str, float] | None = None,
 ) -> AssessmentsResponse:
-    all_sessions = build_assessment_sessions(results)
+    all_sessions = build_assessment_sessions(results, score_weights)
     total_sessions = len(all_sessions)
 
-    current_overall_score, current_overall_risk_level = compute_overall_summary(results)
+    current_overall_score, current_overall_risk_level = compute_overall_summary(
+        results, score_weights
+    )
 
     start = (page - 1) * limit
     paginated_sessions = all_sessions[start : start + limit]
@@ -167,6 +147,7 @@ async def evaluate_assessments(
     body: ClinicalAssessmentRequest,
     user: AuthenticatedUser = Depends(get_current_user),
     use_case: SubmitAssessmentUseCase = Depends(get_submit_assessment_use_case),
+    organization_service: OrganizationService = Depends(get_organization_service),
 ) -> AssessmentsResponse:
     # Validate user role
     if not user.membership or "member" not in user.membership.roles:
@@ -218,7 +199,18 @@ async def evaluate_assessments(
         for res in results
     ]
 
-    return build_assessments_response(response_results, page=1, limit=10)
+    score_weights = None
+    if user.membership and user.membership.organization_id:
+        try:
+            score_weights = await organization_service.get_score_weights(
+                user.membership.organization_id
+            )
+        except Exception:
+            score_weights = None
+
+    return build_assessments_response(
+        response_results, page=1, limit=10, score_weights=score_weights
+    )
 
 
 @router.get("", response_model=AssessmentsResponse)
@@ -227,6 +219,7 @@ async def get_assessments(
     limit: int = Query(10, ge=1, le=100),
     user: AuthenticatedUser = Depends(get_current_user),
     use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
+    organization_service: OrganizationService = Depends(get_organization_service),
 ) -> AssessmentsResponse:
     if not user.membership or "member" not in user.membership.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
@@ -247,4 +240,15 @@ async def get_assessments(
         for res in results
     ]
 
-    return build_assessments_response(response_results, page=page, limit=limit)
+    score_weights = None
+    if user.membership and user.membership.organization_id:
+        try:
+            score_weights = await organization_service.get_score_weights(
+                user.membership.organization_id
+            )
+        except Exception:
+            score_weights = None
+
+    return build_assessments_response(
+        response_results, page=page, limit=limit, score_weights=score_weights
+    )

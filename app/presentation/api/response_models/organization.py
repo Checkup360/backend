@@ -8,6 +8,11 @@ class OrganizationResponse(BaseModel):
     name: str
     slug: str
     collaborators_count: int
+    score_weights: dict[str, float] | None = None
+
+
+class ScoreWeightsResponse(BaseModel):
+    score_weights: dict[str, float]
 
 
 class OrganizationSummaryResponse(BaseModel):

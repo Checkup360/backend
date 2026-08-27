@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -8,3 +8,4 @@ class Organization:
     name: str
     slug: str
     collaborators_count: int = 0
+    score_weights: dict[str, float] | None = field(default=None)

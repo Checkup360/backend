@@ -39,3 +39,21 @@ class DepartmentRequest(BaseModel):
 
 class AssignDepartmentRequest(BaseModel):
     department_id: uuid.UUID | None = None
+
+
+class ScoreWeightsRequest(BaseModel):
+    score_weights: dict[str, float]
+
+    @field_validator("score_weights")
+    @classmethod
+    def validate_score_weights(cls, value: dict[str, float]) -> dict[str, float]:
+        if not value:
+            raise ValueError("score_weights_required")
+        total = 0.0
+        for k, v in value.items():
+            if v < 0:
+                raise ValueError(f"weight_cannot_be_negative: {k}")
+            total += v
+        if total <= 0:
+            raise ValueError("total_weights_must_be_positive")
+        return value

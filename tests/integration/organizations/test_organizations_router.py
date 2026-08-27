@@ -231,3 +231,73 @@ class TestOrganizationsRouter:
         )
         assert res_search.status_code == 200
         assert len(res_search.json()) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_and_update_organization_score_weights(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-weights@example.com",
+            memberships=[("weights-org", OrgRole.ADMIN)],
+        )
+        async with db_session_maker() as session:
+            from app.infrastructure.persistence.models import Organization
+            from sqlalchemy import select
+
+            org = await session.scalar(
+                select(Organization).where(Organization.slug == "weights-org")
+            )
+
+        # GET default weights
+        res_get = client.get(f"/organizations/{org.id}/score-weights")
+        assert res_get.status_code == 200
+        assert res_get.json()["score_weights"] == {
+            "diabetes": 50.0,
+            "sleep_apnea": 50.0,
+        }
+
+        # PUT update weights
+        new_weights = {"diabetes": 70.0, "sleep_apnea": 30.0}
+        res_put = client.put(
+            f"/organizations/{org.id}/score-weights",
+            json={"score_weights": new_weights},
+        )
+        assert res_put.status_code == 200
+        assert res_put.json()["score_weights"] == new_weights
+
+        # GET updated weights
+        res_get_updated = client.get(f"/organizations/{org.id}/score-weights")
+        assert res_get_updated.status_code == 200
+        assert res_get_updated.json()["score_weights"] == new_weights
+
+    @pytest.mark.asyncio
+    async def test_score_weights_unauthorized_member(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-member-weights@example.com",
+            memberships=[("weights-member-org", OrgRole.MEMBER)],
+        )
+        async with db_session_maker() as session:
+            from app.infrastructure.persistence.models import Organization
+            from sqlalchemy import select
+
+            org = await session.scalar(
+                select(Organization).where(Organization.slug == "weights-member-org")
+            )
+
+        # Non-admin gets 403
+        res_get = client.get(f"/organizations/{org.id}/score-weights")
+        assert res_get.status_code == 403
+
+        res_put = client.put(
+            f"/organizations/{org.id}/score-weights",
+            json={"score_weights": {"diabetes": 60.0, "sleep_apnea": 40.0}},
+        )
+        assert res_put.status_code == 403
