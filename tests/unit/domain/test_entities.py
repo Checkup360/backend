@@ -108,3 +108,39 @@ def test_user_dataclass_defaults():
     assert user.email == "test@example.com"
     assert user.is_superuser is False
     assert user.is_active is True
+
+
+def test_member_biometrics_dataclass():
+    from app.domain.entities.member_biometrics import MemberBiometrics
+
+    user_id = uuid.uuid4()
+    bio = MemberBiometrics(
+        user_id=user_id,
+        biological_sex="M",
+        height=1.75,
+        weight=80.0,
+        waist_circumference=90.0,
+        neck_circumference=40.0,
+        snoring=True,
+        tired=False,
+        observed_apnea=False,
+        hypertension_medication=True,
+        daily_physical_activity=True,
+        fruits_vegetables=True,
+        previous_high_glucose=False,
+        family_diabetes="first_degree",
+    )
+    assert bio.user_id == user_id
+    assert bio.biological_sex == "M"
+    assert bio.height == 1.75
+    assert bio.weight == 80.0
+    assert bio.waist_circumference == 90.0
+    assert bio.neck_circumference == 40.0
+    assert bio.snoring is True
+    assert bio.tired is False
+    assert bio.observed_apnea is False
+    assert bio.hypertension_medication is True
+    assert bio.daily_physical_activity is True
+    assert bio.fruits_vegetables is True
+    assert bio.previous_high_glucose is False
+    assert bio.family_diabetes == "first_degree"

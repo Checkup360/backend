@@ -42,3 +42,14 @@ class ScoreResultDTO:
     risk_level: str | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ScoreCatalogItemDTO:
+    """Metadata for an available risk score calculator from the engine."""
+
+    score_id: str
+    score_name: str
+    domain: str
+    required_fields: list[str] = field(default_factory=list)
+    optional_fields: list[str] = field(default_factory=list)

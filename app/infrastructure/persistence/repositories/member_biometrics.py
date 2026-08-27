@@ -40,6 +40,14 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
             "weight": biometrics.weight,
             "waist_circumference": biometrics.waist_circumference,
             "neck_circumference": biometrics.neck_circumference,
+            "snoring": biometrics.snoring,
+            "tired": biometrics.tired,
+            "observed_apnea": biometrics.observed_apnea,
+            "hypertension_medication": biometrics.hypertension_medication,
+            "daily_physical_activity": biometrics.daily_physical_activity,
+            "fruits_vegetables": biometrics.fruits_vegetables,
+            "previous_high_glucose": biometrics.previous_high_glucose,
+            "family_diabetes": biometrics.family_diabetes,
         }
 
         stmt = insert(MemberBiometricsModel).values(**values)
@@ -51,6 +59,14 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
                 "weight": stmt.excluded.weight,
                 "waist_circumference": stmt.excluded.waist_circumference,
                 "neck_circumference": stmt.excluded.neck_circumference,
+                "snoring": stmt.excluded.snoring,
+                "tired": stmt.excluded.tired,
+                "observed_apnea": stmt.excluded.observed_apnea,
+                "hypertension_medication": stmt.excluded.hypertension_medication,
+                "daily_physical_activity": stmt.excluded.daily_physical_activity,
+                "fruits_vegetables": stmt.excluded.fruits_vegetables,
+                "previous_high_glucose": stmt.excluded.previous_high_glucose,
+                "family_diabetes": stmt.excluded.family_diabetes,
             },
         )
         await self.db.execute(stmt)
@@ -64,4 +80,12 @@ class SQLAlchemyMemberBiometricsRepository(BaseRepository, MemberBiometricsRepos
             weight=model.weight,
             waist_circumference=model.waist_circumference,
             neck_circumference=model.neck_circumference,
+            snoring=model.snoring,
+            tired=model.tired,
+            observed_apnea=model.observed_apnea,
+            hypertension_medication=model.hypertension_medication,
+            daily_physical_activity=model.daily_physical_activity,
+            fruits_vegetables=model.fruits_vegetables,
+            previous_high_glucose=model.previous_high_glucose,
+            family_diabetes=model.family_diabetes,
         )
