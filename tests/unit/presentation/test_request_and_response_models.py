@@ -129,6 +129,13 @@ class TestRequestModelsValidation:
         )
         assert req.role == OrgRole.MEMBER
 
+        req_cm = CreateOrganizationInviteRequest(
+            email="editor@example.com",
+            role=OrgRole.CONTENT_MANAGER,
+            organization_id=uuid.uuid4(),
+        )
+        assert req_cm.role == OrgRole.CONTENT_MANAGER
+
         del_req = OrgDeleteInvitesRequest(ids=[uuid.uuid4()])
         assert len(del_req.ids) == 1
 

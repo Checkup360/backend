@@ -5,8 +5,10 @@ from app.domain.value_objects import OrgRole
 def test_org_role_values():
     assert OrgRole.ADMIN == "admin"
     assert OrgRole.MEMBER == "member"
+    assert OrgRole.CONTENT_MANAGER == "content_manager"
     assert OrgRole("admin") == OrgRole.ADMIN
     assert OrgRole("member") == OrgRole.MEMBER
+    assert OrgRole("content_manager") == OrgRole.CONTENT_MANAGER
 
 
 def test_invite_error_codes():

@@ -37,7 +37,9 @@ class InviteToken(Base):
         ForeignKey("organizations.id"), nullable=True, index=True
     )
     department_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
-    role: Mapped[OrgRole | None] = mapped_column(Enum(OrgRole), nullable=True)
+    role: Mapped[OrgRole | None] = mapped_column(
+        Enum(OrgRole, name="orgrole", create_type=False), nullable=True
+    )
 
     is_sysadmin: Mapped[bool] = mapped_column(Boolean, default=False)
 

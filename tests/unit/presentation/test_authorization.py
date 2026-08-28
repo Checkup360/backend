@@ -7,6 +7,7 @@ from app.application.dto import AuthenticatedUser
 from app.domain.entities import Membership, OrgRole
 from app.presentation.api.authorization import (
     require_completed_member_onboarding,
+    require_content_manager_or_above,
     require_org_admin_any,
     require_organization_admin,
     require_organization_admin_or_sysadmin,
@@ -116,3 +117,48 @@ class TestAuthorizationDependencies:
         org_admin = make_user(is_superuser=False, membership=membership)
         res_admin = await require_organization_admin_or_sysadmin(org_admin)
         assert res_admin == membership
+
+
+class TestRequireContentManagerOrAbove:
+    @pytest.mark.asyncio
+    async def test_admin_is_allowed(self):
+        membership = Membership(
+            user_id=uuid.uuid4(),
+            organization_id=uuid.uuid4(),
+            roles=[OrgRole.ADMIN],
+        )
+        user = make_user(membership=membership)
+        result = await require_content_manager_or_above(user)
+        assert result == membership
+
+    @pytest.mark.asyncio
+    async def test_content_manager_is_allowed(self):
+        membership = Membership(
+            user_id=uuid.uuid4(),
+            organization_id=uuid.uuid4(),
+            roles=[OrgRole.CONTENT_MANAGER],
+        )
+        user = make_user(membership=membership)
+        result = await require_content_manager_or_above(user)
+        assert result == membership
+
+    @pytest.mark.asyncio
+    async def test_member_is_forbidden(self):
+        membership = Membership(
+            user_id=uuid.uuid4(),
+            organization_id=uuid.uuid4(),
+            roles=[OrgRole.MEMBER],
+        )
+        user = make_user(membership=membership)
+        with pytest.raises(HTTPException) as exc_info:
+            await require_content_manager_or_above(user)
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail == "forbidden"
+
+    @pytest.mark.asyncio
+    async def test_no_membership_is_forbidden(self):
+        user = make_user(membership=None)
+        with pytest.raises(HTTPException) as exc_info:
+            await require_content_manager_or_above(user)
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail == "forbidden"

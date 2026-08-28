@@ -69,3 +69,19 @@ async def require_organization_admin_or_sysadmin(
         return current_user
 
     return await _validate_organization_admin(current_user)
+
+
+_CMS_ROLES: frozenset[OrgRole] = frozenset({OrgRole.ADMIN, OrgRole.CONTENT_MANAGER})
+
+
+async def require_content_manager_or_above(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> Membership:
+    """Allows org admins and content managers. Rejects plain members and unauthenticated users."""
+    if not current_user.membership:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    if not _CMS_ROLES.intersection(current_user.membership.roles):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    return current_user.membership
