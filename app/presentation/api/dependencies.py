@@ -54,6 +54,13 @@ from app.infrastructure.persistence.repositories.member_health_data import (
 )
 from app.domain.repositories.member_health_data import MemberHealthDataRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
+from app.domain.repositories.analytics import AnalyticsRepository
+from app.infrastructure.persistence.repositories.analytics import (
+    AnalyticsRepositoryImpl,
+)
+from app.application.use_cases.organizations.get_organization_analytics import (
+    GetOrganizationAnalyticsUseCase,
+)
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
 from app.infrastructure.authentication.machinery.users import current_active_user
@@ -233,3 +240,16 @@ async def get_recalculate_member_scores_use_case(
     return RecalculateMemberScoresUseCase(
         health_data_repo, details_repo, risk_score_repo, risk_scoring_service
     )
+
+
+async def get_analytics_repository(
+    db: AsyncSession = Depends(get_db),
+) -> AnalyticsRepository:
+    return AnalyticsRepositoryImpl(db)
+
+
+async def get_organization_analytics_use_case(
+    analytics_repo: AnalyticsRepository = Depends(get_analytics_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> GetOrganizationAnalyticsUseCase:
+    return GetOrganizationAnalyticsUseCase(analytics_repo, org_repo)

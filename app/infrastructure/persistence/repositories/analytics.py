@@ -32,9 +32,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         month_label_col = func.to_char(RiskScoreModel.evaluated_at, "Mon").label(
             "month_label"
         )
-        avg_score_col = func.round(
-            func.cast(func.avg(RiskScoreModel.normalized_value), func.numeric), 1
-        ).label("avg_score")
+        avg_score_col = func.avg(RiskScoreModel.normalized_value).label("avg_score")
         total_assessments_col = func.count(distinct(RiskScoreModel.id)).label(
             "total_assessments"
         )

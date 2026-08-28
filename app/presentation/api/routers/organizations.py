@@ -12,6 +12,14 @@ from app.presentation.api.dependencies import (
     get_organization_service,
     get_member_details_service,
     get_get_assessments_use_case,
+    get_organization_analytics_use_case,
+)
+from app.application.use_cases.organizations.get_organization_analytics import (
+    GetOrganizationAnalyticsUseCase,
+)
+from app.presentation.api.response_models.analytics import (
+    DepartmentAnalyticsSummaryResponse,
+    RiskTrendPointResponse,
 )
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
@@ -540,4 +548,90 @@ async def update_organization_score_weights(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        )
+
+
+@router.get(
+    "/{organization_id}/analytics/trends",
+    response_model=list[RiskTrendPointResponse],
+)
+async def get_organization_risk_trends(
+    organization_id: uuid.UUID,
+    months: int = Query(12, ge=1, le=36),
+    department_id: uuid.UUID | None = Query(None),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    analytics_use_case: GetOrganizationAnalyticsUseCase = Depends(
+        get_organization_analytics_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+) -> list[RiskTrendPointResponse]:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        points = await analytics_use_case.get_trends(
+            organization_id=organization_id,
+            months=months,
+            department_id=department_id,
+        )
+        return [
+            RiskTrendPointResponse(
+                period=p.period,
+                month_label=p.month_label,
+                average_score=p.average_score,
+                risk_index=p.risk_index,
+                total_assessments=p.total_assessments,
+            )
+            for p in points
+        ]
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.get(
+    "/{organization_id}/analytics/departments",
+    response_model=list[DepartmentAnalyticsSummaryResponse],
+)
+async def get_organization_department_analytics(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    analytics_use_case: GetOrganizationAnalyticsUseCase = Depends(
+        get_organization_analytics_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+) -> list[DepartmentAnalyticsSummaryResponse]:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        summaries = await analytics_use_case.get_departments_summary(organization_id)
+        return [
+            DepartmentAnalyticsSummaryResponse(
+                department_id=s.department_id,
+                name=s.name,
+                average_score=s.average_score,
+                total_workers=s.total_workers,
+                high_risk_count=s.high_risk_count,
+            )
+            for s in summaries
+        ]
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
         )
