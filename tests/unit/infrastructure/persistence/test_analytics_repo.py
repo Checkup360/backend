@@ -30,7 +30,16 @@ async def test_get_organization_trends():
 
     mock_res = MagicMock()
     mock_res.all.return_value = [mock_row1, mock_row2]
-    mock_db.execute.return_value = mock_res
+
+    mock_study_row = SimpleNamespace(
+        period="2026-01",
+        score_name="Diabetes",
+        avg_score=78.0,
+    )
+    mock_study_res = MagicMock()
+    mock_study_res.all.return_value = [mock_study_row]
+
+    mock_db.execute.side_effect = [mock_res, mock_study_res]
 
     points = await repo.get_organization_trends(org_id, months=12)
 
@@ -40,12 +49,14 @@ async def test_get_organization_trends():
     assert points[0].average_score == 80.0
     assert points[0].risk_index == 20.0
     assert points[0].total_assessments == 10
+    assert points[0].scores_by_study == {"Diabetes": 78.0}
 
     assert points[1].period == "2026-02"
     assert points[1].month_label == "Feb"
     assert points[1].average_score == 85.0
     assert points[1].risk_index == 15.0
     assert points[1].total_assessments == 15
+    assert points[1].scores_by_study == {}
 
 
 @pytest.mark.asyncio

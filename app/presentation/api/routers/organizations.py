@@ -582,6 +582,10 @@ async def get_organization_risk_trends(
                 average_score=p.average_score,
                 risk_index=p.risk_index,
                 total_assessments=p.total_assessments,
+                scores_by_study={
+                    _format_score_display_name(k): v
+                    for k, v in p.scores_by_study.items()
+                },
             )
             for p in points
         ]

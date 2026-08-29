@@ -60,17 +60,49 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         result = await self._db.execute(query)
         rows = result.all()
 
+        # Query scores broken down by study name
+        study_query = (
+            select(
+                period_col,
+                RiskScoreModel.score_name,
+                avg_score_col,
+            )
+            .join(Membership, Membership.user_id == RiskScoreModel.user_id)
+            .where(
+                Membership.organization_id == organization_id,
+                RiskScoreModel.normalized_value.isnot(None),
+                RiskScoreModel.evaluated_at >= cutoff_date,
+            )
+        )
+        if department_id is not None:
+            study_query = study_query.where(Membership.department_id == department_id)
+
+        study_query = study_query.group_by(period_col, RiskScoreModel.score_name)
+        study_result = await self._db.execute(study_query)
+        study_rows = study_result.all()
+
+        study_map: dict[str, dict[str, float]] = {}
+        for s_row in study_rows:
+            p_key = str(s_row.period)
+            if p_key not in study_map:
+                study_map[p_key] = {}
+            s_name = str(s_row.score_name)
+            s_avg = float(s_row.avg_score) if s_row.avg_score is not None else 0.0
+            study_map[p_key][s_name] = round(s_avg, 1)
+
         points: list[OrganizationRiskTrendPoint] = []
         for row in rows:
+            p_str = str(row.period)
             avg_score = float(row.avg_score) if row.avg_score is not None else 0.0
             risk_index = round(max(0.0, 100.0 - avg_score), 1)
             points.append(
                 OrganizationRiskTrendPoint(
-                    period=str(row.period),
+                    period=p_str,
                     month_label=str(row.month_label),
                     average_score=avg_score,
                     risk_index=risk_index,
                     total_assessments=int(row.total_assessments),
+                    scores_by_study=study_map.get(p_str, {}),
                 )
             )
 

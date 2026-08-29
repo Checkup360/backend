@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RiskTrendPointResponse(BaseModel):
@@ -9,6 +9,7 @@ class RiskTrendPointResponse(BaseModel):
     average_score: float
     risk_index: float
     total_assessments: int
+    scores_by_study: dict[str, float] = Field(default_factory=dict)
 
 
 class DepartmentAnalyticsSummaryResponse(BaseModel):

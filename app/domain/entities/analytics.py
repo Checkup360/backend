@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import uuid
 
 
@@ -9,6 +9,7 @@ class OrganizationRiskTrendPoint:
     average_score: float
     risk_index: float
     total_assessments: int
+    scores_by_study: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
