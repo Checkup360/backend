@@ -27,6 +27,7 @@ class MemberDetailsRepository(BaseRepository[MemberDetailsORM, MemberDetails]):
             orm.first_name = data["first_name"]
             orm.last_name = data["last_name"]
             orm.phone_number = data["phone_number"]
+            orm.avatar_url = data["avatar_url"]
             await self.db.commit()
             await self.db.refresh(orm)
             return self._to_domain(orm)
@@ -43,6 +44,7 @@ class MemberDetailsRepository(BaseRepository[MemberDetailsORM, MemberDetails]):
             first_name=orm.first_name,
             last_name=orm.last_name,
             phone_number=orm.phone_number,
+            avatar_url=orm.avatar_url,
         )
 
     def _from_domain(self, entity: MemberDetails) -> dict:
@@ -52,4 +54,5 @@ class MemberDetailsRepository(BaseRepository[MemberDetailsORM, MemberDetails]):
             "first_name": entity.first_name,
             "last_name": entity.last_name,
             "phone_number": entity.phone_number,
+            "avatar_url": entity.avatar_url,
         }

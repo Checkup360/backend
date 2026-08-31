@@ -190,13 +190,28 @@ async def test_member_details_repository(mock_db_session):
     user_id = uuid.uuid4()
     dt = datetime.now(timezone.utc).date()
 
-    details = MemberDetails(user_id=user_id, date_of_birth=dt)
-    orm = MemberDetailsORM(user_id=user_id, date_of_birth=dt)
+    details = MemberDetails(
+        user_id=user_id,
+        date_of_birth=dt,
+        first_name="John",
+        last_name="Doe",
+        phone_number="+123456789",
+        avatar_url="data:image/png;base64,sample",
+    )
+    orm = MemberDetailsORM(
+        user_id=user_id,
+        date_of_birth=dt,
+        first_name="John",
+        last_name="Doe",
+        phone_number="+123456789",
+        avatar_url="data:image/png;base64,sample",
+    )
 
     # save existing
     mock_db_session.get.return_value = orm
     updated = await repo.save(details)
     assert updated.user_id == user_id
+    assert updated.avatar_url == "data:image/png;base64,sample"
 
     # save new
     mock_db_session.get.return_value = None

@@ -19,6 +19,7 @@ class MemberDetails(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False, default="")
     last_name: Mapped[str] = mapped_column(String, nullable=False, default="")
     phone_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
