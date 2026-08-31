@@ -56,6 +56,7 @@ class MemberDetailsService:
         phone_number: str | None = None,
         first_name: str = "",
         last_name: str = "",
+        avatar_url: str | None = None,
     ) -> MemberDetails:
         if date_of_birth > self.time_provider.today():
             raise ValueError("date_of_birth_in_future")
@@ -67,6 +68,7 @@ class MemberDetailsService:
                 first_name=first_name,
                 last_name=last_name,
                 phone_number=phone_number,
+                avatar_url=avatar_url,
             )
         )
 
@@ -77,10 +79,15 @@ class MemberDetailsService:
         last_name: str,
         phone_number: str | None,
         date_of_birth: date,
+        avatar_url: str | None = None,
     ) -> MemberDetails:
         details = await self.repo.get_by_user(user_id)
         if details is None:
             raise ValueError("member_details_not_found")
+
+        effective_avatar_url = (
+            avatar_url if avatar_url is not None else details.avatar_url
+        )
 
         updated = MemberDetails(
             user_id=user_id,
@@ -88,5 +95,6 @@ class MemberDetailsService:
             first_name=first_name,
             last_name=last_name,
             phone_number=phone_number,
+            avatar_url=effective_avatar_url,
         )
         return await self.repo.save(updated)

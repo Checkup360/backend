@@ -158,12 +158,14 @@ async def test_update_profile_success_and_not_found():
         last_name="NewLast",
         phone_number="+541199998888",
         date_of_birth=date(1995, 2, 2),
+        avatar_url="data:image/png;base64,newphoto",
     )
 
     assert updated.first_name == "NewFirst"
     assert updated.last_name == "NewLast"
     assert updated.phone_number == "+541199998888"
     assert updated.date_of_birth == date(1995, 2, 2)
+    assert updated.avatar_url == "data:image/png;base64,newphoto"
 
     repo.get_by_user.return_value = None
     with pytest.raises(ValueError, match="member_details_not_found"):
