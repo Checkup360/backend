@@ -51,8 +51,11 @@ async def get_me(
             organization_name=user.organization_name or "",
             roles=[r.value for r in user.membership.roles],
         )
+    profile = await member_details_service.get_profile(user.id)
     return AuthMeResponse(
         email=user.email,
+        first_name=profile.first_name if profile and profile.first_name else None,
+        last_name=profile.last_name if profile and profile.last_name else None,
         is_sysadmin=user.is_superuser,
         membership=membership,
         requires_onboarding=await member_details_service.requires_onboarding(user),

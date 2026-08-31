@@ -10,6 +10,8 @@ class OrganizationMembership(BaseModel):
 
 class AuthMeResponse(BaseModel):
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
     is_sysadmin: bool
     membership: OrganizationMembership | None
     requires_onboarding: bool
