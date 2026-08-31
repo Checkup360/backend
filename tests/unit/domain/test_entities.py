@@ -76,6 +76,12 @@ def test_member_details_dataclass():
     details = MemberDetails(user_id=user_id, date_of_birth=dob)
     assert details.user_id == user_id
     assert details.date_of_birth == dob
+    assert details.avatar_url is None
+
+    details_with_avatar = MemberDetails(
+        user_id=user_id, date_of_birth=dob, avatar_url="https://example.com/photo.png"
+    )
+    assert details_with_avatar.avatar_url == "https://example.com/photo.png"
 
 
 def test_membership_dataclass_defaults():
