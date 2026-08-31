@@ -85,16 +85,12 @@ class MemberDetailsService:
         if details is None:
             raise ValueError("member_details_not_found")
 
-        effective_avatar_url = (
-            avatar_url if avatar_url is not None else details.avatar_url
-        )
-
         updated = MemberDetails(
             user_id=user_id,
             date_of_birth=date_of_birth,
             first_name=first_name,
             last_name=last_name,
             phone_number=phone_number,
-            avatar_url=effective_avatar_url,
+            avatar_url=avatar_url,
         )
         return await self.repo.save(updated)

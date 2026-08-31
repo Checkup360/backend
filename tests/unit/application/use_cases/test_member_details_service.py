@@ -167,6 +167,16 @@ async def test_update_profile_success_and_not_found():
     assert updated.date_of_birth == date(1995, 2, 2)
     assert updated.avatar_url == "data:image/png;base64,newphoto"
 
+    removed_avatar = await service.update_profile(
+        user_id=user_id,
+        first_name="NewFirst",
+        last_name="NewLast",
+        phone_number="+541199998888",
+        date_of_birth=date(1995, 2, 2),
+        avatar_url=None,
+    )
+    assert removed_avatar.avatar_url is None
+
     repo.get_by_user.return_value = None
     with pytest.raises(ValueError, match="member_details_not_found"):
         await service.update_profile(
