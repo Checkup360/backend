@@ -56,6 +56,7 @@ async def get_me(
         email=user.email,
         first_name=profile.first_name if profile and profile.first_name else None,
         last_name=profile.last_name if profile and profile.last_name else None,
+        avatar_url=profile.avatar_url if profile else None,
         is_sysadmin=user.is_superuser,
         membership=membership,
         requires_onboarding=await member_details_service.requires_onboarding(user),

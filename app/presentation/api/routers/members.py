@@ -54,6 +54,7 @@ async def create_my_member_details(
             first_name=body.first_name,
             last_name=body.last_name,
             phone_number=body.phone_number,
+            avatar_url=body.avatar_url,
         )
 
         await health_data_service.update_health_data(
@@ -88,6 +89,7 @@ async def get_my_profile(
         last_name=profile.last_name,
         phone_number=profile.phone_number,
         date_of_birth=profile.date_of_birth,
+        avatar_url=profile.avatar_url,
         priority_topics=priority_topics,
     )
 
@@ -105,6 +107,7 @@ async def update_my_profile(
             last_name=body.last_name,
             phone_number=body.phone_number,
             date_of_birth=body.date_of_birth,
+            avatar_url=body.avatar_url,
         )
     except ValueError as e:
         raise HTTPException(
@@ -118,6 +121,7 @@ async def update_my_profile(
         last_name=updated.last_name,
         phone_number=updated.phone_number,
         date_of_birth=updated.date_of_birth,
+        avatar_url=updated.avatar_url,
         priority_topics=priority_topics,
     )
 

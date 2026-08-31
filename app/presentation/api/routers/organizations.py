@@ -330,12 +330,16 @@ async def assign_employee_department(
     except Exception as exc:
         _map_department_error(exc)
 
+    profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
     status_val = "active" if onboarded else "onboarding"
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
         email=employee.user.email,
+        first_name=profile.first_name if profile and profile.first_name else None,
+        last_name=profile.last_name if profile and profile.last_name else None,
+        avatar_url=profile.avatar_url if profile else None,
         roles=[r.value for r in employee.roles],
         status=status_val,
         department=(
@@ -384,6 +388,7 @@ async def list_organization_employees(
 
     res = []
     for employee in employees:
+        profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
         status_val = "active" if onboarded else "onboarding"
 
@@ -412,6 +417,11 @@ async def list_organization_employees(
             OrganizationEmployeeResponse(
                 id=employee.user.id,
                 email=employee.user.email,
+                first_name=profile.first_name
+                if profile and profile.first_name
+                else None,
+                last_name=profile.last_name if profile and profile.last_name else None,
+                avatar_url=profile.avatar_url if profile else None,
                 roles=[r.value for r in employee.roles],
                 status=status_val,
                 department=(
