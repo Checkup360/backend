@@ -12,6 +12,7 @@ class AuthMeResponse(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    avatar_url: str | None = None
     is_sysadmin: bool
     membership: OrganizationMembership | None
     requires_onboarding: bool

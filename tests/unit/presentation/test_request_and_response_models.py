@@ -235,8 +235,10 @@ class TestResponseModelsSerialization:
             last_name="Doe",
             phone_number="+541112345678",
             date_of_birth=date(1995, 3, 15),
+            avatar_url="data:image/png;base64,avatar123",
         )
         assert prof.first_name == "Jane"
+        assert prof.avatar_url == "data:image/png;base64,avatar123"
 
     def test_organization_response_models(self):
         org_res = OrganizationResponse(

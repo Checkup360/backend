@@ -34,6 +34,9 @@ class DepartmentResponse(BaseModel):
 class OrganizationEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_url: str | None = None
     roles: list[str]
     status: str
     department: DepartmentResponse | None = None

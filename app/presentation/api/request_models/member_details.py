@@ -11,6 +11,7 @@ class MemberDetailsCreate(BaseModel):
     first_name: str = ""
     last_name: str = ""
     phone_number: str | None = None
+    avatar_url: str | None = None
 
     @field_validator("date_of_birth")
     @classmethod
@@ -37,6 +38,7 @@ class MemberProfileUpdate(BaseModel):
     last_name: str
     phone_number: str | None = None
     date_of_birth: date
+    avatar_url: str | None = None
 
     @field_validator("date_of_birth")
     @classmethod
