@@ -46,13 +46,32 @@ class HttpEngineScoringAdapter(RiskScoringService):
             for item in catalog_data
         ]
 
+    @staticmethod
+    def _translate_payload(payload: dict[str, Any]) -> dict[str, Any]:
+        """Translates payload fields to match Engine API requirements (e.g. sex to M/F, height to meters)."""
+        translated = dict(payload)
+        if "sex" in translated and isinstance(translated["sex"], str):
+            sex_lower = translated["sex"].lower()
+            if sex_lower in ("male", "m"):
+                translated["sex"] = "M"
+            elif sex_lower in ("female", "f"):
+                translated["sex"] = "F"
+
+        if "height" in translated and isinstance(translated["height"], (int, float)):
+            # Convert cm to meters if height looks like cm (> 3.0)
+            if translated["height"] > 3.0:
+                translated["height"] = translated["height"] / 100.0
+
+        return translated
+
     async def evaluate_single_score(
         self, score_id: str, payload: dict[str, Any]
     ) -> ScoreResultDTO:
         """Evaluates a single risk score by sending POST to /risk-scores/{score_id}."""
         url = f"{self._engine_api_url}/risk-scores/{score_id}"
+        normalized_payload = self._translate_payload(payload)
         try:
-            response = await self._client.post(url, json=payload)
+            response = await self._client.post(url, json=normalized_payload)
             if response.status_code != 200:
                 print(f"ENGINE ERROR for {score_id}: {response.text}", flush=True)
             response.raise_for_status()
@@ -84,19 +103,6 @@ class HttpEngineScoringAdapter(RiskScoringService):
             scores_to_evaluate = [item.score_id for item in catalog]
 
         payload = {k: v for k, v in data.__dict__.items() if v is not None}
-
-        # Translate payload for engine API
-        if "sex" in payload and isinstance(payload["sex"], str):
-            sex_lower = payload["sex"].lower()
-            if sex_lower == "male":
-                payload["sex"] = "M"
-            elif sex_lower == "female":
-                payload["sex"] = "F"
-
-        if "height" in payload and isinstance(payload["height"], (int, float)):
-            # Convert cm to meters if height looks like cm
-            if payload["height"] > 3.0:
-                payload["height"] = payload["height"] / 100.0
 
         results: list[ScoreResultDTO] = []
         for score_id in scores_to_evaluate:
