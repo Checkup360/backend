@@ -13,6 +13,7 @@ from app.presentation.api.dependencies import (
     get_member_details_service,
     get_get_assessments_use_case,
     get_organization_analytics_use_case,
+    get_assessment_submissions_use_case,
 )
 from app.application.use_cases.organizations.get_organization_analytics import (
     GetOrganizationAnalyticsUseCase,
@@ -39,6 +40,9 @@ from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
 from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
+from app.application.use_cases.assessments.get_submissions import (
+    GetAssessmentSubmissionsUseCase,
+)
 from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
@@ -59,6 +63,12 @@ from app.presentation.api.response_models.assessments import (
 from app.presentation.api.routers.assessments import (
     _format_score_display_name,
     build_assessments_response,
+    _submission_detail_response,
+)
+from app.presentation.api.response_models.assessment_submissions import (
+    AssessmentSubmissionDetailResponse,
+    AssessmentSubmissionListResponse,
+    AssessmentSubmissionSummaryResponse,
 )
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
@@ -497,6 +507,97 @@ async def get_employee_assessments(
     return build_assessments_response(
         response_results, page=page, limit=limit, score_weights=score_weights
     )
+
+
+async def _ensure_employee_access(
+    current_user: AuthenticatedUser,
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    membership_service: MembershipService,
+) -> None:
+    if current_user.is_superuser:
+        return
+    employees = await membership_service.list_employees_for_organization_admin(
+        current_user.id, organization_id
+    )
+    if not any(employee.user.id == user_id for employee in employees):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+
+@router.get(
+    "/{organization_id}/employees/{user_id}/assessment-submissions",
+    response_model=AssessmentSubmissionListResponse,
+)
+async def list_employee_assessment_submissions(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    membership_service: MembershipService = Depends(get_membership_service),
+    use_case: GetAssessmentSubmissionsUseCase = Depends(
+        get_assessment_submissions_use_case
+    ),
+):
+    try:
+        await _ensure_employee_access(
+            current_user, organization_id, user_id, membership_service
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="organization_not_found"
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    items, total = await use_case.list_for_employee(
+        organization_id, user_id, page, limit
+    )
+    return AssessmentSubmissionListResponse(
+        items=[
+            AssessmentSubmissionSummaryResponse.model_validate(
+                item, from_attributes=True
+            )
+            for item in items
+        ],
+        page=page,
+        limit=limit,
+        total=total,
+        has_next=page * limit < total,
+    )
+
+
+@router.get(
+    "/{organization_id}/employees/{user_id}/assessment-submissions/{submission_id}",
+    response_model=AssessmentSubmissionDetailResponse,
+)
+async def get_employee_assessment_submission(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    submission_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    membership_service: MembershipService = Depends(get_membership_service),
+    use_case: GetAssessmentSubmissionsUseCase = Depends(
+        get_assessment_submissions_use_case
+    ),
+):
+    try:
+        await _ensure_employee_access(
+            current_user, organization_id, user_id, membership_service
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="organization_not_found"
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    result = await use_case.get_detail(submission_id)
+    if (
+        result is None
+        or result[0].user_id != user_id
+        or result[0].organization_id != organization_id
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+    return _submission_detail_response(*result)
 
 
 @router.get("/{organization_id}/score-weights", response_model=ScoreWeightsResponse)

@@ -16,6 +16,7 @@ class SQLAlchemyRiskScoreRepository(RiskScoreRepository):
         return RiskScore(
             id=model.id,
             user_id=model.user_id,
+            submission_id=model.submission_id,
             score_name=model.score_name,
             risk_level=model.risk_level,
             raw_value=model.raw_value,
@@ -29,6 +30,7 @@ class SQLAlchemyRiskScoreRepository(RiskScoreRepository):
         return RiskScoreModel(
             id=entity.id,
             user_id=entity.user_id,
+            submission_id=entity.submission_id,
             score_name=entity.score_name,
             risk_level=entity.risk_level,
             raw_value=entity.raw_value,
@@ -50,6 +52,15 @@ class SQLAlchemyRiskScoreRepository(RiskScoreRepository):
             select(RiskScoreModel)
             .where(RiskScoreModel.user_id == user_id)
             .order_by(RiskScoreModel.evaluated_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return [self._to_entity(m) for m in result.scalars().all()]
+
+    async def get_by_submission_id(self, submission_id: uuid.UUID) -> list[RiskScore]:
+        stmt = (
+            select(RiskScoreModel)
+            .where(RiskScoreModel.submission_id == submission_id)
+            .order_by(RiskScoreModel.evaluated_at.asc())
         )
         result = await self.session.execute(stmt)
         return [self._to_entity(m) for m in result.scalars().all()]

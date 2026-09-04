@@ -14,3 +14,4 @@ class RiskScore:
     explanation: str | None
     contributing_factors: dict[str, any]
     evaluated_at: datetime
+    submission_id: uuid.UUID | None = None

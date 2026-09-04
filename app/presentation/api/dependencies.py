@@ -31,6 +31,12 @@ from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
 )
 from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
+from app.application.use_cases.assessments.get_submissions import (
+    GetAssessmentSubmissionsUseCase,
+)
+from app.application.use_cases.assessments.save_submission import (
+    SaveAssessmentSubmissionUseCase,
+)
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
@@ -47,6 +53,9 @@ from app.infrastructure.persistence.repositories.organization import (
 )
 from app.infrastructure.persistence.repositories.risk_score import (
     SQLAlchemyRiskScoreRepository,
+)
+from app.infrastructure.persistence.repositories.assessment_submission import (
+    SQLAlchemyAssessmentSubmissionRepository,
 )
 from app.infrastructure.persistence.repositories.user import UserRepository
 from app.infrastructure.persistence.repositories.member_health_data import (
@@ -207,6 +216,12 @@ async def get_risk_score_repository(
     return SQLAlchemyRiskScoreRepository(db)
 
 
+async def get_assessment_submission_repository(
+    db: AsyncSession = Depends(get_db),
+) -> SQLAlchemyAssessmentSubmissionRepository:
+    return SQLAlchemyAssessmentSubmissionRepository(db)
+
+
 async def get_submit_assessment_use_case(
     risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
     member_details_repository: MemberDetailsRepository = Depends(
@@ -214,12 +229,16 @@ async def get_submit_assessment_use_case(
     ),
     risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
     time_provider: TimeProvider = Depends(get_time_provider),
+    assessment_submission_repository: SQLAlchemyAssessmentSubmissionRepository = Depends(
+        get_assessment_submission_repository
+    ),
 ) -> SubmitAssessmentUseCase:
     return SubmitAssessmentUseCase(
         risk_scoring_service,
         member_details_repository,
         risk_score_repository,
         time_provider,
+        assessment_submission_repository,
     )
 
 
@@ -227,6 +246,23 @@ async def get_get_assessments_use_case(
     risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
 ) -> GetAssessmentsUseCase:
     return GetAssessmentsUseCase(risk_score_repository)
+
+
+async def get_assessment_submissions_use_case(
+    submission_repository: SQLAlchemyAssessmentSubmissionRepository = Depends(
+        get_assessment_submission_repository
+    ),
+    risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
+) -> GetAssessmentSubmissionsUseCase:
+    return GetAssessmentSubmissionsUseCase(submission_repository, risk_score_repository)
+
+
+async def get_save_assessment_submission_use_case(
+    repository: SQLAlchemyAssessmentSubmissionRepository = Depends(
+        get_assessment_submission_repository
+    ),
+) -> SaveAssessmentSubmissionUseCase:
+    return SaveAssessmentSubmissionUseCase(repository)
 
 
 async def get_recalculate_member_scores_use_case(

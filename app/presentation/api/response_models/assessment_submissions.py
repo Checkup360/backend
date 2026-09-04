@@ -1,0 +1,64 @@
+from datetime import datetime
+from typing import Any
+import uuid
+
+from pydantic import BaseModel
+
+
+class AssessmentSubmissionSummaryResponse(BaseModel):
+    id: uuid.UUID
+    form_type: str
+    form_version: str
+    status: str
+    submitted_at: datetime
+
+
+class AssessmentSubmissionListResponse(BaseModel):
+    items: list[AssessmentSubmissionSummaryResponse]
+    page: int
+    limit: int
+    total: int
+    has_next: bool
+
+
+class AssessmentSubmissionAnswersResponse(BaseModel):
+    age: int | None = None
+    sex: str | None = None
+    weight: float | None = None
+    height: float | None = None
+    waist_circumference: float | None = None
+    systolic_blood_pressure: float | None = None
+    total_cholesterol: float | None = None
+    hdl: float | None = None
+    triglycerides: float | None = None
+    smoker: bool | None = None
+    daily_physical_activity: bool | None = None
+    fruits_vegetables: bool | None = None
+    hypertension_medication: bool | None = None
+    previous_high_glucose: bool | None = None
+    family_diabetes: str | None = None
+    snoring: bool | None = None
+    tired: bool | None = None
+    observed_apnea: bool | None = None
+    neck_circumference: float | None = None
+
+
+class AssessmentSubmissionScoreResponse(BaseModel):
+    score_id: uuid.UUID
+    score_name: str
+    risk_level: str | None = None
+    raw_value: float | None = None
+    normalized_value: float | None = None
+    explanation: str | None = None
+    contributing_factors: dict[str, Any]
+    evaluated_at: datetime
+
+
+class AssessmentSubmissionDetailResponse(BaseModel):
+    id: uuid.UUID
+    form_type: str
+    form_version: str
+    status: str
+    submitted_at: datetime
+    answers: AssessmentSubmissionAnswersResponse
+    scores: list[AssessmentSubmissionScoreResponse]

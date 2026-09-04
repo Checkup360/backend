@@ -4,6 +4,8 @@ from app.application.dto.risk_scoring import HealthDataDTO, ScoreResultDTO
 from app.application.interfaces.risk_scoring_service import RiskScoringService
 from app.domain.repositories.member_details import MemberDetailsRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
+from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
+from app.domain.entities.assessment_submission import AssessmentSubmission
 from app.domain.entities.risk_score import RiskScore
 from app.domain.services.time_provider import TimeProvider
 
@@ -15,17 +17,20 @@ class SubmitAssessmentUseCase:
         member_details_repository: MemberDetailsRepository,
         risk_score_repository: RiskScoreRepository,
         time_provider: TimeProvider,
+        assessment_submission_repository: AssessmentSubmissionRepository | None = None,
     ) -> None:
         self._risk_scoring_service = risk_scoring_service
         self._member_details_repository = member_details_repository
         self._risk_score_repository = risk_score_repository
         self._time_provider = time_provider
+        self._assessment_submission_repository = assessment_submission_repository
 
     async def execute(
         self,
         user_id: uuid.UUID,
         health_data: HealthDataDTO,
         target_scores: list[str] | None = None,
+        organization_id: uuid.UUID | None = None,
     ) -> list[ScoreResultDTO]:
         # Retrieve member details to supplement the health data
         member_details = await self._member_details_repository.get_by_user(user_id)
@@ -60,12 +65,28 @@ class SubmitAssessmentUseCase:
             neck_circumference=health_data.neck_circumference,
         )
 
+        now = self._time_provider.utcnow()
+        submission_id: uuid.UUID | None = None
+        if self._assessment_submission_repository and organization_id:
+            submission = AssessmentSubmission(
+                id=uuid.uuid4(),
+                user_id=user_id,
+                organization_id=organization_id,
+                form_type="clinical_assessment",
+                form_version="1",
+                status="pending",
+                submitted_at=now,
+                **vars(supplemented_data),
+            )
+            saved_submission = await self._assessment_submission_repository.save(
+                submission
+            )
+            submission_id = saved_submission.id
+
         results = await self._risk_scoring_service.evaluate_risk(
             data=supplemented_data, target_scores=target_scores
         )
 
-        # Save scores to database
-        now = self._time_provider.utcnow()
         for result in results:
             score_entity = RiskScore(
                 id=uuid.uuid4(),
@@ -77,7 +98,13 @@ class SubmitAssessmentUseCase:
                 explanation=result.explanation,
                 contributing_factors=result.contributing_factors,
                 evaluated_at=now,
+                submission_id=submission_id,
             )
             await self._risk_score_repository.save(score_entity)
+
+        if submission_id and self._assessment_submission_repository:
+            await self._assessment_submission_repository.update_status(
+                submission_id, "completed"
+            )
 
         return results

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.dto import AuthenticatedUser
@@ -7,6 +8,7 @@ from app.presentation.api.dependencies import (
     get_submit_assessment_use_case,
     get_get_assessments_use_case,
     get_organization_service,
+    get_assessment_submissions_use_case,
 )
 from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
@@ -23,8 +25,21 @@ from app.presentation.api.response_models.assessments import (
     AssessmentResultResponse,
     AssessmentSessionResponse,
 )
+from app.presentation.api.response_models.assessment_submissions import (
+    AssessmentSubmissionAnswersResponse,
+    AssessmentSubmissionDetailResponse,
+    AssessmentSubmissionListResponse,
+    AssessmentSubmissionScoreResponse,
+    AssessmentSubmissionSummaryResponse,
+)
+from app.application.use_cases.assessments.get_submissions import (
+    GetAssessmentSubmissionsUseCase,
+)
 
 router = APIRouter(prefix="/members/me/assessments", tags=["assessments"])
+submissions_router = APIRouter(
+    prefix="/members/me/assessment-submissions", tags=["assessment-submissions"]
+)
 
 
 def _format_score_display_name(name: str) -> str:
@@ -176,6 +191,7 @@ async def evaluate_assessments(
             user_id=user.id,
             health_data=health_data,
             target_scores=["stop_bang", "findrisc"],
+            organization_id=user.membership.organization_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -252,3 +268,79 @@ async def get_assessments(
     return build_assessments_response(
         response_results, page=page, limit=limit, score_weights=score_weights
     )
+
+
+def _submission_detail_response(submission, scores):
+    answer_fields = {
+        field: getattr(submission, field)
+        for field in AssessmentSubmissionAnswersResponse.model_fields
+    }
+    return AssessmentSubmissionDetailResponse(
+        id=submission.id,
+        form_type=submission.form_type,
+        form_version=submission.form_version,
+        status=submission.status,
+        submitted_at=submission.submitted_at,
+        answers=AssessmentSubmissionAnswersResponse(**answer_fields),
+        scores=[
+            AssessmentSubmissionScoreResponse(
+                score_id=score.id,
+                score_name=_format_score_display_name(score.score_name),
+                risk_level=score.risk_level,
+                raw_value=score.raw_value,
+                normalized_value=score.normalized_value,
+                explanation=score.explanation,
+                contributing_factors=score.contributing_factors,
+                evaluated_at=score.evaluated_at,
+            )
+            for score in scores
+        ],
+    )
+
+
+@submissions_router.get("", response_model=AssessmentSubmissionListResponse)
+async def list_my_assessment_submissions(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetAssessmentSubmissionsUseCase = Depends(
+        get_assessment_submissions_use_case
+    ),
+):
+    if not user.membership or "member" not in user.membership.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    items, total = await use_case.list_for_user(user.id, page, limit)
+    return AssessmentSubmissionListResponse(
+        items=[
+            AssessmentSubmissionSummaryResponse.model_validate(
+                item, from_attributes=True
+            )
+            for item in items
+        ],
+        page=page,
+        limit=limit,
+        total=total,
+        has_next=page * limit < total,
+    )
+
+
+@submissions_router.get(
+    "/{submission_id}", response_model=AssessmentSubmissionDetailResponse
+)
+async def get_my_assessment_submission(
+    submission_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetAssessmentSubmissionsUseCase = Depends(
+        get_assessment_submissions_use_case
+    ),
+):
+    if not user.membership or "member" not in user.membership.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    result = await use_case.get_detail(submission_id)
+    if (
+        result is None
+        or result[0].user_id != user.id
+        or result[0].organization_id != user.membership.organization_id
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+    return _submission_detail_response(*result)

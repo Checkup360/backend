@@ -32,6 +32,7 @@ class RecalculateMemberScoresUseCase:
         self,
         user_id: uuid.UUID,
         updated_fields: set[str] | list[str] | None = None,
+        submission_id: uuid.UUID | None = None,
     ) -> list[RiskScore]:
         """
         Executes dynamic score evaluation for eligible scores.
@@ -138,6 +139,7 @@ class RecalculateMemberScoresUseCase:
                     explanation=res.explanation,
                     contributing_factors=res.contributing_factors,
                     evaluated_at=now,
+                    submission_id=submission_id,
                 )
                 await self._risk_score_repo.save(entity)
                 evaluated_scores.append(entity)

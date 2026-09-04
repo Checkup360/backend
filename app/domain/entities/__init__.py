@@ -12,6 +12,7 @@ from app.domain.entities.membership import Membership
 from app.domain.value_objects import OrgRole
 from app.domain.entities.organization import Organization
 from app.domain.entities.risk_score import RiskScore
+from app.domain.entities.assessment_submission import AssessmentSubmission
 from app.domain.entities.user import User
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "Organization",
     "OrganizationRiskTrendPoint",
     "RiskScore",
+    "AssessmentSubmission",
     "User",
 ]

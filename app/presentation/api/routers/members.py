@@ -5,11 +5,17 @@ from app.application.dto import AuthenticatedUser
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
+from app.application.use_cases.assessments.save_submission import (
+    SaveAssessmentSubmissionUseCase,
+)
 from app.presentation.api.dependencies import (
     get_member_details_service,
     get_member_health_data_service,
     get_recalculate_member_scores_use_case,
+    get_save_assessment_submission_use_case,
 )
+from app.domain.services.time_provider import TimeProvider
+from app.presentation.api.dependencies import get_time_provider
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
@@ -235,6 +241,10 @@ async def update_my_form_data(
     recalculate_use_case: RecalculateMemberScoresUseCase = Depends(
         get_recalculate_member_scores_use_case
     ),
+    save_submission_use_case: SaveAssessmentSubmissionUseCase = Depends(
+        get_save_assessment_submission_use_case
+    ),
+    time_provider: TimeProvider = Depends(get_time_provider),
 ) -> MemberFormSubmissionResponse:
     if form_type not in FORM_FIELDS_MAP:
         raise HTTPException(
@@ -251,9 +261,22 @@ async def update_my_form_data(
     if update_kwargs:
         await health_data_service.update_health_data(user.id, **update_kwargs)
 
+    submission_id = None
+    if user.membership:
+        submission = await save_submission_use_case.execute(
+            user_id=user.id,
+            organization_id=user.membership.organization_id,
+            form_type=form_type,
+            answers=update_kwargs,
+            submitted_at=time_provider.utcnow(),
+        )
+        submission_id = submission.id
+
     updated_keys = list(update_kwargs.keys())
     newly_evaluated = await recalculate_use_case.execute(
-        user_id=user.id, updated_fields=updated_keys
+        user_id=user.id,
+        updated_fields=updated_keys,
+        submission_id=submission_id,
     )
 
     recalculated_summaries = [

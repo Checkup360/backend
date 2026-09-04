@@ -17,6 +17,12 @@ class RiskScoreModel(Base):
         nullable=False,
         index=True,
     )
+    submission_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("assessment_submissions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     score_name = Column(String(100), nullable=False)
     risk_level = Column(String(100), nullable=True)
     raw_value = Column(Float, nullable=True)
@@ -27,3 +33,4 @@ class RiskScoreModel(Base):
 
     # Relationships
     user = relationship("User", backref="risk_scores")
+    submission = relationship("AssessmentSubmissionModel", back_populates="risk_scores")

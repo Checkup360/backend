@@ -6,6 +6,7 @@ from app.domain.repositories.member_health_data import MemberHealthDataRepositor
 from app.domain.repositories.membership import MembershipRepository
 from app.domain.repositories.organization import OrganizationRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
+from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
 from app.domain.repositories.user import UserRepository
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "MembershipRepository",
     "OrganizationRepository",
     "RiskScoreRepository",
+    "AssessmentSubmissionRepository",
     "UserRepository",
 ]
