@@ -91,16 +91,132 @@ async def test_does_not_require_onboarding_for_sysadmin_or_non_member():
 
 
 @pytest.mark.asyncio
-async def test_is_onboarded_delegates_to_repo():
+async def test_is_onboarded_returns_false_if_no_details():
     repo = AsyncMock()
-    repo.exists_for_user.return_value = True
+    repo.exists_for_user.return_value = False
     user_id = uuid.uuid4()
 
     service = MemberDetailsService(repo, FrozenTimeProvider())
     result = await service.is_onboarded(user_id)
 
-    assert result is True
+    assert result is False
     repo.exists_for_user.assert_awaited_once_with(user_id)
+
+
+@pytest.mark.asyncio
+async def test_is_onboarded_returns_false_when_forms_incomplete():
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    repo = AsyncMock()
+    repo.exists_for_user.return_value = True
+    user_id = uuid.uuid4()
+
+    submission_repo = AsyncMock()
+    # User has completed biometrics, but sleep and habits are missing
+    submission_repo.list_by_user.return_value = (
+        [SimpleNamespace(form_type="biometrics", status="completed")],
+        1,
+    )
+
+    health_data_repo = AsyncMock()
+    health_data_repo.get_by_user.return_value = None
+
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(form_type="biometrics", fields=["height"]),
+            FormDefinition(form_type="sleep", fields=["snoring"]),
+        ]
+    )
+
+    service = MemberDetailsService(
+        repo,
+        FrozenTimeProvider(),
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+    result = await service.is_onboarded(user_id)
+
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_is_onboarded_returns_true_when_all_forms_completed():
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    repo = AsyncMock()
+    repo.exists_for_user.return_value = True
+    user_id = uuid.uuid4()
+
+    submission_repo = AsyncMock()
+    submission_repo.list_by_user.return_value = (
+        [
+            SimpleNamespace(form_type="biometrics", status="completed"),
+            SimpleNamespace(form_type="sleep", status="completed"),
+        ],
+        2,
+    )
+
+    health_data_repo = AsyncMock()
+
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(form_type="biometrics", fields=["height"]),
+            FormDefinition(form_type="sleep", fields=["snoring"]),
+        ]
+    )
+
+    service = MemberDetailsService(
+        repo,
+        FrozenTimeProvider(),
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+    result = await service.is_onboarded(user_id)
+
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_is_onboarded_dynamically_requires_new_forms():
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    repo = AsyncMock()
+    repo.exists_for_user.return_value = True
+    user_id = uuid.uuid4()
+
+    submission_repo = AsyncMock()
+    submission_repo.list_by_user.return_value = (
+        [
+            SimpleNamespace(form_type="biometrics", status="completed"),
+            SimpleNamespace(form_type="sleep", status="completed"),
+        ],
+        2,
+    )
+
+    # A new form "cardiovascular" is added to FormRegistry
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(form_type="biometrics", fields=["height"]),
+            FormDefinition(form_type="sleep", fields=["snoring"]),
+            FormDefinition(form_type="cardiovascular", fields=["systolic_bp"]),
+        ]
+    )
+
+    health_data_repo = AsyncMock()
+    health_data_repo.get_by_user.return_value = None
+
+    service = MemberDetailsService(
+        repo,
+        FrozenTimeProvider(),
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+
+    # Should return False because "cardiovascular" is not completed
+    assert await service.is_onboarded(user_id) is False
 
 
 @pytest.mark.asyncio

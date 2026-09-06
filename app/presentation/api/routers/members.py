@@ -15,6 +15,7 @@ from app.presentation.api.dependencies import (
     get_save_assessment_submission_use_case,
 )
 from app.domain.services.time_provider import TimeProvider
+from app.domain.services.form_registry import FormRegistry
 from app.presentation.api.dependencies import get_time_provider
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
@@ -185,23 +186,7 @@ async def update_my_biometrics(
     )
 
 
-FORM_FIELDS_MAP: dict[str, list[str]] = {
-    "biometrics": [
-        "biological_sex",
-        "height",
-        "weight",
-        "waist_circumference",
-        "neck_circumference",
-    ],
-    "sleep": ["snoring", "tired", "observed_apnea", "neck_circumference"],
-    "habits": [
-        "daily_physical_activity",
-        "fruits_vegetables",
-        "hypertension_medication",
-        "previous_high_glucose",
-        "family_diabetes",
-    ],
-}
+FORM_FIELDS_MAP: dict[str, list[str]] = FormRegistry().get_form_fields_map()
 
 
 @router.get("/me/forms/{form_type}", response_model=MemberFormResponse)

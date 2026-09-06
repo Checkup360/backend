@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.interfaces import EmailSender
 from app.domain.services.time_provider import TimeProvider
+from app.domain.services.form_registry import FormRegistry
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
 from app.application.dto import AuthenticatedUser
 from app.domain.entities import Membership
@@ -158,11 +159,34 @@ async def get_membership_service(
     return MembershipService(membership_repo, org_repo)
 
 
+def get_form_registry() -> FormRegistry:
+    return FormRegistry()
+
+
+async def get_assessment_submission_repository(
+    db: AsyncSession = Depends(get_db),
+) -> SQLAlchemyAssessmentSubmissionRepository:
+    return SQLAlchemyAssessmentSubmissionRepository(db)
+
+
 async def get_member_details_service(
     repo: MemberDetailsRepository = Depends(get_member_details_repository),
     time_provider: TimeProvider = Depends(get_time_provider),
+    health_data_repo: MemberHealthDataRepository = Depends(
+        get_member_health_data_repository
+    ),
+    submission_repo: SQLAlchemyAssessmentSubmissionRepository = Depends(
+        get_assessment_submission_repository
+    ),
+    form_registry: FormRegistry = Depends(get_form_registry),
 ) -> MemberDetailsService:
-    return MemberDetailsService(repo, time_provider)
+    return MemberDetailsService(
+        repo,
+        time_provider,
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
 
 
 async def get_member_health_data_service(
@@ -214,12 +238,6 @@ async def get_risk_score_repository(
     db: AsyncSession = Depends(get_db),
 ) -> RiskScoreRepository:
     return SQLAlchemyRiskScoreRepository(db)
-
-
-async def get_assessment_submission_repository(
-    db: AsyncSession = Depends(get_db),
-) -> SQLAlchemyAssessmentSubmissionRepository:
-    return SQLAlchemyAssessmentSubmissionRepository(db)
 
 
 async def get_submit_assessment_use_case(

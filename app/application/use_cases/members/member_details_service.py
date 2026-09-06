@@ -3,9 +3,14 @@ from datetime import date
 from typing import Protocol
 
 from app.domain.entities import MemberDetails, Membership
-from app.domain.repositories import MemberDetailsRepository
-from app.domain.services.time_provider import TimeProvider
+from app.domain.repositories import (
+    AssessmentSubmissionRepository,
+    MemberDetailsRepository,
+    MemberHealthDataRepository,
+)
+from app.domain.services.form_registry import FormRegistry
 from app.domain.services.member_health_topics import calculate_member_priority_topics
+from app.domain.services.time_provider import TimeProvider
 from app.domain.value_objects import OrgRole
 
 
@@ -21,9 +26,19 @@ class MemberUser(Protocol):
 
 
 class MemberDetailsService:
-    def __init__(self, repo: MemberDetailsRepository, time_provider: TimeProvider):
+    def __init__(
+        self,
+        repo: MemberDetailsRepository,
+        time_provider: TimeProvider,
+        health_data_repo: MemberHealthDataRepository | None = None,
+        submission_repo: AssessmentSubmissionRepository | None = None,
+        form_registry: FormRegistry | None = None,
+    ):
         self.repo = repo
         self.time_provider = time_provider
+        self.health_data_repo = health_data_repo
+        self.submission_repo = submission_repo
+        self.form_registry = form_registry
 
     def is_member_user(self, user: MemberUser) -> bool:
         if user.is_superuser:
@@ -39,7 +54,42 @@ class MemberDetailsService:
         return not await self.repo.exists_for_user(user.id)
 
     async def is_onboarded(self, user_id: uuid.UUID) -> bool:
-        return await self.repo.exists_for_user(user_id)
+        details_exist = await self.repo.exists_for_user(user_id)
+        if not details_exist:
+            return False
+
+        if self.form_registry is None:
+            return True
+
+        required_forms = self.form_registry.get_registered_form_types()
+        if not required_forms:
+            return True
+
+        completed_forms: set[str] = set()
+
+        if self.submission_repo is not None:
+            submissions, _ = await self.submission_repo.list_by_user(
+                user_id, offset=0, limit=100
+            )
+            for sub in submissions:
+                if sub.status == "completed":
+                    completed_forms.add(sub.form_type)
+
+        if self.health_data_repo is not None and len(completed_forms) < len(
+            required_forms
+        ):
+            health_data = await self.health_data_repo.get_by_user(user_id)
+            if health_data:
+                for form_type in required_forms:
+                    if form_type in completed_forms:
+                        continue
+                    fields = self.form_registry.get_form_fields(form_type)
+                    if fields and any(
+                        getattr(health_data, f, None) is not None for f in fields
+                    ):
+                        completed_forms.add(form_type)
+
+        return all(ft in completed_forms for ft in required_forms)
 
     async def get_profile(self, user_id: uuid.UUID) -> MemberDetails | None:
         return await self.repo.get_by_user(user_id)
