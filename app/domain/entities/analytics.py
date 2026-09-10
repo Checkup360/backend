@@ -6,8 +6,8 @@ import uuid
 class OrganizationRiskTrendPoint:
     period: str
     month_label: str
-    average_score: float
-    risk_index: float
+    average_score: float | None
+    risk_index: float | None
     total_assessments: int
     scores_by_study: dict[str, float] = field(default_factory=dict)
 
@@ -27,7 +27,7 @@ class DepartmentRiskTrendPoint:
 class DepartmentAnalyticsSummary:
     department_id: uuid.UUID
     name: str
-    average_score: float
+    average_score: float | None
     total_workers: int
     high_risk_count: int
 

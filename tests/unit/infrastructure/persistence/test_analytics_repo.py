@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 import uuid
@@ -14,32 +15,69 @@ async def test_get_organization_trends():
     mock_db = AsyncMock()
     repo = AnalyticsRepositoryImpl(mock_db)
     org_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    now_jan = datetime(2026, 1, 15, tzinfo=timezone.utc)
+    now_feb = datetime(2026, 2, 15, tzinfo=timezone.utc)
 
-    mock_row1 = SimpleNamespace(
-        period="2026-01",
-        month_label="Jan",
-        avg_score=80.0,
-        total_assessments=10,
-    )
-    mock_row2 = SimpleNamespace(
-        period="2026-02",
-        month_label="Feb",
-        avg_score=85.0,
-        total_assessments=15,
-    )
+    # 1st execute: org score weights
+    mock_org_res = MagicMock()
+    mock_org_res.scalar_one_or_none.return_value = None
 
-    mock_res = MagicMock()
-    mock_res.all.return_value = [mock_row1, mock_row2]
+    # 2nd execute: raw scores to compute user overall score & per-study score
+    mock_rows = [
+        SimpleNamespace(
+            period="2026-01",
+            month_label="Jan",
+            user_id=user_id,
+            score_name="Diabetes",
+            normalized_value=80.0,
+            evaluated_at=now_jan,
+        ),
+        SimpleNamespace(
+            period="2026-01",
+            month_label="Jan",
+            user_id=user_id,
+            score_name="Sleep Apnea",
+            normalized_value=80.0,
+            evaluated_at=now_jan,
+        ),
+        SimpleNamespace(
+            period="2026-01",
+            month_label="Jan",
+            user_id=user_id,
+            score_name="Depression",
+            normalized_value=80.0,
+            evaluated_at=now_jan,
+        ),
+        SimpleNamespace(
+            period="2026-02",
+            month_label="Feb",
+            user_id=user_id,
+            score_name="Diabetes",
+            normalized_value=85.0,
+            evaluated_at=now_feb,
+        ),
+        SimpleNamespace(
+            period="2026-02",
+            month_label="Feb",
+            user_id=user_id,
+            score_name="Sleep Apnea",
+            normalized_value=85.0,
+            evaluated_at=now_feb,
+        ),
+        SimpleNamespace(
+            period="2026-02",
+            month_label="Feb",
+            user_id=user_id,
+            score_name="Depression",
+            normalized_value=85.0,
+            evaluated_at=now_feb,
+        ),
+    ]
+    mock_scores_res = MagicMock()
+    mock_scores_res.all.return_value = mock_rows
 
-    mock_study_row = SimpleNamespace(
-        period="2026-01",
-        score_name="Diabetes",
-        avg_score=78.0,
-    )
-    mock_study_res = MagicMock()
-    mock_study_res.all.return_value = [mock_study_row]
-
-    mock_db.execute.side_effect = [mock_res, mock_study_res]
+    mock_db.execute.side_effect = [mock_org_res, mock_scores_res]
 
     points = await repo.get_organization_trends(org_id, months=12)
 
@@ -48,15 +86,23 @@ async def test_get_organization_trends():
     assert points[0].month_label == "Jan"
     assert points[0].average_score == 80.0
     assert points[0].risk_index == 20.0
-    assert points[0].total_assessments == 10
-    assert points[0].scores_by_study == {"Diabetes": 78.0}
+    assert points[0].total_assessments == 3
+    assert points[0].scores_by_study == {
+        "Diabetes": 80.0,
+        "Sleep Apnea": 80.0,
+        "Depression": 80.0,
+    }
+    assert points[1].scores_by_study == {
+        "Diabetes": 85.0,
+        "Sleep Apnea": 85.0,
+        "Depression": 85.0,
+    }
 
     assert points[1].period == "2026-02"
     assert points[1].month_label == "Feb"
     assert points[1].average_score == 85.0
     assert points[1].risk_index == 15.0
-    assert points[1].total_assessments == 15
-    assert points[1].scores_by_study == {}
+    assert points[1].total_assessments == 3
 
 
 @pytest.mark.asyncio
@@ -65,6 +111,7 @@ async def test_get_departments_summary():
     repo = AnalyticsRepositoryImpl(mock_db)
     org_id = uuid.uuid4()
     dept_id = uuid.uuid4()
+    now = datetime.now(timezone.utc)
 
     mock_dept = SimpleNamespace(id=dept_id, name="Engineering", organization_id=org_id)
 
@@ -72,22 +119,45 @@ async def test_get_departments_summary():
     mock_depts_res = MagicMock()
     mock_depts_res.scalars.return_value.all.return_value = [mock_dept]
 
+    # 2nd execute: fetch org score weights
+    mock_org_res = MagicMock()
+    mock_org_res.scalar_one_or_none.return_value = None
+
     user_id = uuid.uuid4()
-    # 2nd execute: fetch members
+    # 3rd execute: fetch members
     mock_members_res = MagicMock()
     mock_members_res.all.return_value = [(user_id,)]
 
-    # 3rd execute: fetch scores
-    mock_scores_row = SimpleNamespace(
-        user_id=user_id,
-        normalized_value=85.0,
-        risk_level="Low",
-    )
+    # 4th execute: fetch scores (all 3 required forms completed)
+    mock_scores_rows = [
+        SimpleNamespace(
+            user_id=user_id,
+            score_name="Diabetes",
+            normalized_value=85.0,
+            risk_level="Low",
+            evaluated_at=now,
+        ),
+        SimpleNamespace(
+            user_id=user_id,
+            score_name="Sleep Apnea",
+            normalized_value=85.0,
+            risk_level="Low",
+            evaluated_at=now,
+        ),
+        SimpleNamespace(
+            user_id=user_id,
+            score_name="Depression",
+            normalized_value=85.0,
+            risk_level="Low",
+            evaluated_at=now,
+        ),
+    ]
     mock_scores_res = MagicMock()
-    mock_scores_res.all.return_value = [mock_scores_row]
+    mock_scores_res.all.return_value = mock_scores_rows
 
     mock_db.execute.side_effect = [
         mock_depts_res,
+        mock_org_res,
         mock_members_res,
         mock_scores_res,
     ]

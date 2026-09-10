@@ -31,19 +31,45 @@ class TestOrganizationAnalyticsRouter:
                 select(Organization).where(Organization.slug == "analytics-org")
             )
 
-            # Insert risk score for employee in this org
-            score1 = RiskScoreModel(
-                id=uuid.uuid4(),
-                user_id=user.id,
-                score_name="Diabetes",
-                risk_level="Low",
-                raw_value=5.0,
-                normalized_value=85.0,
-                explanation="Low risk",
-                contributing_factors={},
-                evaluated_at=datetime.now(timezone.utc),
+            # Insert all required risk scores for employee in this org (Diabetes, Sleep Apnea, Depression)
+            now = datetime.now(timezone.utc)
+            session.add_all(
+                [
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        score_name="Diabetes",
+                        risk_level="Low",
+                        raw_value=5.0,
+                        normalized_value=85.0,
+                        explanation="Low risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        score_name="Sleep Apnea",
+                        risk_level="Low",
+                        raw_value=2.0,
+                        normalized_value=85.0,
+                        explanation="Low risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        score_name="Depression",
+                        risk_level="Low",
+                        raw_value=1.0,
+                        normalized_value=85.0,
+                        explanation="Low risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                ]
             )
-            session.add(score1)
             await session.commit()
 
         # Call analytics trends endpoint
@@ -95,18 +121,44 @@ class TestOrganizationAnalyticsRouter:
         )
 
         async with db_session_maker() as session:
-            score = RiskScoreModel(
-                id=uuid.uuid4(),
-                user_id=emp.id,
-                score_name="Diabetes",
-                risk_level="High",
-                raw_value=18.0,
-                normalized_value=50.0,
-                explanation="High risk",
-                contributing_factors={},
-                evaluated_at=datetime.now(timezone.utc),
+            now = datetime.now(timezone.utc)
+            session.add_all(
+                [
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=emp.id,
+                        score_name="Diabetes",
+                        risk_level="High",
+                        raw_value=18.0,
+                        normalized_value=50.0,
+                        explanation="High risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=emp.id,
+                        score_name="Sleep Apnea",
+                        risk_level="High",
+                        raw_value=6.0,
+                        normalized_value=50.0,
+                        explanation="High risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                    RiskScoreModel(
+                        id=uuid.uuid4(),
+                        user_id=emp.id,
+                        score_name="Depression",
+                        risk_level="High",
+                        raw_value=15.0,
+                        normalized_value=50.0,
+                        explanation="High risk",
+                        contributing_factors={},
+                        evaluated_at=now,
+                    ),
+                ]
             )
-            session.add(score)
             await session.commit()
 
         res = client.get(f"/organizations/{org.id}/analytics/departments")
@@ -117,6 +169,67 @@ class TestOrganizationAnalyticsRouter:
         assert data[0]["average_score"] == 50.0
         assert data[0]["total_workers"] == 1
         assert data[0]["high_risk_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_organization_department_analytics_partial_scores_returns_none(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-dept-partial-admin@example.com",
+            memberships=[("dept-partial-org", OrgRole.ADMIN)],
+        )
+
+        async with db_session_maker() as session:
+            org = await session.scalar(
+                select(Organization).where(Organization.slug == "dept-partial-org")
+            )
+            dept = Department(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                name="Marketing",
+                slug="marketing",
+            )
+            session.add(dept)
+            await session.commit()
+
+        emp = await make_user(email="dept.partial.worker@example.com")
+        await make_membership(
+            user_id=emp.id,
+            organization_id=org.id,
+            role="member",
+            department_id=dept.id,
+        )
+
+        async with db_session_maker() as session:
+            # Only Diabetes submitted, missing Sleep Apnea and Depression
+            session.add(
+                RiskScoreModel(
+                    id=uuid.uuid4(),
+                    user_id=emp.id,
+                    score_name="Diabetes",
+                    risk_level="High",
+                    raw_value=18.0,
+                    normalized_value=50.0,
+                    explanation="High risk",
+                    contributing_factors={},
+                    evaluated_at=datetime.now(timezone.utc),
+                )
+            )
+            await session.commit()
+
+        res = client.get(f"/organizations/{org.id}/analytics/departments")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Marketing"
+        assert data[0]["average_score"] is None
+        assert data[0]["total_workers"] == 1
+        assert data[0]["high_risk_count"] == 0
 
     @pytest.mark.asyncio
     async def test_analytics_unauthorized_member(

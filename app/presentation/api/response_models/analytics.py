@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 class RiskTrendPointResponse(BaseModel):
     period: str
     month_label: str
-    average_score: float
-    risk_index: float
+    average_score: float | None = None
+    risk_index: float | None = None
     total_assessments: int
     scores_by_study: dict[str, float] = Field(default_factory=dict)
 
@@ -15,7 +15,7 @@ class RiskTrendPointResponse(BaseModel):
 class DepartmentAnalyticsSummaryResponse(BaseModel):
     department_id: uuid.UUID
     name: str
-    average_score: float
+    average_score: float | None = None
     total_workers: int
     high_risk_count: int
 
