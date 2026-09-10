@@ -18,3 +18,10 @@ class DepartmentAnalyticsSummaryResponse(BaseModel):
     average_score: float
     total_workers: int
     high_risk_count: int
+
+
+class RegistrationTrendPointResponse(BaseModel):
+    period: str
+    date_label: str
+    new_members: int
+    cumulative_members: int

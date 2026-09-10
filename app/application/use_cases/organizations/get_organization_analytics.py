@@ -2,6 +2,7 @@ import uuid
 
 from app.domain.entities.analytics import (
     DepartmentAnalyticsSummary,
+    OrganizationRegistrationTrendPoint,
     OrganizationRiskTrendPoint,
 )
 from app.domain.exceptions import OrganizationNotFoundError
@@ -42,3 +43,12 @@ class GetOrganizationAnalyticsUseCase:
             raise OrganizationNotFoundError()
 
         return await self._analytics_repo.get_departments_summary(organization_id)
+
+    async def get_registration_trends(
+        self, organization_id: uuid.UUID
+    ) -> list[OrganizationRegistrationTrendPoint]:
+        org = await self._org_repo.get(organization_id)
+        if not org:
+            raise OrganizationNotFoundError()
+
+        return await self._analytics_repo.get_registration_trends(organization_id)

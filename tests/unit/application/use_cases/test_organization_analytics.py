@@ -96,3 +96,52 @@ async def test_get_departments_summary_org_not_found():
 
     with pytest.raises(OrganizationNotFoundError):
         await use_case.get_departments_summary(org_id)
+
+
+@pytest.mark.asyncio
+async def test_get_registration_trends_success():
+    analytics_repo = AsyncMock()
+    org_repo = AsyncMock()
+    org_id = uuid.uuid4()
+
+    org_mock = MagicMock(id=org_id, name="Health Corp")
+    org_repo.get.return_value = org_mock
+
+    from app.domain.entities.analytics import OrganizationRegistrationTrendPoint
+
+    mock_points = [
+        OrganizationRegistrationTrendPoint(
+            period="2026-09-01",
+            date_label="01 Sep",
+            new_members=3,
+            cumulative_members=3,
+        ),
+        OrganizationRegistrationTrendPoint(
+            period="2026-09-05",
+            date_label="05 Sep",
+            new_members=2,
+            cumulative_members=5,
+        ),
+    ]
+    analytics_repo.get_registration_trends.return_value = mock_points
+
+    use_case = GetOrganizationAnalyticsUseCase(analytics_repo, org_repo)
+    result = await use_case.get_registration_trends(org_id)
+
+    assert len(result) == 2
+    assert result == mock_points
+    org_repo.get.assert_awaited_once_with(org_id)
+    analytics_repo.get_registration_trends.assert_awaited_once_with(org_id)
+
+
+@pytest.mark.asyncio
+async def test_get_registration_trends_org_not_found():
+    analytics_repo = AsyncMock()
+    org_repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_repo.get.return_value = None
+
+    use_case = GetOrganizationAnalyticsUseCase(analytics_repo, org_repo)
+
+    with pytest.raises(OrganizationNotFoundError):
+        await use_case.get_registration_trends(org_id)

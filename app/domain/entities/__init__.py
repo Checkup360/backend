@@ -1,6 +1,7 @@
 from app.domain.entities.analytics import (
     DepartmentAnalyticsSummary,
     DepartmentRiskTrendPoint,
+    OrganizationRegistrationTrendPoint,
     OrganizationRiskTrendPoint,
 )
 from app.domain.entities.department import Department
@@ -26,6 +27,7 @@ __all__ = [
     "Membership",
     "OrgRole",
     "Organization",
+    "OrganizationRegistrationTrendPoint",
     "OrganizationRiskTrendPoint",
     "RiskScore",
     "AssessmentSubmission",

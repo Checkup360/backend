@@ -20,6 +20,7 @@ from app.application.use_cases.organizations.get_organization_analytics import (
 )
 from app.presentation.api.response_models.analytics import (
     DepartmentAnalyticsSummaryResponse,
+    RegistrationTrendPointResponse,
     RiskTrendPointResponse,
 )
 from app.domain.value_objects.org_role import OrgRole
@@ -739,6 +740,45 @@ async def get_organization_department_analytics(
                 high_risk_count=s.high_risk_count,
             )
             for s in summaries
+        ]
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.get(
+    "/{organization_id}/registration-trends",
+    response_model=list[RegistrationTrendPointResponse],
+)
+async def get_organization_registration_trends(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    analytics_use_case: GetOrganizationAnalyticsUseCase = Depends(
+        get_organization_analytics_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+) -> list[RegistrationTrendPointResponse]:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        points = await analytics_use_case.get_registration_trends(organization_id)
+        return [
+            RegistrationTrendPointResponse(
+                period=p.period,
+                date_label=p.date_label,
+                new_members=p.new_members,
+                cumulative_members=p.cumulative_members,
+            )
+            for p in points
         ]
     except OrganizationNotFoundError:
         raise HTTPException(

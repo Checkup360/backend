@@ -100,3 +100,38 @@ async def test_get_departments_summary():
     assert summaries[0].average_score == 85.0
     assert summaries[0].total_workers == 1
     assert summaries[0].high_risk_count == 0
+
+
+@pytest.mark.asyncio
+async def test_get_registration_trends():
+    mock_db = AsyncMock()
+    repo = AnalyticsRepositoryImpl(mock_db)
+    org_id = uuid.uuid4()
+
+    mock_row1 = SimpleNamespace(
+        period="2026-09-01",
+        date_label="01 Sep",
+        new_members=3,
+    )
+    mock_row2 = SimpleNamespace(
+        period="2026-09-02",
+        date_label="02 Sep",
+        new_members=2,
+    )
+
+    mock_res = MagicMock()
+    mock_res.all.return_value = [mock_row1, mock_row2]
+    mock_db.execute.return_value = mock_res
+
+    points = await repo.get_registration_trends(org_id)
+
+    assert len(points) == 2
+    assert points[0].period == "2026-09-01"
+    assert points[0].date_label == "01 Sep"
+    assert points[0].new_members == 3
+    assert points[0].cumulative_members == 3
+
+    assert points[1].period == "2026-09-02"
+    assert points[1].date_label == "02 Sep"
+    assert points[1].new_members == 2
+    assert points[1].cumulative_members == 5

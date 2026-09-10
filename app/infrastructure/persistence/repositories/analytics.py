@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.analytics import (
     DepartmentAnalyticsSummary,
+    OrganizationRegistrationTrendPoint,
     OrganizationRiskTrendPoint,
 )
 from app.domain.repositories.analytics import AnalyticsRepository
@@ -205,3 +206,42 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
             )
 
         return summaries
+
+    async def get_registration_trends(
+        self, organization_id: UUID
+    ) -> list[OrganizationRegistrationTrendPoint]:
+        period_col = func.to_char(Membership.created_at, "YYYY-MM-DD").label("period")
+        date_label_col = func.to_char(Membership.created_at, "DD Mon").label(
+            "date_label"
+        )
+        count_col = func.count().label("new_members")
+
+        query = (
+            select(
+                period_col,
+                date_label_col,
+                count_col,
+            )
+            .where(Membership.organization_id == organization_id)
+            .group_by(period_col, date_label_col)
+            .order_by(period_col.asc())
+        )
+
+        result = await self._db.execute(query)
+        rows = result.all()
+
+        points: list[OrganizationRegistrationTrendPoint] = []
+        cumulative = 0
+        for row in rows:
+            new_count = int(row.new_members)
+            cumulative += new_count
+            points.append(
+                OrganizationRegistrationTrendPoint(
+                    period=str(row.period),
+                    date_label=str(row.date_label),
+                    new_members=new_count,
+                    cumulative_members=cumulative,
+                )
+            )
+
+        return points

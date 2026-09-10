@@ -1,5 +1,6 @@
 from app.presentation.api.response_models.analytics import (
     DepartmentAnalyticsSummaryResponse,
+    RegistrationTrendPointResponse,
     RiskTrendPointResponse,
 )
 from app.presentation.api.response_models.auth import (
@@ -29,6 +30,7 @@ __all__ = [
     "OAuthAuthorizeResponse",
     "OrganizationMembership",
     "PrepareGoogleSessionResponse",
+    "RegistrationTrendPointResponse",
     "RiskTrendPointResponse",
     "UserRead",
     "MemberBiometricsResponse",
