@@ -37,12 +37,16 @@ def calculate_weighted_overall_score(
     score_entries: list[tuple[float, float]] = []
     active_weights = weights if weights and len(weights) > 0 else DEFAULT_SCORE_WEIGHTS
 
-    for key, r in latest_by_key.items():
-        norm_val = getattr(r, "normalized_value", None)
-        if norm_val is not None:
-            w = active_weights.get(key, 1.0)
-            if w > 0:
-                score_entries.append((float(norm_val), float(w)))
+    # All diseases configured with weight > 0 are required to compute overall score
+    for key, w in active_weights.items():
+        if w > 0:
+            if key not in latest_by_key:
+                return None, None
+            r = latest_by_key[key]
+            norm_val = getattr(r, "normalized_value", None)
+            if norm_val is None:
+                return None, None
+            score_entries.append((float(norm_val), float(w)))
 
     if not score_entries:
         return None, None

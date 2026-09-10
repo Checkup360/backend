@@ -54,10 +54,9 @@ class MemberDetailsService:
         return not await self.repo.exists_for_user(user.id)
 
     async def is_onboarded(self, user_id: uuid.UUID) -> bool:
-        details_exist = await self.repo.exists_for_user(user_id)
-        if not details_exist:
-            return False
+        return await self.repo.exists_for_user(user_id)
 
+    async def has_completed_all_forms(self, user_id: uuid.UUID) -> bool:
         if self.form_registry is None:
             return True
 

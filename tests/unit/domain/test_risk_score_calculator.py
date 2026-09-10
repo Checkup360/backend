@@ -53,11 +53,22 @@ def test_calculate_weighted_overall_score_custom_weights():
 
 def test_calculate_weighted_overall_score_partial_results():
     # Employee only completed Diabetes (score 70) with custom weights 60/40
-    # Weighted average over available = (70*60)/60 = 70.0
+    # Because sleep_apnea is missing, overall score cannot be computed
     results = [
         DummyScoreResult(score_name="Diabetes", normalized_value=70.0),
     ]
     weights = {"diabetes": 60.0, "sleep_apnea": 40.0}
+    score, level = calculate_weighted_overall_score(results, weights)
+    assert score is None
+    assert level is None
+
+
+def test_calculate_weighted_overall_score_zero_weight_for_missing_score():
+    # If a disease has 0 weight, its absence does not block overall score
+    results = [
+        DummyScoreResult(score_name="Diabetes", normalized_value=70.0),
+    ]
+    weights = {"diabetes": 100.0, "sleep_apnea": 0.0}
     score, level = calculate_weighted_overall_score(results, weights)
     assert score == 70.0
     assert level == "Moderate risk"
@@ -69,6 +80,9 @@ def test_calculate_weighted_overall_score_latest_timestamp_filtering():
     results = [
         DummyScoreResult(score_name="Diabetes", normalized_value=50.0, evaluated_at=t1),
         DummyScoreResult(score_name="Diabetes", normalized_value=90.0, evaluated_at=t2),
+        DummyScoreResult(
+            score_name="Sleep Apnea", normalized_value=90.0, evaluated_at=t2
+        ),
     ]
     score, level = calculate_weighted_overall_score(results)
     assert score == 90.0

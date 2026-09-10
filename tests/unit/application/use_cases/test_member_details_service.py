@@ -104,7 +104,20 @@ async def test_is_onboarded_returns_false_if_no_details():
 
 
 @pytest.mark.asyncio
-async def test_is_onboarded_returns_false_when_forms_incomplete():
+async def test_is_onboarded_delegates_to_repo():
+    repo = AsyncMock()
+    repo.exists_for_user.return_value = True
+    user_id = uuid.uuid4()
+
+    service = MemberDetailsService(repo, FrozenTimeProvider())
+    result = await service.is_onboarded(user_id)
+
+    assert result is True
+    repo.exists_for_user.assert_awaited_once_with(user_id)
+
+
+@pytest.mark.asyncio
+async def test_has_completed_all_forms_returns_false_when_forms_incomplete():
     from app.domain.services.form_registry import FormDefinition, FormRegistry
 
     repo = AsyncMock()
@@ -135,13 +148,13 @@ async def test_is_onboarded_returns_false_when_forms_incomplete():
         submission_repo=submission_repo,
         form_registry=form_registry,
     )
-    result = await service.is_onboarded(user_id)
+    result = await service.has_completed_all_forms(user_id)
 
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_is_onboarded_returns_true_when_all_forms_completed():
+async def test_has_completed_all_forms_returns_true_when_all_forms_completed():
     from app.domain.services.form_registry import FormDefinition, FormRegistry
 
     repo = AsyncMock()
@@ -173,13 +186,13 @@ async def test_is_onboarded_returns_true_when_all_forms_completed():
         submission_repo=submission_repo,
         form_registry=form_registry,
     )
-    result = await service.is_onboarded(user_id)
+    result = await service.has_completed_all_forms(user_id)
 
     assert result is True
 
 
 @pytest.mark.asyncio
-async def test_is_onboarded_dynamically_requires_new_forms():
+async def test_has_completed_all_forms_dynamically_requires_new_forms():
     from app.domain.services.form_registry import FormDefinition, FormRegistry
 
     repo = AsyncMock()
@@ -216,7 +229,7 @@ async def test_is_onboarded_dynamically_requires_new_forms():
     )
 
     # Should return False because "cardiovascular" is not completed
-    assert await service.is_onboarded(user_id) is False
+    assert await service.has_completed_all_forms(user_id) is False
 
 
 @pytest.mark.asyncio
