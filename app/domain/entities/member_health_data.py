@@ -45,3 +45,6 @@ class MemberHealthData:
     concentration: int | None = field(default=None)
     psychomotor: int | None = field(default=None)
     self_harm_thoughts: int | None = field(default=None)
+    eoss_physical_health_stage: int | None = field(default=None)
+    eoss_mental_health_stage: int | None = field(default=None)
+    eoss_functional_stage: int | None = field(default=None)

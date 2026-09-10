@@ -45,6 +45,11 @@ class MemberHealthData(Base):
     concentration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     psychomotor: Mapped[int | None] = mapped_column(Integer, nullable=True)
     self_harm_thoughts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eoss_physical_health_stage: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    eoss_mental_health_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eoss_functional_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

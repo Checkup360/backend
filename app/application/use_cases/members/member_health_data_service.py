@@ -42,6 +42,9 @@ class MemberHealthDataService:
         concentration: int | None = None,
         psychomotor: int | None = None,
         self_harm_thoughts: int | None = None,
+        eoss_physical_health_stage: int | None = None,
+        eoss_mental_health_stage: int | None = None,
+        eoss_functional_stage: int | None = None,
     ) -> MemberHealthData:
         existing = await self.repo.get_by_user(user_id)
         if existing is None:
@@ -103,6 +106,12 @@ class MemberHealthDataService:
             existing.psychomotor = psychomotor
         if self_harm_thoughts is not None:
             existing.self_harm_thoughts = self_harm_thoughts
+        if eoss_physical_health_stage is not None:
+            existing.eoss_physical_health_stage = eoss_physical_health_stage
+        if eoss_mental_health_stage is not None:
+            existing.eoss_mental_health_stage = eoss_mental_health_stage
+        if eoss_functional_stage is not None:
+            existing.eoss_functional_stage = eoss_functional_stage
 
         await self.repo.save(existing)
         return existing

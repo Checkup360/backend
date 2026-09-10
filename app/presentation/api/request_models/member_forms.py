@@ -22,6 +22,11 @@ class MemberFormUpdate(BaseModel):
     fasting_glucose: float | None = Field(default=None, ge=0, lt=2000)
     glucose_lowering_medication: bool | None = Field(default=None)
 
+    # EOSS self-assessment stages
+    eoss_physical_health_stage: int | None = Field(default=None, ge=0, le=4)
+    eoss_mental_health_stage: int | None = Field(default=None, ge=0, le=4)
+    eoss_functional_stage: int | None = Field(default=None, ge=0, le=4)
+
     # Sleep fields
     snoring: bool | None = Field(default=None)
     tired: bool | None = Field(default=None)

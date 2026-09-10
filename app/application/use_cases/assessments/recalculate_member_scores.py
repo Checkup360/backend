@@ -124,6 +124,14 @@ class RecalculateMemberScoresUseCase:
             health_data["psychomotor"] = member_health.psychomotor
         if member_health.self_harm_thoughts is not None:
             health_data["self_harm_thoughts"] = member_health.self_harm_thoughts
+        if member_health.eoss_physical_health_stage is not None:
+            health_data["physical_health_stage"] = (
+                member_health.eoss_physical_health_stage
+            )
+        if member_health.eoss_mental_health_stage is not None:
+            health_data["mental_health_stage"] = member_health.eoss_mental_health_stage
+        if member_health.eoss_functional_stage is not None:
+            health_data["functional_stage"] = member_health.eoss_functional_stage
 
         catalog = await self._risk_scoring_service.get_catalog()
         existing_scores = await self._risk_score_repo.get_by_user_id(user_id)

@@ -61,6 +61,9 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             "concentration": health_data.concentration,
             "psychomotor": health_data.psychomotor,
             "self_harm_thoughts": health_data.self_harm_thoughts,
+            "eoss_physical_health_stage": health_data.eoss_physical_health_stage,
+            "eoss_mental_health_stage": health_data.eoss_mental_health_stage,
+            "eoss_functional_stage": health_data.eoss_functional_stage,
         }
 
         stmt = insert(MemberHealthDataModel).values(**values)
@@ -95,6 +98,9 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
                 "concentration": stmt.excluded.concentration,
                 "psychomotor": stmt.excluded.psychomotor,
                 "self_harm_thoughts": stmt.excluded.self_harm_thoughts,
+                "eoss_physical_health_stage": stmt.excluded.eoss_physical_health_stage,
+                "eoss_mental_health_stage": stmt.excluded.eoss_mental_health_stage,
+                "eoss_functional_stage": stmt.excluded.eoss_functional_stage,
             },
         )
         await self.db.execute(stmt)
@@ -131,4 +137,7 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             concentration=model.concentration,
             psychomotor=model.psychomotor,
             self_harm_thoughts=model.self_harm_thoughts,
+            eoss_physical_health_stage=model.eoss_physical_health_stage,
+            eoss_mental_health_stage=model.eoss_mental_health_stage,
+            eoss_functional_stage=model.eoss_functional_stage,
         )

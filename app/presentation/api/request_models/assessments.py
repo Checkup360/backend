@@ -49,3 +49,6 @@ class ClinicalAssessmentRequest(BaseModel):
     concentration: int | None = Field(None, ge=0, le=3)
     psychomotor: int | None = Field(None, ge=0, le=3)
     self_harm_thoughts: int | None = Field(None, ge=0, le=3)
+    eoss_physical_health_stage: int | None = Field(None, ge=0, le=4)
+    eoss_mental_health_stage: int | None = Field(None, ge=0, le=4)
+    eoss_functional_stage: int | None = Field(None, ge=0, le=4)

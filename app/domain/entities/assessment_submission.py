@@ -44,3 +44,6 @@ class AssessmentSubmission:
     concentration: int | None = None
     psychomotor: int | None = None
     self_harm_thoughts: int | None = None
+    eoss_physical_health_stage: int | None = None
+    eoss_mental_health_stage: int | None = None
+    eoss_functional_stage: int | None = None

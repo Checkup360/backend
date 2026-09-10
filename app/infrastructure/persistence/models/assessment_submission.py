@@ -60,6 +60,11 @@ class AssessmentSubmissionModel(Base):
     concentration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     psychomotor: Mapped[int | None] = mapped_column(Integer, nullable=True)
     self_harm_thoughts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eoss_physical_health_stage: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    eoss_mental_health_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eoss_functional_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     user = relationship("User")
     organization = relationship("Organization")

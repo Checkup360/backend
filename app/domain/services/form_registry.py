@@ -58,6 +58,14 @@ class FormRegistry:
                     ],
                 ),
                 FormDefinition(
+                    form_type="eoss",
+                    fields=[
+                        "eoss_physical_health_stage",
+                        "eoss_mental_health_stage",
+                        "eoss_functional_stage",
+                    ],
+                ),
+                FormDefinition(
                     form_type="mood",
                     fields=list(PHQ9_ITEM_FIELDS),
                 ),

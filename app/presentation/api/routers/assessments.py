@@ -50,6 +50,8 @@ def _format_score_display_name(name: str) -> str:
         return "Sleep Apnea"
     if "phq" in lower:
         return "Depression"
+    if "eoss" in lower:
+        return "Obesity-related Health Impact"
     return name
 
 
@@ -201,13 +203,22 @@ async def evaluate_assessments(
         concentration=body.concentration,
         psychomotor=body.psychomotor,
         self_harm_thoughts=body.self_harm_thoughts,
+        eoss_physical_health_stage=body.eoss_physical_health_stage,
+        eoss_mental_health_stage=body.eoss_mental_health_stage,
+        eoss_functional_stage=body.eoss_functional_stage,
     )
 
     try:
         results = await use_case.execute(
             user_id=user.id,
             health_data=health_data,
-            target_scores=["stop_bang", "findrisc", "phq9", "metabolic_syndrome"],
+            target_scores=[
+                "stop_bang",
+                "findrisc",
+                "phq9",
+                "metabolic_syndrome",
+                "eoss",
+            ],
             organization_id=user.membership.organization_id,
         )
     except ValueError as e:
