@@ -38,6 +38,7 @@ from app.application.use_cases.assessments.get_submissions import (
 from app.application.use_cases.assessments.save_submission import (
     SaveAssessmentSubmissionUseCase,
 )
+from app.application.use_cases.admin.list_sysadmins import ListSysadminsUseCase
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
@@ -307,3 +308,10 @@ async def get_organization_analytics_use_case(
     org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> GetOrganizationAnalyticsUseCase:
     return GetOrganizationAnalyticsUseCase(analytics_repo, org_repo)
+
+
+def get_list_sysadmins_use_case(
+    user_repo: UserRepository = Depends(get_user_repository),
+    invite_repo: InviteRepository = Depends(get_invite_repository),
+) -> ListSysadminsUseCase:
+    return ListSysadminsUseCase(user_repo, invite_repo)

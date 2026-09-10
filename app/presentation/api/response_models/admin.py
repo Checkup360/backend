@@ -21,3 +21,18 @@ class SysadminInviteResponse(BaseModel):
     uses: int
     expires_at: datetime
     invite_url: str
+
+
+class SysadminUserResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_url: str | None = None
+    is_active: bool = True
+
+
+class SysadminStatsResponse(BaseModel):
+    total_sysadmins: int
+    active_sysadmins: int
+    pending_invites: int
