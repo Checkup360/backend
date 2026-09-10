@@ -32,9 +32,15 @@ class AssessmentSubmissionModel(Base):
     height: Mapped[float | None] = mapped_column(Float, nullable=True)
     waist_circumference: Mapped[float | None] = mapped_column(Float, nullable=True)
     systolic_blood_pressure: Mapped[float | None] = mapped_column(Float, nullable=True)
+    diastolic_blood_pressure: Mapped[float | None] = mapped_column(Float, nullable=True)
     total_cholesterol: Mapped[float | None] = mapped_column(Float, nullable=True)
     hdl: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hdl_cholesterol: Mapped[float | None] = mapped_column(Float, nullable=True)
     triglycerides: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fasting_glucose: Mapped[float | None] = mapped_column(Float, nullable=True)
+    glucose_lowering_medication: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
     smoker: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     daily_physical_activity: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     fruits_vegetables: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

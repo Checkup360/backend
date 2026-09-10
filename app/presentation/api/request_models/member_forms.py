@@ -14,6 +14,14 @@ class MemberFormUpdate(BaseModel):
     waist_circumference: float | None = Field(default=None, gt=0, lt=300)
     neck_circumference: float | None = Field(default=None, gt=0, lt=100)
 
+    # Metabolic syndrome fields
+    triglycerides: float | None = Field(default=None, ge=0, lt=10000)
+    hdl_cholesterol: float | None = Field(default=None, ge=0, lt=1000)
+    systolic_blood_pressure: float | None = Field(default=None, gt=0, lt=400)
+    diastolic_blood_pressure: float | None = Field(default=None, gt=0, lt=300)
+    fasting_glucose: float | None = Field(default=None, ge=0, lt=2000)
+    glucose_lowering_medication: bool | None = Field(default=None)
+
     # Sleep fields
     snoring: bool | None = Field(default=None)
     tired: bool | None = Field(default=None)

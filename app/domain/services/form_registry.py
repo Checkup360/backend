@@ -47,6 +47,17 @@ class FormRegistry:
                     ],
                 ),
                 FormDefinition(
+                    form_type="metabolic",
+                    fields=[
+                        "triglycerides",
+                        "hdl_cholesterol",
+                        "systolic_blood_pressure",
+                        "diastolic_blood_pressure",
+                        "fasting_glucose",
+                        "glucose_lowering_medication",
+                    ],
+                ),
+                FormDefinition(
                     form_type="mood",
                     fields=list(PHQ9_ITEM_FIELDS),
                 ),

@@ -18,6 +18,12 @@ class MemberHealthDataService:
         height: float | None = None,
         weight: float | None = None,
         waist_circumference: float | None = None,
+        triglycerides: float | None = None,
+        hdl_cholesterol: float | None = None,
+        systolic_blood_pressure: float | None = None,
+        diastolic_blood_pressure: float | None = None,
+        fasting_glucose: float | None = None,
+        glucose_lowering_medication: bool | None = None,
         neck_circumference: float | None = None,
         snoring: bool | None = None,
         tired: bool | None = None,
@@ -49,6 +55,18 @@ class MemberHealthDataService:
             existing.weight = weight
         if waist_circumference is not None:
             existing.waist_circumference = waist_circumference
+        if triglycerides is not None:
+            existing.triglycerides = triglycerides
+        if hdl_cholesterol is not None:
+            existing.hdl_cholesterol = hdl_cholesterol
+        if systolic_blood_pressure is not None:
+            existing.systolic_blood_pressure = systolic_blood_pressure
+        if diastolic_blood_pressure is not None:
+            existing.diastolic_blood_pressure = diastolic_blood_pressure
+        if fasting_glucose is not None:
+            existing.fasting_glucose = fasting_glucose
+        if glucose_lowering_medication is not None:
+            existing.glucose_lowering_medication = glucose_lowering_medication
         if neck_circumference is not None:
             existing.neck_circumference = neck_circumference
         if snoring is not None:

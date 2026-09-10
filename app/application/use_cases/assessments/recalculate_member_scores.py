@@ -66,6 +66,24 @@ class RecalculateMemberScoresUseCase:
             health_data["weight"] = member_health.weight
         if member_health.waist_circumference is not None:
             health_data["waist_circumference"] = member_health.waist_circumference
+        if member_health.triglycerides is not None:
+            health_data["triglycerides"] = member_health.triglycerides
+        if member_health.hdl_cholesterol is not None:
+            health_data["hdl_cholesterol"] = member_health.hdl_cholesterol
+        if member_health.systolic_blood_pressure is not None:
+            health_data["systolic_blood_pressure"] = (
+                member_health.systolic_blood_pressure
+            )
+        if member_health.diastolic_blood_pressure is not None:
+            health_data["diastolic_blood_pressure"] = (
+                member_health.diastolic_blood_pressure
+            )
+        if member_health.fasting_glucose is not None:
+            health_data["fasting_glucose"] = member_health.fasting_glucose
+        if member_health.glucose_lowering_medication is not None:
+            health_data["glucose_lowering_medication"] = (
+                member_health.glucose_lowering_medication
+            )
         if member_health.neck_circumference is not None:
             health_data["neck_circumference"] = member_health.neck_circumference
         if member_health.snoring is not None:

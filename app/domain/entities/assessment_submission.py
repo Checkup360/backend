@@ -18,9 +18,13 @@ class AssessmentSubmission:
     height: float | None = None
     waist_circumference: float | None = None
     systolic_blood_pressure: float | None = None
+    diastolic_blood_pressure: float | None = None
     total_cholesterol: float | None = None
     hdl: float | None = None
+    hdl_cholesterol: float | None = None
     triglycerides: float | None = None
+    fasting_glucose: float | None = None
+    glucose_lowering_medication: bool | None = None
     smoker: bool | None = None
     daily_physical_activity: bool | None = None
     fruits_vegetables: bool | None = None

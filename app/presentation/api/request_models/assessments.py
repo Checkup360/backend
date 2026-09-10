@@ -8,6 +8,22 @@ class ClinicalAssessmentRequest(BaseModel):
     waist_circumference: float | None = Field(
         None, gt=0, description="Waist circumference in cm"
     )
+    triglycerides: float | None = Field(
+        None, ge=0, description="Triglycerides in mg/dL"
+    )
+    hdl_cholesterol: float | None = Field(
+        None, ge=0, description="HDL cholesterol in mg/dL"
+    )
+    systolic_blood_pressure: float | None = Field(
+        None, gt=0, description="Systolic blood pressure in mmHg"
+    )
+    diastolic_blood_pressure: float | None = Field(
+        None, gt=0, description="Diastolic blood pressure in mmHg"
+    )
+    fasting_glucose: float | None = Field(
+        None, ge=0, description="Fasting glucose in mg/dL"
+    )
+    glucose_lowering_medication: bool | None = Field(None)
     neck_circumference: float | None = Field(
         None, gt=0, description="Neck circumference in cm"
     )

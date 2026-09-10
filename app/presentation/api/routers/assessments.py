@@ -177,6 +177,12 @@ async def evaluate_assessments(
         height=body.height,
         weight=body.weight,
         waist_circumference=body.waist_circumference,
+        triglycerides=body.triglycerides,
+        hdl_cholesterol=body.hdl_cholesterol,
+        systolic_blood_pressure=body.systolic_blood_pressure,
+        diastolic_blood_pressure=body.diastolic_blood_pressure,
+        fasting_glucose=body.fasting_glucose,
+        glucose_lowering_medication=body.glucose_lowering_medication,
         neck_circumference=body.neck_circumference,
         snoring=body.snoring,
         tired=body.tired,
@@ -201,7 +207,7 @@ async def evaluate_assessments(
         results = await use_case.execute(
             user_id=user.id,
             health_data=health_data,
-            target_scores=["stop_bang", "findrisc", "phq9"],
+            target_scores=["stop_bang", "findrisc", "phq9", "metabolic_syndrome"],
             organization_id=user.membership.organization_id,
         )
     except ValueError as e:
