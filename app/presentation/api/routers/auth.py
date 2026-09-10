@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 
 from app.infrastructure.authentication.machinery.backend import auth_backend
 from app.infrastructure.authentication.machinery.google_oauth import google_oauth_client
@@ -7,6 +7,7 @@ from app.infrastructure.authentication.machinery.users import (
 )
 from app.application.dto import AuthenticatedUser
 from app.infrastructure.config import settings
+from app.presentation.api.authorization import require_superuser
 from app.presentation.api.dependencies import get_member_details_service
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
@@ -60,4 +61,24 @@ async def get_me(
         is_sysadmin=user.is_superuser,
         membership=membership,
         requires_onboarding=await member_details_service.requires_onboarding(user),
+    )
+
+
+@router.get("/verify-sysadmin", status_code=status.HTTP_200_OK)
+async def verify_sysadmin(
+    response: Response,
+    current_user: AuthenticatedUser = Depends(require_superuser),
+):
+    """
+    Endpoint used by Caddy forward_auth to verify that the request comes
+    from an authenticated sysadmin. Sets identity headers.
+    """
+    response.headers["Remote-User"] = current_user.email
+    response.headers["Remote-Email"] = current_user.email
+    return Response(
+        status_code=status.HTTP_200_OK,
+        headers={
+            "Remote-User": current_user.email,
+            "Remote-Email": current_user.email,
+        },
     )
