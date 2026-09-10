@@ -88,6 +88,24 @@ class RecalculateMemberScoresUseCase:
             health_data["previous_high_glucose"] = member_health.previous_high_glucose
         if member_health.family_diabetes is not None:
             health_data["family_diabetes"] = member_health.family_diabetes
+        if member_health.little_interest is not None:
+            health_data["little_interest"] = member_health.little_interest
+        if member_health.feeling_down is not None:
+            health_data["feeling_down"] = member_health.feeling_down
+        if member_health.sleep_trouble is not None:
+            health_data["sleep_trouble"] = member_health.sleep_trouble
+        if member_health.tired_energy is not None:
+            health_data["tired_energy"] = member_health.tired_energy
+        if member_health.appetite is not None:
+            health_data["appetite"] = member_health.appetite
+        if member_health.feeling_bad is not None:
+            health_data["feeling_bad"] = member_health.feeling_bad
+        if member_health.concentration is not None:
+            health_data["concentration"] = member_health.concentration
+        if member_health.psychomotor is not None:
+            health_data["psychomotor"] = member_health.psychomotor
+        if member_health.self_harm_thoughts is not None:
+            health_data["self_harm_thoughts"] = member_health.self_harm_thoughts
 
         catalog = await self._risk_scoring_service.get_catalog()
         existing_scores = await self._risk_score_repo.get_by_user_id(user_id)
@@ -115,7 +133,14 @@ class RecalculateMemberScoresUseCase:
                 or ("biological_sex" in updated_set and "sex" in all_score_fields)
             )
 
-            if not (is_new or has_changes):
+            # A form submission represents a complete snapshot. When it is
+            # available, attach every currently calculable score to it.
+            if submission_id is not None:
+                should_evaluate = True
+            else:
+                should_evaluate = is_new or has_changes
+
+            if not should_evaluate:
                 continue
 
             # Build payload for single score evaluation
@@ -138,6 +163,7 @@ class RecalculateMemberScoresUseCase:
                     normalized_value=res.normalized_value,
                     explanation=res.explanation,
                     contributing_factors=res.contributing_factors,
+                    attention_flags=res.attention_flags,
                     evaluated_at=now,
                     submission_id=submission_id,
                 )

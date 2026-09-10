@@ -29,6 +29,7 @@ class RiskScoreModel(Base):
     normalized_value = Column(Float, nullable=True)
     explanation = Column(String, nullable=True)
     contributing_factors = Column(JSON, nullable=False, default=dict)
+    attention_flags = Column(JSON, nullable=False, default=dict)
     evaluated_at = Column(DateTime(timezone=True), nullable=False)
 
     # Relationships

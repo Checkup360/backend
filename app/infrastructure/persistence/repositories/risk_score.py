@@ -22,7 +22,8 @@ class SQLAlchemyRiskScoreRepository(RiskScoreRepository):
             raw_value=model.raw_value,
             normalized_value=model.normalized_value,
             explanation=model.explanation,
-            contributing_factors=model.contributing_factors,
+            contributing_factors=model.contributing_factors or {},
+            attention_flags=model.attention_flags or {},
             evaluated_at=model.evaluated_at,
         )
 
@@ -37,6 +38,7 @@ class SQLAlchemyRiskScoreRepository(RiskScoreRepository):
             normalized_value=entity.normalized_value,
             explanation=entity.explanation,
             contributing_factors=entity.contributing_factors,
+            attention_flags=entity.attention_flags,
             evaluated_at=entity.evaluated_at,
         )
 

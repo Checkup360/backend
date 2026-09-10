@@ -91,6 +91,7 @@ class HttpEngineScoringAdapter(RiskScoringService):
             risk_level=s.get("risk_level"),
             explanation=s.get("explanation"),
             contributing_factors=s.get("contributing_factors", {}),
+            attention_flags=s.get("attention_flags", {}),
         )
 
     async def evaluate_risk(

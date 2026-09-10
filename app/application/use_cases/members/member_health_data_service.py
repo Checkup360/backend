@@ -27,6 +27,15 @@ class MemberHealthDataService:
         fruits_vegetables: bool | None = None,
         previous_high_glucose: bool | None = None,
         family_diabetes: str | None = None,
+        little_interest: int | None = None,
+        feeling_down: int | None = None,
+        sleep_trouble: int | None = None,
+        tired_energy: int | None = None,
+        appetite: int | None = None,
+        feeling_bad: int | None = None,
+        concentration: int | None = None,
+        psychomotor: int | None = None,
+        self_harm_thoughts: int | None = None,
     ) -> MemberHealthData:
         existing = await self.repo.get_by_user(user_id)
         if existing is None:
@@ -58,6 +67,24 @@ class MemberHealthDataService:
             existing.previous_high_glucose = previous_high_glucose
         if family_diabetes is not None:
             existing.family_diabetes = family_diabetes
+        if little_interest is not None:
+            existing.little_interest = little_interest
+        if feeling_down is not None:
+            existing.feeling_down = feeling_down
+        if sleep_trouble is not None:
+            existing.sleep_trouble = sleep_trouble
+        if tired_energy is not None:
+            existing.tired_energy = tired_energy
+        if appetite is not None:
+            existing.appetite = appetite
+        if feeling_bad is not None:
+            existing.feeling_bad = feeling_bad
+        if concentration is not None:
+            existing.concentration = concentration
+        if psychomotor is not None:
+            existing.psychomotor = psychomotor
+        if self_harm_thoughts is not None:
+            existing.self_harm_thoughts = self_harm_thoughts
 
         await self.repo.save(existing)
         return existing

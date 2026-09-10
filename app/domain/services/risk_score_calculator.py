@@ -1,8 +1,9 @@
 from typing import Any
 
 DEFAULT_SCORE_WEIGHTS: dict[str, float] = {
-    "diabetes": 50.0,
-    "sleep_apnea": 50.0,
+    "diabetes": 34.0,
+    "sleep_apnea": 33.0,
+    "depression": 33.0,
 }
 
 
@@ -12,6 +13,8 @@ def normalize_score_key(score_name: str) -> str:
         return "diabetes"
     if "stop" in lower or "sleep" in lower:
         return "sleep_apnea"
+    if "phq" in lower or "depression" in lower:
+        return "depression"
     return lower.replace(" ", "_").replace("-", "_")
 
 

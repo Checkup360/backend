@@ -270,6 +270,7 @@ async def update_my_form_data(
             risk_level=s.risk_level,
             raw_value=s.raw_value,
             explanation=s.explanation,
+            attention_flags=s.attention_flags,
         )
         for s in newly_evaluated
     ]

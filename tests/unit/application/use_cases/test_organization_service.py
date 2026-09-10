@@ -126,7 +126,7 @@ async def test_get_score_weights_returns_defaults_when_not_set():
     service = OrganizationService(repo)
     weights = await service.get_score_weights(org_id)
 
-    assert weights == {"diabetes": 50.0, "sleep_apnea": 50.0}
+    assert weights == {"diabetes": 34.0, "sleep_apnea": 33.0, "depression": 33.0}
 
 
 @pytest.mark.asyncio

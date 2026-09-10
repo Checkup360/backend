@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -28,6 +28,15 @@ class MemberHealthData(Base):
     fruits_vegetables: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     previous_high_glucose: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     family_diabetes: Mapped[str | None] = mapped_column(String, nullable=True)
+    little_interest: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    feeling_down: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sleep_trouble: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tired_energy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    appetite: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    feeling_bad: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    concentration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    psychomotor: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    self_harm_thoughts: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

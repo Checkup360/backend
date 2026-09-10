@@ -24,3 +24,12 @@ class ClinicalAssessmentRequest(BaseModel):
     family_diabetes: str | None = Field(
         None, description="no, yes_2nd_degree, or yes_1st_degree"
     )
+    little_interest: int | None = Field(None, ge=0, le=3)
+    feeling_down: int | None = Field(None, ge=0, le=3)
+    sleep_trouble: int | None = Field(None, ge=0, le=3)
+    tired_energy: int | None = Field(None, ge=0, le=3)
+    appetite: int | None = Field(None, ge=0, le=3)
+    feeling_bad: int | None = Field(None, ge=0, le=3)
+    concentration: int | None = Field(None, ge=0, le=3)
+    psychomotor: int | None = Field(None, ge=0, le=3)
+    self_harm_thoughts: int | None = Field(None, ge=0, le=3)

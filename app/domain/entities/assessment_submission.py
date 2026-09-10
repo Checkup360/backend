@@ -31,3 +31,12 @@ class AssessmentSubmission:
     tired: bool | None = None
     observed_apnea: bool | None = None
     neck_circumference: float | None = None
+    little_interest: int | None = None
+    feeling_down: int | None = None
+    sleep_trouble: int | None = None
+    tired_energy: int | None = None
+    appetite: int | None = None
+    feeling_bad: int | None = None
+    concentration: int | None = None
+    psychomotor: int | None = None
+    self_harm_thoughts: int | None = None

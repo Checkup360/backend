@@ -75,6 +75,30 @@ class TestMemberFormsRouter:
         assert data_habits["form_type"] == "habits"
         assert "daily_physical_activity" in data_habits["updated_fields"]
 
+        res_mood = client.put(
+            "/members/me/forms/mood",
+            json={
+                "little_interest": 0,
+                "feeling_down": 1,
+                "sleep_trouble": 0,
+                "tired_energy": 1,
+                "appetite": 0,
+                "feeling_bad": 0,
+                "concentration": 0,
+                "psychomotor": 0,
+                "self_harm_thoughts": 0,
+            },
+        )
+        assert res_mood.status_code == 200
+        data_mood = res_mood.json()
+        assert data_mood["form_type"] == "mood"
+        assert "little_interest" in data_mood["updated_fields"]
+        assert "self_harm_thoughts" in data_mood["updated_fields"]
+
+        res_get_mood = client.get("/members/me/forms/mood")
+        assert res_get_mood.status_code == 200
+        assert res_get_mood.json()["data"]["feeling_down"] == 1
+
     @pytest.mark.asyncio
     async def test_put_biometrics_in_centimeters(self, client, auth_scenario):
         await auth_scenario.register_and_login(

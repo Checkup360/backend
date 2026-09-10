@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from app.domain.entities.member_health_data import PHQ9_ITEM_FIELDS
+
 
 @dataclass(frozen=True)
 class FormDefinition:
@@ -43,6 +45,10 @@ class FormRegistry:
                         "previous_high_glucose",
                         "family_diabetes",
                     ],
+                ),
+                FormDefinition(
+                    form_type="mood",
+                    fields=list(PHQ9_ITEM_FIELDS),
                 ),
             ]
         self._forms: dict[str, FormDefinition] = {

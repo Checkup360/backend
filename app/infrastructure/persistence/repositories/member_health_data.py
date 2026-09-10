@@ -46,6 +46,15 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             "fruits_vegetables": health_data.fruits_vegetables,
             "previous_high_glucose": health_data.previous_high_glucose,
             "family_diabetes": health_data.family_diabetes,
+            "little_interest": health_data.little_interest,
+            "feeling_down": health_data.feeling_down,
+            "sleep_trouble": health_data.sleep_trouble,
+            "tired_energy": health_data.tired_energy,
+            "appetite": health_data.appetite,
+            "feeling_bad": health_data.feeling_bad,
+            "concentration": health_data.concentration,
+            "psychomotor": health_data.psychomotor,
+            "self_harm_thoughts": health_data.self_harm_thoughts,
         }
 
         stmt = insert(MemberHealthDataModel).values(**values)
@@ -65,6 +74,15 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
                 "fruits_vegetables": stmt.excluded.fruits_vegetables,
                 "previous_high_glucose": stmt.excluded.previous_high_glucose,
                 "family_diabetes": stmt.excluded.family_diabetes,
+                "little_interest": stmt.excluded.little_interest,
+                "feeling_down": stmt.excluded.feeling_down,
+                "sleep_trouble": stmt.excluded.sleep_trouble,
+                "tired_energy": stmt.excluded.tired_energy,
+                "appetite": stmt.excluded.appetite,
+                "feeling_bad": stmt.excluded.feeling_bad,
+                "concentration": stmt.excluded.concentration,
+                "psychomotor": stmt.excluded.psychomotor,
+                "self_harm_thoughts": stmt.excluded.self_harm_thoughts,
             },
         )
         await self.db.execute(stmt)
@@ -86,4 +104,13 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             fruits_vegetables=model.fruits_vegetables,
             previous_high_glucose=model.previous_high_glucose,
             family_diabetes=model.family_diabetes,
+            little_interest=model.little_interest,
+            feeling_down=model.feeling_down,
+            sleep_trouble=model.sleep_trouble,
+            tired_energy=model.tired_energy,
+            appetite=model.appetite,
+            feeling_bad=model.feeling_bad,
+            concentration=model.concentration,
+            psychomotor=model.psychomotor,
+            self_harm_thoughts=model.self_harm_thoughts,
         )

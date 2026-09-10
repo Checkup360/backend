@@ -150,3 +150,5 @@ def test_member_health_data_dataclass():
     assert health.fruits_vegetables is True
     assert health.previous_high_glucose is False
     assert health.family_diabetes == "first_degree"
+    assert health.little_interest is None
+    assert health.self_harm_thoughts is None

@@ -48,6 +48,8 @@ def _format_score_display_name(name: str) -> str:
         return "Diabetes"
     if "stop" in lower and "bang" in lower:
         return "Sleep Apnea"
+    if "phq" in lower:
+        return "Depression"
     return name
 
 
@@ -184,13 +186,22 @@ async def evaluate_assessments(
         fruits_vegetables=body.fruits_vegetables,
         previous_high_glucose=body.previous_high_glucose,
         family_diabetes=body.family_diabetes,
+        little_interest=body.little_interest,
+        feeling_down=body.feeling_down,
+        sleep_trouble=body.sleep_trouble,
+        tired_energy=body.tired_energy,
+        appetite=body.appetite,
+        feeling_bad=body.feeling_bad,
+        concentration=body.concentration,
+        psychomotor=body.psychomotor,
+        self_harm_thoughts=body.self_harm_thoughts,
     )
 
     try:
         results = await use_case.execute(
             user_id=user.id,
             health_data=health_data,
-            target_scores=["stop_bang", "findrisc"],
+            target_scores=["stop_bang", "findrisc", "phq9"],
             organization_id=user.membership.organization_id,
         )
     except ValueError as e:
@@ -209,6 +220,7 @@ async def evaluate_assessments(
             normalized_value=res.normalized_value,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
+            attention_flags=res.attention_flags,
             evaluated_at=getattr(res, "evaluated_at", None)
             or datetime.now(timezone.utc),
         )
@@ -251,6 +263,7 @@ async def get_assessments(
             normalized_value=res.normalized_value,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
+            attention_flags=res.attention_flags,
             evaluated_at=res.evaluated_at,
         )
         for res in results
@@ -291,6 +304,7 @@ def _submission_detail_response(submission, scores):
                 normalized_value=score.normalized_value,
                 explanation=score.explanation,
                 contributing_factors=score.contributing_factors,
+                attention_flags=score.attention_flags,
                 evaluated_at=score.evaluated_at,
             )
             for score in scores

@@ -13,5 +13,6 @@ class RiskScore:
     normalized_value: float | None
     explanation: str | None
     contributing_factors: dict[str, any]
+    attention_flags: dict[str, bool]
     evaluated_at: datetime
     submission_id: uuid.UUID | None = None

@@ -18,6 +18,8 @@ def test_normalize_score_key():
     assert normalize_score_key("Diabetes") == "diabetes"
     assert normalize_score_key("STOP-BANG") == "sleep_apnea"
     assert normalize_score_key("Sleep Apnea") == "sleep_apnea"
+    assert normalize_score_key("PHQ-9") == "depression"
+    assert normalize_score_key("Depression") == "depression"
     assert normalize_score_key("Custom-Score") == "custom_score"
 
 
@@ -28,14 +30,14 @@ def test_calculate_weighted_overall_score_empty():
 
 
 def test_calculate_weighted_overall_score_default_weights():
-    # Diabetes: 90, Sleep Apnea: 70 -> Default weights 50/50 -> (90*50 + 70*50)/100 = 80.0 -> Moderate risk
     results = [
         DummyScoreResult(score_name="Diabetes", normalized_value=90.0),
-        DummyScoreResult(score_name="Sleep Apnea", normalized_value=70.0),
+        DummyScoreResult(score_name="Sleep Apnea", normalized_value=90.0),
+        DummyScoreResult(score_name="Depression", normalized_value=90.0),
     ]
     score, level = calculate_weighted_overall_score(results)
-    assert score == 80.0
-    assert level == "Moderate risk"
+    assert score == 90.0
+    assert level == "Low risk"
 
 
 def test_calculate_weighted_overall_score_custom_weights():
@@ -82,6 +84,9 @@ def test_calculate_weighted_overall_score_latest_timestamp_filtering():
         DummyScoreResult(score_name="Diabetes", normalized_value=90.0, evaluated_at=t2),
         DummyScoreResult(
             score_name="Sleep Apnea", normalized_value=90.0, evaluated_at=t2
+        ),
+        DummyScoreResult(
+            score_name="Depression", normalized_value=90.0, evaluated_at=t2
         ),
     ]
     score, level = calculate_weighted_overall_score(results)

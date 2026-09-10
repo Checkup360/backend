@@ -27,6 +27,15 @@ class HealthDataDTO:
     tired: bool | None = None
     observed_apnea: bool | None = None
     neck_circumference: float | None = None
+    little_interest: int | None = None
+    feeling_down: int | None = None
+    sleep_trouble: int | None = None
+    tired_energy: int | None = None
+    appetite: int | None = None
+    feeling_bad: int | None = None
+    concentration: int | None = None
+    psychomotor: int | None = None
+    self_harm_thoughts: int | None = None
 
 
 @dataclass(frozen=True)
@@ -42,6 +51,7 @@ class ScoreResultDTO:
     risk_level: str | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = field(default_factory=dict)
+    attention_flags: dict[str, bool] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

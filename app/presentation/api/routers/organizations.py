@@ -503,6 +503,7 @@ async def get_employee_assessments(
             normalized_value=res.normalized_value,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
+            attention_flags=res.attention_flags,
             evaluated_at=res.evaluated_at,
         )
         for res in results

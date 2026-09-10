@@ -11,6 +11,7 @@ class AssessmentResultResponse(BaseModel):
     normalized_value: float | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = {}
+    attention_flags: dict[str, bool] = {}
     evaluated_at: datetime | None = None
 
 

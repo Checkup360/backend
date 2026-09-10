@@ -104,5 +104,6 @@ class TestAssessmentsRouter:
         assert kwargs["user_id"] == user.id
         assert "stop_bang" in kwargs["target_scores"]
         assert "findrisc" in kwargs["target_scores"]
+        assert "phq9" in kwargs["target_scores"]
         assert kwargs["health_data"].age == 45
         assert kwargs["health_data"].sex == "male"

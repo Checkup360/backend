@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import replace
 
 from app.application.dto.risk_scoring import HealthDataDTO, ScoreResultDTO
 from app.application.interfaces.risk_scoring_service import RiskScoringService
@@ -42,28 +43,7 @@ class SubmitAssessmentUseCase:
         dob = member_details.date_of_birth
         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-        # Create a new HealthDataDTO with age supplemented
-        supplemented_data = HealthDataDTO(
-            age=age,
-            sex=health_data.sex,
-            weight=health_data.weight,
-            height=health_data.height,
-            waist_circumference=health_data.waist_circumference,
-            systolic_blood_pressure=health_data.systolic_blood_pressure,
-            total_cholesterol=health_data.total_cholesterol,
-            hdl=health_data.hdl,
-            triglycerides=health_data.triglycerides,
-            smoker=health_data.smoker,
-            daily_physical_activity=health_data.daily_physical_activity,
-            fruits_vegetables=health_data.fruits_vegetables,
-            hypertension_medication=health_data.hypertension_medication,
-            previous_high_glucose=health_data.previous_high_glucose,
-            family_diabetes=health_data.family_diabetes,
-            snoring=health_data.snoring,
-            tired=health_data.tired,
-            observed_apnea=health_data.observed_apnea,
-            neck_circumference=health_data.neck_circumference,
-        )
+        supplemented_data = replace(health_data, age=age)
 
         now = self._time_provider.utcnow()
         submission_id: uuid.UUID | None = None
@@ -97,6 +77,7 @@ class SubmitAssessmentUseCase:
                 normalized_value=result.normalized_value,
                 explanation=result.explanation,
                 contributing_factors=result.contributing_factors,
+                attention_flags=result.attention_flags,
                 evaluated_at=now,
                 submission_id=submission_id,
             )

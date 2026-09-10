@@ -255,8 +255,9 @@ class TestOrganizationsRouter:
         res_get = client.get(f"/organizations/{org.id}/score-weights")
         assert res_get.status_code == 200
         assert res_get.json()["score_weights"] == {
-            "diabetes": 50.0,
-            "sleep_apnea": 50.0,
+            "diabetes": 34.0,
+            "sleep_apnea": 33.0,
+            "depression": 33.0,
         }
 
         # PUT update weights

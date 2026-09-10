@@ -27,3 +27,14 @@ class MemberFormUpdate(BaseModel):
     family_diabetes: Literal["no", "second_degree", "first_degree"] | None = Field(
         default=None
     )
+
+    # Mood (PHQ-9) fields: 0 = not at all … 3 = nearly every day
+    little_interest: int | None = Field(default=None, ge=0, le=3)
+    feeling_down: int | None = Field(default=None, ge=0, le=3)
+    sleep_trouble: int | None = Field(default=None, ge=0, le=3)
+    tired_energy: int | None = Field(default=None, ge=0, le=3)
+    appetite: int | None = Field(default=None, ge=0, le=3)
+    feeling_bad: int | None = Field(default=None, ge=0, le=3)
+    concentration: int | None = Field(default=None, ge=0, le=3)
+    psychomotor: int | None = Field(default=None, ge=0, le=3)
+    self_harm_thoughts: int | None = Field(default=None, ge=0, le=3)

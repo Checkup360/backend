@@ -18,6 +18,7 @@ class EvaluatedScoreSummary(BaseModel):
     risk_level: str | None = None
     raw_value: float | None = None
     explanation: str | None = None
+    attention_flags: dict[str, bool] = Field(default_factory=dict)
 
 
 class MemberFormSubmissionResponse(BaseModel):
