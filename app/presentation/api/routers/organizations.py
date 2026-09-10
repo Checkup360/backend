@@ -166,6 +166,9 @@ async def get_organization_summary(
     total_admins = await membership_service.count_members_for_organization(
         organization_id, roles=[OrgRole.ADMIN]
     )
+    total_content_managers = await membership_service.count_members_for_organization(
+        organization_id, roles=[OrgRole.CONTENT_MANAGER]
+    )
 
     return OrganizationSummaryResponse(
         id=organization.id,
@@ -174,6 +177,7 @@ async def get_organization_summary(
         total_members=total_members,
         total_employees=total_employees,
         total_admins=total_admins,
+        total_content_managers=total_content_managers,
     )
 
 

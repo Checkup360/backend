@@ -22,6 +22,7 @@ class OrganizationSummaryResponse(BaseModel):
     total_members: int
     total_employees: int
     total_admins: int
+    total_content_managers: int = 0
 
 
 class DepartmentResponse(BaseModel):
