@@ -8,6 +8,7 @@ from app.domain.repositories.organization import OrganizationRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
 from app.domain.repositories.user import UserRepository
+from app.domain.repositories.refresh_token import RefreshTokenRepository
 
 __all__ = [
     "AnalyticsRepository",
@@ -20,4 +21,5 @@ __all__ = [
     "RiskScoreRepository",
     "AssessmentSubmissionRepository",
     "UserRepository",
+    "RefreshTokenRepository",
 ]

@@ -15,6 +15,7 @@ from app.domain.entities.organization import Organization
 from app.domain.entities.risk_score import RiskScore
 from app.domain.entities.assessment_submission import AssessmentSubmission
 from app.domain.entities.user import User
+from app.domain.entities.refresh_token import RefreshToken
 
 __all__ = [
     "DepartmentAnalyticsSummary",
@@ -32,4 +33,5 @@ __all__ = [
     "RiskScore",
     "AssessmentSubmission",
     "User",
+    "RefreshToken",
 ]
