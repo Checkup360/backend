@@ -1,6 +1,16 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi_users.authentication import JWTStrategy
+from fastapi_users.db import SQLAlchemyUserDatabase
 
-from app.infrastructure.authentication.machinery.backend import auth_backend
+from app.infrastructure.authentication.dependencies import (
+    get_refresh_token_service,
+    get_user_db,
+)
+from app.infrastructure.authentication.machinery.backend import (
+    auth_backend,
+    cookie_transport,
+)
+from app.domain.services.refresh_token_service import RefreshTokenService
 from app.infrastructure.authentication.machinery.google_oauth import google_oauth_client
 from app.infrastructure.authentication.machinery.users import (
     fastapi_users,
@@ -16,6 +26,69 @@ from app.presentation.api.dependencies import get_current_user
 from app.presentation.api.response_models import AuthMeResponse, OrganizationMembership
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+async def refresh_token(
+    request: Request,
+    refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
+    strategy: JWTStrategy = Depends(auth_backend.get_strategy),
+    user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
+):
+    raw_token = request.cookies.get(settings.refresh_token_cookie_name)
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token",
+        )
+
+    try:
+        user_id, new_raw_token, _ = await refresh_token_service.validate_and_rotate(
+            raw_token
+        )
+    except ValueError as e:
+        logout_resp = Response(status_code=status.HTTP_401_UNAUTHORIZED)
+        cookie_transport._set_logout_cookie(logout_resp)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers=dict(logout_resp.headers),
+        )
+
+    user = await user_db.get(user_id)
+    if not user or not user.is_active:
+        logout_resp = Response(status_code=status.HTTP_401_UNAUTHORIZED)
+        cookie_transport._set_logout_cookie(logout_resp)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+            headers=dict(logout_resp.headers),
+        )
+
+    new_access_token = await strategy.write_token(user)
+    response = Response(
+        content='{"ok":true}',
+        status_code=status.HTTP_200_OK,
+        media_type="application/json",
+    )
+    cookie_transport._set_login_cookie(response, new_access_token)
+    cookie_transport._set_refresh_cookie(response, new_raw_token)
+
+    return response
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
+):
+    raw_token = request.cookies.get(settings.refresh_token_cookie_name)
+    if raw_token:
+        await refresh_token_service.revoke_token(raw_token)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookie_transport._set_logout_cookie(response)
+    return response
+
 
 router.include_router(
     fastapi_users.get_auth_router(auth_backend),
