@@ -42,6 +42,9 @@ from app.application.use_cases.admin.list_sysadmins import ListSysadminsUseCase
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
+from app.application.use_cases.members.get_member_risk_priorities import (
+    GetMemberRiskPrioritiesUseCase,
+)
 from app.infrastructure.persistence.database import get_db
 
 from app.infrastructure.persistence.repositories.department import DepartmentRepository
@@ -315,3 +318,10 @@ def get_list_sysadmins_use_case(
     invite_repo: InviteRepository = Depends(get_invite_repository),
 ) -> ListSysadminsUseCase:
     return ListSysadminsUseCase(user_repo, invite_repo)
+
+
+async def get_member_risk_priorities_use_case(
+    risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> GetMemberRiskPrioritiesUseCase:
+    return GetMemberRiskPrioritiesUseCase(risk_score_repo, org_repo)

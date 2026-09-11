@@ -8,9 +8,13 @@ from app.application.use_cases.assessments.recalculate_member_scores import (
 from app.application.use_cases.assessments.save_submission import (
     SaveAssessmentSubmissionUseCase,
 )
+from app.application.use_cases.members.get_member_risk_priorities import (
+    GetMemberRiskPrioritiesUseCase,
+)
 from app.presentation.api.dependencies import (
     get_member_details_service,
     get_member_health_data_service,
+    get_member_risk_priorities_use_case,
     get_recalculate_member_scores_use_case,
     get_save_assessment_submission_use_case,
 )
@@ -32,6 +36,9 @@ from app.presentation.api.response_models import (
     MemberDetailsCreated,
     MemberProfileResponse,
     MemberBiometricsResponse,
+)
+from app.presentation.api.response_models.member_details import (
+    MemberRiskPrioritiesResponse,
 )
 from app.presentation.api.response_models.member_forms import (
     EvaluatedScoreSummary,
@@ -130,6 +137,22 @@ async def update_my_profile(
         date_of_birth=updated.date_of_birth,
         avatar_url=updated.avatar_url,
         priority_topics=priority_topics,
+    )
+
+
+@router.get("/me/risk-priorities", response_model=MemberRiskPrioritiesResponse)
+async def get_my_risk_priorities(
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetMemberRiskPrioritiesUseCase = Depends(
+        get_member_risk_priorities_use_case
+    ),
+) -> MemberRiskPrioritiesResponse:
+    org_id = user.membership.organization_id if user.membership else None
+    dto = await use_case.execute(user_id=user.id, organization_id=org_id)
+    return MemberRiskPrioritiesResponse(
+        user_id=dto.user_id,
+        risk_weights=dto.risk_weights,
+        highest_risk=dto.highest_risk,
     )
 
 

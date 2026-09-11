@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 
 from pydantic import BaseModel
@@ -14,3 +15,9 @@ class MemberProfileResponse(BaseModel):
     date_of_birth: date
     avatar_url: str | None = None
     priority_topics: list[str] = []
+
+
+class MemberRiskPrioritiesResponse(BaseModel):
+    user_id: uuid.UUID
+    risk_weights: dict[str, float]
+    highest_risk: str | None = None

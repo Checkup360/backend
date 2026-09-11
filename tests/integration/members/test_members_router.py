@@ -81,3 +81,20 @@ class TestMembersRouter:
         assert data["biological_sex"] == "female"
         assert data["height"] == 165.5
         assert data["weight"] == 60.0
+
+    @pytest.mark.asyncio
+    async def test_get_my_risk_priorities(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="risk-priorities-user@example.com",
+            memberships=None,
+        )
+
+        res = client.get("/members/me/risk-priorities")
+        assert res.status_code == 200
+        data = res.json()
+        assert "user_id" in data
+        assert "risk_weights" in data
+        assert isinstance(data["risk_weights"], dict)
+        assert "diabetes" in data["risk_weights"]
+        assert "sleep_apnea" in data["risk_weights"]
+        assert "depression" in data["risk_weights"]
