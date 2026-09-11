@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 
 from pydantic import BaseModel
@@ -41,3 +42,4 @@ class OrganizationEmployeeResponse(BaseModel):
     roles: list[str]
     status: str
     department: DepartmentResponse | None = None
+    last_assessment: datetime | None = None

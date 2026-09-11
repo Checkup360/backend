@@ -20,6 +20,8 @@ def test_normalize_score_key():
     assert normalize_score_key("Sleep Apnea") == "sleep_apnea"
     assert normalize_score_key("PHQ-9") == "depression"
     assert normalize_score_key("Depression") == "depression"
+    assert normalize_score_key("Metabolic Syndrome") == "metabolic_syndrome"
+    assert normalize_score_key("EOSS") == "eoss"
     assert normalize_score_key("Custom-Score") == "custom_score"
 
 
@@ -51,6 +53,20 @@ def test_calculate_weighted_overall_score_custom_weights():
     score, level = calculate_weighted_overall_score(results, weights)
     assert score == 86.0
     assert level == "Low risk"
+
+
+def test_calculate_weighted_overall_score_includes_new_score_weights():
+    results = [
+        DummyScoreResult(score_name="Diabetes", normalized_value=100.0),
+        DummyScoreResult(score_name="Metabolic Syndrome", normalized_value=0.0),
+    ]
+    score, level = calculate_weighted_overall_score(
+        results,
+        weights={"diabetes": 80.0, "metabolic_syndrome": 20.0},
+    )
+
+    assert score == 80.0
+    assert level == "Moderate risk"
 
 
 def test_calculate_weighted_overall_score_partial_results():

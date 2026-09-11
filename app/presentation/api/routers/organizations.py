@@ -14,6 +14,7 @@ from app.presentation.api.dependencies import (
     get_get_assessments_use_case,
     get_organization_analytics_use_case,
     get_assessment_submissions_use_case,
+    get_risk_score_repository,
 )
 from app.application.use_cases.organizations.get_organization_analytics import (
     GetOrganizationAnalyticsUseCase,
@@ -44,6 +45,7 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.assessments.get_submissions import (
     GetAssessmentSubmissionsUseCase,
 )
+from app.domain.repositories.risk_score import RiskScoreRepository
 from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
@@ -385,6 +387,7 @@ async def list_organization_employees(
     current_user: AuthenticatedUser = Depends(get_current_user),
     membership_service: MembershipService = Depends(get_membership_service),
     member_details_service: MemberDetailsService = Depends(get_member_details_service),
+    risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
 ):
     try:
         employees = await membership_service.list_employees_for_organization_admin(
@@ -406,6 +409,11 @@ async def list_organization_employees(
         profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
         status_val = "active" if onboarded else "onboarding"
+        employee_scores = await risk_score_repository.get_by_user_id(employee.user.id)
+        last_assessment = max(
+            (score.evaluated_at for score in employee_scores if score.evaluated_at),
+            default=None,
+        )
 
         # Apply department query parameter filter
         if department_id is not None:
@@ -449,6 +457,7 @@ async def list_organization_employees(
                     if employee.department
                     else None
                 ),
+                last_assessment=last_assessment,
             )
         )
     total = len(res)

@@ -15,6 +15,10 @@ def normalize_score_key(score_name: str) -> str:
         return "sleep_apnea"
     if "phq" in lower or "depression" in lower:
         return "depression"
+    if "metabolic" in lower:
+        return "metabolic_syndrome"
+    if "eoss" in lower or "obesity-related" in lower:
+        return "eoss"
     return lower.replace(" ", "_").replace("-", "_")
 
 
