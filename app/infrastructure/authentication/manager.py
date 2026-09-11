@@ -8,9 +8,12 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from app.application.use_cases.authentication import RequestPasswordReset, ResetPassword
 from app.infrastructure.authentication.dependencies import (
     get_invite_service_for_auth,
+    get_refresh_token_service,
     get_smtp_email_sender,
     get_user_db,
 )
+from app.infrastructure.authentication.machinery.backend import cookie_transport
+from app.domain.services.refresh_token_service import RefreshTokenService
 from app.infrastructure.config import settings
 from app.infrastructure.authentication.machinery.cookies import (
     clear_pending_invite_cookie,
@@ -37,11 +40,13 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         invite_service: InviteService,
         request_password_reset: RequestPasswordReset | None = None,
         reset_password: ResetPassword | None = None,
+        refresh_token_service: RefreshTokenService | None = None,
     ):
         super().__init__(user_db)
         self.invite_service = invite_service
         self.request_password_reset = request_password_reset
         self.password_reset_policy = reset_password
+        self.refresh_token_service = refresh_token_service
 
     async def validate_password(self, password: str, user) -> None:
         if self.password_reset_policy is None:
@@ -76,6 +81,18 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         if request.cookies.get("pending_invite"):
             clear_pending_invite_cookie(response)
+
+        if self.refresh_token_service:
+            raw_token, _ = await self.refresh_token_service.issue_token(user.id)
+            cookie_transport._set_refresh_cookie(response, raw_token)
+
+    async def on_after_reset_password(
+        self,
+        user: User,
+        request: Optional[Request] = None,
+    ) -> None:
+        if self.refresh_token_service:
+            await self.refresh_token_service.revoke_all_for_user(user.id)
 
     async def oauth_callback(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
@@ -205,10 +222,12 @@ async def get_user_manager(
     user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
     invite_service: InviteService = Depends(get_invite_service_for_auth),
     email_sender: SmtpEmailSender = Depends(get_smtp_email_sender),
+    refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
 ):
     yield UserManager(
         user_db,
         invite_service,
         RequestPasswordReset(email_sender, settings.frontend_url),
         ResetPassword(),
+        refresh_token_service=refresh_token_service,
     )
