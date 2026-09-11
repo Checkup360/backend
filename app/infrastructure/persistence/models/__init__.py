@@ -9,6 +9,7 @@ from app.infrastructure.persistence.models.risk_score import RiskScoreModel
 from app.infrastructure.persistence.models.assessment_submission import (
     AssessmentSubmissionModel,
 )
+from app.infrastructure.persistence.models.refresh_token import RefreshToken
 
 __all__ = [
     "InviteToken",
@@ -21,4 +22,5 @@ __all__ = [
     "Membership",
     "RiskScoreModel",
     "AssessmentSubmissionModel",
+    "RefreshToken",
 ]
