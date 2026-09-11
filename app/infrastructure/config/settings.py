@@ -20,6 +20,9 @@ class Settings:
     smtp_user: str
     smtp_password: str
     engine_api_url: str
+    access_token_lifetime_seconds: int = 3600
+    refresh_token_lifetime_seconds: int = 2592000
+    refresh_token_cookie_name: str = "refresh_token"
 
 
 def _require_env(key: str) -> str:
@@ -78,6 +81,15 @@ def get_settings() -> Settings:
         smtp_user=os.getenv("SMTP_USER", ""),
         smtp_password=os.getenv("SMTP_PASSWORD", ""),
         engine_api_url=os.getenv("ENGINE_API_URL", "http://localhost:8001"),
+        access_token_lifetime_seconds=int(
+            os.getenv("ACCESS_TOKEN_LIFETIME_SECONDS", "3600")
+        ),
+        refresh_token_lifetime_seconds=int(
+            os.getenv("REFRESH_TOKEN_LIFETIME_SECONDS", str(30 * 24 * 3600))
+        ),
+        refresh_token_cookie_name=os.getenv(
+            "REFRESH_TOKEN_COOKIE_NAME", "refresh_token"
+        ),
     )
 
 
