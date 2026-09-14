@@ -21,3 +21,7 @@ class MemberRiskPrioritiesResponse(BaseModel):
     user_id: uuid.UUID
     risk_weights: dict[str, float]
     highest_risk: str | None = None
+
+
+class AvatarUploadResponse(BaseModel):
+    avatar_url: str

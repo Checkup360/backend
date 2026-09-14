@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.application.dto import AuthenticatedUser
 from app.application.use_cases.assessments.recalculate_member_scores import (
@@ -8,15 +8,23 @@ from app.application.use_cases.assessments.recalculate_member_scores import (
 from app.application.use_cases.assessments.save_submission import (
     SaveAssessmentSubmissionUseCase,
 )
+from app.application.use_cases.members.delete_member_avatar import (
+    DeleteMemberAvatarUseCase,
+)
 from app.application.use_cases.members.get_member_risk_priorities import (
     GetMemberRiskPrioritiesUseCase,
 )
+from app.application.use_cases.members.upload_member_avatar import (
+    UploadMemberAvatarUseCase,
+)
 from app.presentation.api.dependencies import (
+    get_delete_member_avatar_use_case,
     get_member_details_service,
     get_member_health_data_service,
     get_member_risk_priorities_use_case,
     get_recalculate_member_scores_use_case,
     get_save_assessment_submission_use_case,
+    get_upload_member_avatar_use_case,
 )
 from app.domain.services.time_provider import TimeProvider
 from app.domain.services.form_registry import FormRegistry
@@ -33,6 +41,7 @@ from app.presentation.api.request_models.member_details import MemberProfileUpda
 from app.presentation.api.request_models.member_biometrics import MemberBiometricsUpdate
 from app.presentation.api.request_models.member_forms import MemberFormUpdate
 from app.presentation.api.response_models import (
+    AvatarUploadResponse,
     MemberDetailsCreated,
     MemberProfileResponse,
     MemberBiometricsResponse,
@@ -138,6 +147,48 @@ async def update_my_profile(
         avatar_url=updated.avatar_url,
         priority_topics=priority_topics,
     )
+
+
+@router.post("/me/avatar", response_model=AvatarUploadResponse)
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: UploadMemberAvatarUseCase = Depends(get_upload_member_avatar_use_case),
+) -> AvatarUploadResponse:
+    content = await file.read()
+    try:
+        avatar_url = await use_case.execute(
+            user_id=user.id,
+            content=content,
+            filename=file.filename or "avatar.png",
+            content_type=file.content_type or "image/png",
+        )
+    except ValueError as e:
+        error_msg = str(e)
+        if error_msg == "member_details_not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=error_msg,
+        )
+    return AvatarUploadResponse(avatar_url=avatar_url)
+
+
+@router.delete("/me/avatar", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_avatar(
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: DeleteMemberAvatarUseCase = Depends(get_delete_member_avatar_use_case),
+) -> None:
+    try:
+        await use_case.execute(user_id=user.id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
 
 @router.get("/me/risk-priorities", response_model=MemberRiskPrioritiesResponse)

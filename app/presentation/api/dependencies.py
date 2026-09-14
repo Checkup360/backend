@@ -45,6 +45,14 @@ from app.application.use_cases.assessments.recalculate_member_scores import (
 from app.application.use_cases.members.get_member_risk_priorities import (
     GetMemberRiskPrioritiesUseCase,
 )
+from app.application.interfaces.file_storage import FileStorage
+from app.infrastructure.storage.local_storage import LocalDiskFileStorage
+from app.application.use_cases.members.upload_member_avatar import (
+    UploadMemberAvatarUseCase,
+)
+from app.application.use_cases.members.delete_member_avatar import (
+    DeleteMemberAvatarUseCase,
+)
 from app.infrastructure.persistence.database import get_db
 
 from app.infrastructure.persistence.repositories.department import DepartmentRepository
@@ -325,3 +333,24 @@ async def get_member_risk_priorities_use_case(
     org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> GetMemberRiskPrioritiesUseCase:
     return GetMemberRiskPrioritiesUseCase(risk_score_repo, org_repo)
+
+
+def get_file_storage() -> FileStorage:
+    return LocalDiskFileStorage(
+        base_directory=settings.upload_dir,
+        public_url_prefix="/media",
+    )
+
+
+async def get_upload_member_avatar_use_case(
+    details_repo: MemberDetailsRepository = Depends(get_member_details_repository),
+    file_storage: FileStorage = Depends(get_file_storage),
+) -> UploadMemberAvatarUseCase:
+    return UploadMemberAvatarUseCase(details_repo, file_storage)
+
+
+async def get_delete_member_avatar_use_case(
+    details_repo: MemberDetailsRepository = Depends(get_member_details_repository),
+    file_storage: FileStorage = Depends(get_file_storage),
+) -> DeleteMemberAvatarUseCase:
+    return DeleteMemberAvatarUseCase(details_repo, file_storage)

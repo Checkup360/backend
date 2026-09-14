@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.infrastructure.authentication.middleware.db_session import DBSessionMiddleware
@@ -17,6 +20,10 @@ from app.presentation.api.routers import (
 )
 
 app = FastAPI()
+
+uploads_path = Path(settings.upload_dir)
+uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(uploads_path)), name="media")
 
 app.add_middleware(PendingInviteCookieMiddleware)
 app.add_middleware(DBSessionMiddleware)

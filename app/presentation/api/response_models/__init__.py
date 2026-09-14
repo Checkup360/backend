@@ -13,6 +13,7 @@ from app.presentation.api.response_models.invite import (
     PrepareGoogleSessionResponse,
 )
 from app.presentation.api.response_models.member_details import (
+    AvatarUploadResponse,
     MemberDetailsCreated,
     MemberProfileResponse,
 )
@@ -23,6 +24,7 @@ from app.presentation.api.response_models.user import UserRead
 
 __all__ = [
     "AuthMeResponse",
+    "AvatarUploadResponse",
     "DepartmentAnalyticsSummaryResponse",
     "InviteRejected",
     "MemberDetailsCreated",
