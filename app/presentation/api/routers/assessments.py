@@ -52,6 +52,8 @@ def _format_score_display_name(name: str) -> str:
         return "Depression"
     if "eoss" in lower:
         return "Obesity-related Health Impact"
+    if "score2" in lower or "cardiovascular" in lower:
+        return "Cardiovascular Risk"
     return name
 
 
@@ -180,6 +182,7 @@ async def evaluate_assessments(
         weight=body.weight,
         waist_circumference=body.waist_circumference,
         triglycerides=body.triglycerides,
+        total_cholesterol=body.total_cholesterol,
         hdl_cholesterol=body.hdl_cholesterol,
         systolic_blood_pressure=body.systolic_blood_pressure,
         diastolic_blood_pressure=body.diastolic_blood_pressure,
@@ -189,6 +192,7 @@ async def evaluate_assessments(
         snoring=body.snoring,
         tired=body.tired,
         observed_apnea=body.observed_apnea,
+        smoker=body.smoker,
         hypertension_medication=body.hypertension_medication,
         daily_physical_activity=body.daily_physical_activity,
         fruits_vegetables=body.fruits_vegetables,
@@ -218,6 +222,7 @@ async def evaluate_assessments(
                 "phq9",
                 "metabolic_syndrome",
                 "eoss",
+                "score2",
             ],
             organization_id=user.membership.organization_id,
         )

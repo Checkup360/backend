@@ -68,6 +68,8 @@ class RecalculateMemberScoresUseCase:
             health_data["waist_circumference"] = member_health.waist_circumference
         if member_health.triglycerides is not None:
             health_data["triglycerides"] = member_health.triglycerides
+        if member_health.total_cholesterol is not None:
+            health_data["total_cholesterol"] = member_health.total_cholesterol
         if member_health.hdl_cholesterol is not None:
             health_data["hdl_cholesterol"] = member_health.hdl_cholesterol
         if member_health.systolic_blood_pressure is not None:
@@ -92,6 +94,8 @@ class RecalculateMemberScoresUseCase:
             health_data["tired"] = member_health.tired
         if member_health.observed_apnea is not None:
             health_data["observed_apnea"] = member_health.observed_apnea
+        if member_health.smoker is not None:
+            health_data["smoker"] = member_health.smoker
         if member_health.hypertension_medication is not None:
             health_data["hypertension_medication"] = (
                 member_health.hypertension_medication

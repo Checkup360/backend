@@ -19,6 +19,8 @@ def normalize_score_key(score_name: str) -> str:
         return "metabolic_syndrome"
     if "eoss" in lower or "obesity-related" in lower:
         return "eoss"
+    if "score2" in lower or "cardiovascular" in lower:
+        return "cardiovascular"
     return lower.replace(" ", "_").replace("-", "_")
 
 

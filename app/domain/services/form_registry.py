@@ -44,12 +44,14 @@ class FormRegistry:
                         "hypertension_medication",
                         "previous_high_glucose",
                         "family_diabetes",
+                        "smoker",
                     ],
                 ),
                 FormDefinition(
                     form_type="metabolic",
                     fields=[
                         "triglycerides",
+                        "total_cholesterol",
                         "hdl_cholesterol",
                         "systolic_blood_pressure",
                         "diastolic_blood_pressure",

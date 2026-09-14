@@ -144,3 +144,77 @@ async def test_recalculate_computes_and_saves_complete_scores():
     assert result[0].score_name == "FINDRISC"
     assert result[0].raw_value == 4.0
     risk_score_repo.save.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_recalculate_computes_score2_when_cardiovascular_fields_present():
+    user_id = uuid.uuid4()
+    health_data = MemberHealthData(
+        user_id=user_id,
+        biological_sex="M",
+        systolic_blood_pressure=120.0,
+        total_cholesterol=200.0,
+        hdl_cholesterol=50.0,
+        smoker=False,
+    )
+
+    biometrics_repo = AsyncMock()
+    biometrics_repo.get_by_user.return_value = health_data
+
+    details_repo = AsyncMock()
+    details_repo.get_by_user.return_value = MemberDetails(
+        user_id=user_id, date_of_birth=date(1975, 1, 1)
+    )
+
+    risk_score_repo = AsyncMock()
+    risk_score_repo.get_by_user_id.return_value = []
+
+    scoring_service = AsyncMock()
+    scoring_service.get_catalog.return_value = [
+        ScoreCatalogItemDTO(
+            score_id="score2",
+            score_name="SCORE2",
+            domain="Cardiovascular",
+            required_fields=[
+                "age",
+                "sex",
+                "smoker",
+                "systolic_blood_pressure",
+                "total_cholesterol",
+                "hdl_cholesterol",
+            ],
+            optional_fields=["risk_region"],
+        )
+    ]
+
+    scoring_service.evaluate_single_score.return_value = ScoreResultDTO(
+        score_id="score2",
+        score_name="SCORE2",
+        domain="Cardiovascular",
+        status="CALCULATED",
+        raw_value=5.5,
+        risk_level="Moderate risk",
+        explanation="Estimated 10-year risk of cardiovascular event is 5.5%.",
+    )
+
+    use_case = RecalculateMemberScoresUseCase(
+        biometrics_repo, details_repo, risk_score_repo, scoring_service
+    )
+
+    result = await use_case.execute(user_id)
+    assert len(result) == 1
+    assert result[0].score_name == "SCORE2"
+    assert result[0].raw_value == 5.5
+    scoring_service.evaluate_single_score.assert_called_once_with(
+        "score2",
+        {
+            "age": date.today().year
+            - 1975
+            - ((date.today().month, date.today().day) < (1, 1)),
+            "sex": "M",
+            "smoker": False,
+            "systolic_blood_pressure": 120.0,
+            "total_cholesterol": 200.0,
+            "hdl_cholesterol": 50.0,
+        },
+    )

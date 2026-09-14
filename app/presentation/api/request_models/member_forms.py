@@ -14,8 +14,9 @@ class MemberFormUpdate(BaseModel):
     waist_circumference: float | None = Field(default=None, gt=0, lt=300)
     neck_circumference: float | None = Field(default=None, gt=0, lt=100)
 
-    # Metabolic syndrome fields
+    # Metabolic syndrome & cardiovascular fields
     triglycerides: float | None = Field(default=None, ge=0, lt=10000)
+    total_cholesterol: float | None = Field(default=None, ge=0, lt=1000)
     hdl_cholesterol: float | None = Field(default=None, ge=0, lt=1000)
     systolic_blood_pressure: float | None = Field(default=None, gt=0, lt=400)
     diastolic_blood_pressure: float | None = Field(default=None, gt=0, lt=300)
@@ -37,6 +38,7 @@ class MemberFormUpdate(BaseModel):
     fruits_vegetables: bool | None = Field(default=None)
     hypertension_medication: bool | None = Field(default=None)
     previous_high_glucose: bool | None = Field(default=None)
+    smoker: bool | None = Field(default=None)
     family_diabetes: Literal["no", "second_degree", "first_degree"] | None = Field(
         default=None
     )

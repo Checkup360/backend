@@ -13,6 +13,7 @@ CLINICAL_CATEGORIES: list[str] = [
     "depression",
     "metabolic_syndrome",
     "eoss",
+    "cardiovascular",
 ]
 
 DEFAULT_UNASSESSED_SEVERITY = 0.20

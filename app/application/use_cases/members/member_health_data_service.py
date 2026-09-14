@@ -19,6 +19,7 @@ class MemberHealthDataService:
         weight: float | None = None,
         waist_circumference: float | None = None,
         triglycerides: float | None = None,
+        total_cholesterol: float | None = None,
         hdl_cholesterol: float | None = None,
         systolic_blood_pressure: float | None = None,
         diastolic_blood_pressure: float | None = None,
@@ -28,6 +29,7 @@ class MemberHealthDataService:
         snoring: bool | None = None,
         tired: bool | None = None,
         observed_apnea: bool | None = None,
+        smoker: bool | None = None,
         hypertension_medication: bool | None = None,
         daily_physical_activity: bool | None = None,
         fruits_vegetables: bool | None = None,
@@ -60,6 +62,8 @@ class MemberHealthDataService:
             existing.waist_circumference = waist_circumference
         if triglycerides is not None:
             existing.triglycerides = triglycerides
+        if total_cholesterol is not None:
+            existing.total_cholesterol = total_cholesterol
         if hdl_cholesterol is not None:
             existing.hdl_cholesterol = hdl_cholesterol
         if systolic_blood_pressure is not None:
@@ -78,6 +82,8 @@ class MemberHealthDataService:
             existing.tired = tired
         if observed_apnea is not None:
             existing.observed_apnea = observed_apnea
+        if smoker is not None:
+            existing.smoker = smoker
         if hypertension_medication is not None:
             existing.hypertension_medication = hypertension_medication
         if daily_physical_activity is not None:

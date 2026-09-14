@@ -11,6 +11,9 @@ class ClinicalAssessmentRequest(BaseModel):
     triglycerides: float | None = Field(
         None, ge=0, description="Triglycerides in mg/dL"
     )
+    total_cholesterol: float | None = Field(
+        None, ge=0, description="Total cholesterol in mg/dL"
+    )
     hdl_cholesterol: float | None = Field(
         None, ge=0, description="HDL cholesterol in mg/dL"
     )
@@ -33,6 +36,7 @@ class ClinicalAssessmentRequest(BaseModel):
     snoring: bool | None = Field(None)
     tired: bool | None = Field(None)
     observed_apnea: bool | None = Field(None)
+    smoker: bool | None = Field(None, description="Current smoking status")
     hypertension_medication: bool | None = Field(None)
     daily_physical_activity: bool | None = Field(None)
     fruits_vegetables: bool | None = Field(None)

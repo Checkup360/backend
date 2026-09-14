@@ -22,6 +22,8 @@ def test_normalize_score_key():
     assert normalize_score_key("Depression") == "depression"
     assert normalize_score_key("Metabolic Syndrome") == "metabolic_syndrome"
     assert normalize_score_key("EOSS") == "eoss"
+    assert normalize_score_key("SCORE2") == "cardiovascular"
+    assert normalize_score_key("Cardiovascular Risk") == "cardiovascular"
     assert normalize_score_key("Custom-Score") == "custom_score"
 
 
