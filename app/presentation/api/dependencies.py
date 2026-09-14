@@ -32,6 +32,9 @@ from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
 )
 from app.application.use_cases.assessments.get_assessments import GetAssessmentsUseCase
+from app.application.use_cases.assessments.get_active_member_forms import (
+    GetActiveMemberFormsUseCase,
+)
 from app.application.use_cases.assessments.get_submissions import (
     GetAssessmentSubmissionsUseCase,
 )
@@ -354,3 +357,9 @@ async def get_delete_member_avatar_use_case(
     file_storage: FileStorage = Depends(get_file_storage),
 ) -> DeleteMemberAvatarUseCase:
     return DeleteMemberAvatarUseCase(details_repo, file_storage)
+
+
+async def get_get_active_member_forms_use_case(
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> GetActiveMemberFormsUseCase:
+    return GetActiveMemberFormsUseCase(org_repo)

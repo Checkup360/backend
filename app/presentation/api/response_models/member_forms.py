@@ -28,3 +28,16 @@ class MemberFormSubmissionResponse(BaseModel):
     status: str = "success"
     updated_fields: list[str] = Field(default_factory=list)
     recalculated_scores: list[EvaluatedScoreSummary] = Field(default_factory=list)
+
+
+class ActiveFormDefinitionResponse(BaseModel):
+    """Response model for an active health form definition."""
+
+    form_type: str
+    fields: list[str] = Field(default_factory=list)
+
+
+class ActiveFormsResponse(BaseModel):
+    """Response containing list of active forms for the user's organization."""
+
+    active_forms: list[ActiveFormDefinitionResponse] = Field(default_factory=list)

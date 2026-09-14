@@ -119,3 +119,18 @@ class TestMemberFormsRouter:
         res_get = client.get("/members/me/forms/biometrics")
         assert res_get.status_code == 200
         assert res_get.json()["data"]["height"] == 124
+
+    @pytest.mark.asyncio
+    async def test_get_active_forms_endpoint(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="active-forms@example.com",
+            memberships=None,
+        )
+
+        res = client.get("/members/me/forms/active")
+        assert res.status_code == 200
+        data = res.json()
+        assert "active_forms" in data
+        form_types = [f["form_type"] for f in data["active_forms"]]
+        assert "biometrics" in form_types
+        assert "mood" in form_types

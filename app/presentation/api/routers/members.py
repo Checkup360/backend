@@ -17,8 +17,12 @@ from app.application.use_cases.members.get_member_risk_priorities import (
 from app.application.use_cases.members.upload_member_avatar import (
     UploadMemberAvatarUseCase,
 )
+from app.application.use_cases.assessments.get_active_member_forms import (
+    GetActiveMemberFormsUseCase,
+)
 from app.presentation.api.dependencies import (
     get_delete_member_avatar_use_case,
+    get_get_active_member_forms_use_case,
     get_member_details_service,
     get_member_health_data_service,
     get_member_risk_priorities_use_case,
@@ -50,6 +54,8 @@ from app.presentation.api.response_models.member_details import (
     MemberRiskPrioritiesResponse,
 )
 from app.presentation.api.response_models.member_forms import (
+    ActiveFormDefinitionResponse,
+    ActiveFormsResponse,
     EvaluatedScoreSummary,
     MemberFormResponse,
     MemberFormSubmissionResponse,
@@ -257,6 +263,26 @@ async def update_my_biometrics(
         weight=biometrics.weight,
         waist_circumference=biometrics.waist_circumference,
         neck_circumference=biometrics.neck_circumference,
+    )
+
+
+@router.get("/me/forms/active", response_model=ActiveFormsResponse)
+async def get_my_active_forms(
+    user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetActiveMemberFormsUseCase = Depends(
+        get_get_active_member_forms_use_case
+    ),
+) -> ActiveFormsResponse:
+    org_id = user.membership.organization_id if user.membership else None
+    active_defs = await use_case.execute(organization_id=org_id)
+    return ActiveFormsResponse(
+        active_forms=[
+            ActiveFormDefinitionResponse(
+                form_type=f.form_type,
+                fields=f.fields,
+            )
+            for f in active_defs
+        ]
     )
 
 
