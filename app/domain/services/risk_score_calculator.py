@@ -13,13 +13,18 @@ def normalize_score_key(score_name: str) -> str:
         return "diabetes"
     if "stop" in lower or "sleep" in lower:
         return "sleep_apnea"
-    if "phq" in lower or "depression" in lower:
+    if (
+        "phq" in lower
+        or "depression" in lower
+        or "mood" in lower
+        or "emotional" in lower
+    ):
         return "depression"
     if "metabolic" in lower:
         return "metabolic_syndrome"
-    if "eoss" in lower or "obesity-related" in lower:
+    if "eoss" in lower or "obesity" in lower:
         return "eoss"
-    if "score2" in lower or "cardiovascular" in lower:
+    if "score2" in lower or "cardiovascular" in lower or "cardio" in lower:
         return "cardiovascular"
     return lower.replace(" ", "_").replace("-", "_")
 
@@ -70,9 +75,9 @@ def calculate_weighted_overall_score(
     else:
         overall_score = round(total_weighted_sum / total_weight, 1)
 
-    if overall_score >= 85:
+    if overall_score <= 20:
         risk_level = "Low risk"
-    elif overall_score >= 60:
+    elif overall_score <= 50:
         risk_level = "Moderate risk"
     else:
         risk_level = "Needs attention"

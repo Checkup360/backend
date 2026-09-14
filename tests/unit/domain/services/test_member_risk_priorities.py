@@ -29,12 +29,12 @@ def _make_score(
 
 
 def test_map_normalized_value_to_severity():
-    # 0.0 (worst health) -> 1.0 severity
-    assert map_normalized_value_to_severity(0.0) == 1.0
-    # 100.0 (ideal health) -> 0.0 severity
-    assert map_normalized_value_to_severity(100.0) == 0.0
-    # 20.0 -> 0.8 severity
-    assert map_normalized_value_to_severity(20.0) == 0.8
+    # 0.0 (optimal / no risk) -> 0.0 severity
+    assert map_normalized_value_to_severity(0.0) == 0.0
+    # 100.0 (maximum risk) -> 1.0 severity
+    assert map_normalized_value_to_severity(100.0) == 1.0
+    # 20.0 -> 0.2 severity
+    assert map_normalized_value_to_severity(20.0) == 0.2
     # 50.0 -> 0.5 severity
     assert map_normalized_value_to_severity(50.0) == 0.5
     # None -> 0.2 baseline
@@ -52,13 +52,13 @@ def test_calculate_member_risk_weights_empty_scores():
 
 
 def test_calculate_member_risk_weights_prioritizes_high_risk():
-    # Diabetes normalized_value=10.0 (high risk, severity 0.9)
-    # Sleep apnea normalized_value=90.0 (low risk, severity 0.1)
-    # Depression normalized_value=90.0 (low risk, severity 0.1)
+    # Diabetes normalized_value=90.0 (high risk, severity 0.9)
+    # Sleep apnea normalized_value=10.0 (low risk, severity 0.1)
+    # Depression normalized_value=10.0 (low risk, severity 0.1)
     scores = [
-        _make_score("FINDRISC", normalized_value=10.0),
-        _make_score("STOP-BANG", normalized_value=90.0),
-        _make_score("PHQ-9", normalized_value=90.0),
+        _make_score("FINDRISC", normalized_value=90.0),
+        _make_score("STOP-BANG", normalized_value=10.0),
+        _make_score("PHQ-9", normalized_value=10.0),
     ]
     weights = calculate_member_risk_weights(scores)
     assert weights["diabetes"] > weights["sleep_apnea"]
@@ -67,10 +67,10 @@ def test_calculate_member_risk_weights_prioritizes_high_risk():
 
 
 def test_calculate_member_risk_weights_custom_org_weights():
-    # Both have high risk (normalized_value=10.0), but org prioritizes depression:
+    # Both have high risk (normalized_value=90.0), but org prioritizes depression:
     scores = [
-        _make_score("FINDRISC", normalized_value=10.0),
-        _make_score("PHQ-9", normalized_value=10.0),
+        _make_score("FINDRISC", normalized_value=90.0),
+        _make_score("PHQ-9", normalized_value=90.0),
     ]
     org_weights = {
         "diabetes": 10.0,
@@ -86,10 +86,10 @@ def test_calculate_member_risk_weights_latest_score_only():
     t_new = datetime(2026, 2, 1, tzinfo=timezone.utc)
     scores = [
         _make_score(
-            "FINDRISC", normalized_value=10.0, evaluated_at=t_old
+            "FINDRISC", normalized_value=90.0, evaluated_at=t_old
         ),  # was high risk
         _make_score(
-            "FINDRISC", normalized_value=90.0, evaluated_at=t_new
+            "FINDRISC", normalized_value=10.0, evaluated_at=t_new
         ),  # now low risk
     ]
     weights = calculate_member_risk_weights(scores)

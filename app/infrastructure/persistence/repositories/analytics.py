@@ -130,7 +130,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 avg_score = round(
                     sum(period_overall_scores) / len(period_overall_scores), 1
                 )
-                risk_index = round(max(0.0, 100.0 - avg_score), 1)
+                risk_index = avg_score
             else:
                 avg_score = None
                 risk_index = None
@@ -234,7 +234,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 )
                 if u_score is not None:
                     user_overall_scores.append(u_score)
-                    if u_score < 60.0 or (
+                    if u_score > 50.0 or (
                         u_risk
                         and ("attention" in u_risk.lower() or "high" in u_risk.lower())
                     ):

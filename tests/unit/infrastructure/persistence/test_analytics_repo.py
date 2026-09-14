@@ -85,7 +85,7 @@ async def test_get_organization_trends():
     assert points[0].period == "2026-01"
     assert points[0].month_label == "Jan"
     assert points[0].average_score == 80.0
-    assert points[0].risk_index == 20.0
+    assert points[0].risk_index == 80.0
     assert points[0].total_assessments == 3
     assert points[0].scores_by_study == {
         "Diabetes": 80.0,
@@ -101,7 +101,7 @@ async def test_get_organization_trends():
     assert points[1].period == "2026-02"
     assert points[1].month_label == "Feb"
     assert points[1].average_score == 85.0
-    assert points[1].risk_index == 15.0
+    assert points[1].risk_index == 85.0
     assert points[1].total_assessments == 3
 
 
@@ -133,22 +133,22 @@ async def test_get_departments_summary():
         SimpleNamespace(
             user_id=user_id,
             score_name="Diabetes",
-            normalized_value=85.0,
-            risk_level="Low",
+            normalized_value=15.0,
+            risk_level="Low risk",
             evaluated_at=now,
         ),
         SimpleNamespace(
             user_id=user_id,
             score_name="Sleep Apnea",
-            normalized_value=85.0,
-            risk_level="Low",
+            normalized_value=15.0,
+            risk_level="Low risk",
             evaluated_at=now,
         ),
         SimpleNamespace(
             user_id=user_id,
             score_name="Depression",
-            normalized_value=85.0,
-            risk_level="Low",
+            normalized_value=15.0,
+            risk_level="Low risk",
             evaluated_at=now,
         ),
     ]
@@ -167,7 +167,7 @@ async def test_get_departments_summary():
     assert len(summaries) == 1
     assert summaries[0].department_id == dept_id
     assert summaries[0].name == "Engineering"
-    assert summaries[0].average_score == 85.0
+    assert summaries[0].average_score == 15.0
     assert summaries[0].total_workers == 1
     assert summaries[0].high_risk_count == 0
 

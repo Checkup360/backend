@@ -21,12 +21,12 @@ DEFAULT_UNASSESSED_SEVERITY = 0.20
 
 def map_normalized_value_to_severity(normalized_value: float | None) -> float:
     """
-    Maps normalized_value (0.0 to 100.0, where 100 is healthy and 0 is highest risk)
+    Maps normalized_value (0.0 to 100.0, where 0 is low risk and 100 is highest risk)
     to a continuous severity factor [0.0, 1.0].
     """
     if normalized_value is not None:
-        inv = max(0.0, min(100.0, 100.0 - float(normalized_value))) / 100.0
-        return round(inv, 4)
+        severity = max(0.0, min(100.0, float(normalized_value))) / 100.0
+        return round(severity, 4)
 
     return DEFAULT_UNASSESSED_SEVERITY
 

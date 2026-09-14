@@ -44,16 +44,18 @@ submissions_router = APIRouter(
 
 def _format_score_display_name(name: str) -> str:
     lower = name.lower()
-    if "findrisc" in lower:
+    if "findrisc" in lower or "diabetes" in lower:
         return "Diabetes"
-    if "stop" in lower and "bang" in lower:
+    if ("stop" in lower and "bang" in lower) or "sleep" in lower:
         return "Sleep Apnea"
-    if "phq" in lower:
-        return "Depression"
-    if "eoss" in lower:
+    if "phq" in lower or "depression" in lower or "mood" in lower:
+        return "Mood and Emotional Well-being"
+    if "metabolic" in lower:
+        return "Metabolic Health"
+    if "eoss" in lower or "obesity" in lower:
         return "Obesity-related Health Impact"
     if "score2" in lower or "cardiovascular" in lower:
-        return "Cardiovascular Risk"
+        return "Cardiovascular Health"
     return name
 
 
