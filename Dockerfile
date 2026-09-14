@@ -51,7 +51,9 @@ COPY --from=builder --chown=app:app /app/alembic /app/alembic
 COPY --from=builder --chown=app:app /app/alembic.ini /app/alembic.ini
 COPY --from=builder --chown=app:app /app/scripts /app/scripts
 COPY --chown=app:app docker/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh \
+ && mkdir -p /app/uploads \
+ && chown -R app:app /app/uploads
 
 USER app
 

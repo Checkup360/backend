@@ -23,6 +23,7 @@ class Settings:
     access_token_lifetime_seconds: int = 3600
     refresh_token_lifetime_seconds: int = 2592000
     refresh_token_cookie_name: str = "refresh_token"
+    upload_dir: str = "uploads"
 
 
 def _require_env(key: str) -> str:
@@ -90,6 +91,7 @@ def get_settings() -> Settings:
         refresh_token_cookie_name=os.getenv(
             "REFRESH_TOKEN_COOKIE_NAME", "refresh_token"
         ),
+        upload_dir=os.getenv("UPLOAD_DIR", "uploads"),
     )
 
 
