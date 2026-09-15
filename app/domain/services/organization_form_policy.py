@@ -42,8 +42,8 @@ class OrganizationFormPolicy:
         active_form_types: set[str] = set()
 
         for score_key, form_types in SCORE_REQUIRED_FORMS.items():
-            # Default weight if not specified in score_weights dict is positive (enabled)
-            weight = normalized_weights.get(score_key, 10.0)
+            # If score_weights is provided, missing keys mean weight=0.0 (disabled)
+            weight = normalized_weights.get(score_key, 0.0)
             if weight > 0:
                 for ft in form_types:
                     if self._form_registry.is_valid_form_type(ft):

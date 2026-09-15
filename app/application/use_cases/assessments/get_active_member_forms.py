@@ -18,7 +18,7 @@ class GetActiveMemberFormsUseCase:
     async def execute(self, organization_id: uuid.UUID | None) -> list[FormDefinition]:
         score_weights = None
         if organization_id is not None:
-            org = await self._organization_repository.get_by_id(organization_id)
+            org = await self._organization_repository.get(organization_id)
             if org:
                 score_weights = org.score_weights
 

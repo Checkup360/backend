@@ -62,10 +62,19 @@ def test_get_active_form_types_disabled_all_except_diabetes():
 
 def test_get_active_form_definitions():
     policy = OrganizationFormPolicy()
-    weights = {"depression": 0.0, "sleep_apnea": 0.0, "eoss": 0.0}
+    weights = {
+        "diabetes": 50.0,
+        "metabolic_syndrome": 50.0,
+        "depression": 0.0,
+        "sleep_apnea": 0.0,
+        "eoss": 0.0,
+        "cardiovascular": 0.0,
+    }
     active_defs = policy.get_active_form_definitions(score_weights=weights)
     form_types = [form.form_type for form in active_defs]
     assert "mood" not in form_types
     assert "sleep" not in form_types
     assert "eoss" not in form_types
     assert "biometrics" in form_types
+    assert "habits" in form_types
+    assert "metabolic" in form_types

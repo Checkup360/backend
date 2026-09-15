@@ -12,11 +12,11 @@ from app.application.use_cases.assessments.get_active_member_forms import (
 async def test_get_active_member_forms_returns_active_forms_for_org():
     org_id = uuid.uuid4()
     org_repo = AsyncMock()
-    org_repo.get_by_id.return_value = Organization(
+    org_repo.get.return_value = Organization(
         id=org_id,
         name="Acme Corp",
         slug="acme",
-        score_weights={"depression": 0.0, "sleep_apnea": 0.0},
+        score_weights={"diabetes": 50.0, "depression": 0.0, "sleep_apnea": 0.0},
     )
 
     use_case = GetActiveMemberFormsUseCase(organization_repository=org_repo)
