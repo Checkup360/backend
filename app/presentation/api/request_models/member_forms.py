@@ -22,6 +22,10 @@ class MemberFormUpdate(BaseModel):
     diastolic_blood_pressure: float | None = Field(default=None, gt=0, lt=300)
     fasting_glucose: float | None = Field(default=None, ge=0, lt=2000)
     glucose_lowering_medication: bool | None = Field(default=None)
+    statins: bool | None = Field(default=None)
+    lab_study_date: str | None = Field(
+        default=None, description="Date of lab study (YYYY-MM-DD)"
+    )
 
     # EOSS self-assessment stages
     eoss_physical_health_stage: int | None = Field(default=None, ge=0, le=4)

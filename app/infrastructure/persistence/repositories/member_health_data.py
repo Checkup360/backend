@@ -66,6 +66,8 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             "eoss_physical_health_stage": health_data.eoss_physical_health_stage,
             "eoss_mental_health_stage": health_data.eoss_mental_health_stage,
             "eoss_functional_stage": health_data.eoss_functional_stage,
+            "statins": health_data.statins,
+            "lab_study_date": health_data.lab_study_date,
         }
 
         stmt = insert(MemberHealthDataModel).values(**values)
@@ -105,6 +107,8 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
                 "eoss_physical_health_stage": stmt.excluded.eoss_physical_health_stage,
                 "eoss_mental_health_stage": stmt.excluded.eoss_mental_health_stage,
                 "eoss_functional_stage": stmt.excluded.eoss_functional_stage,
+                "statins": stmt.excluded.statins,
+                "lab_study_date": stmt.excluded.lab_study_date,
             },
         )
         await self.db.execute(stmt)
@@ -146,4 +150,6 @@ class SQLAlchemyMemberHealthDataRepository(BaseRepository, MemberHealthDataRepos
             eoss_physical_health_stage=model.eoss_physical_health_stage,
             eoss_mental_health_stage=model.eoss_mental_health_stage,
             eoss_functional_stage=model.eoss_functional_stage,
+            statins=model.statins,
+            lab_study_date=model.lab_study_date,
         )

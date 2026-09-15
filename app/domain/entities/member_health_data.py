@@ -50,3 +50,5 @@ class MemberHealthData:
     eoss_physical_health_stage: int | None = field(default=None)
     eoss_mental_health_stage: int | None = field(default=None)
     eoss_functional_stage: int | None = field(default=None)
+    statins: bool | None = field(default=None)
+    lab_study_date: str | None = field(default=None)

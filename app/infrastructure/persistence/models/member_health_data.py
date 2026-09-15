@@ -28,6 +28,8 @@ class MemberHealthData(Base):
     glucose_lowering_medication: Mapped[bool | None] = mapped_column(
         Boolean, nullable=True
     )
+    statins: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    lab_study_date: Mapped[str | None] = mapped_column(String, nullable=True)
     neck_circumference: Mapped[float | None] = mapped_column(Float, nullable=True)
     snoring: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     tired: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
