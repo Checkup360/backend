@@ -50,3 +50,15 @@ class OrganizationService:
         if not updated:
             raise OrganizationNotFoundError()
         return updated
+
+    async def update_organization_name(self, id: uuid.UUID, name: str) -> Organization:
+        cleaned_name = name.strip()
+        if not cleaned_name:
+            raise ValueError("organization_name_empty")
+        org = await self.repo.get(id)
+        if not org:
+            raise OrganizationNotFoundError()
+        updated = await self.repo.update(id, name=cleaned_name)
+        if not updated:
+            raise OrganizationNotFoundError()
+        return updated

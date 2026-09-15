@@ -83,8 +83,10 @@ from app.domain.repositories.analytics import AnalyticsRepository
 from app.infrastructure.persistence.repositories.analytics import (
     AnalyticsRepositoryImpl,
 )
-from app.application.use_cases.organizations.get_organization_analytics import (
+from app.application.use_cases.organizations import (
+    DeleteOrganizationLogoUseCase,
     GetOrganizationAnalyticsUseCase,
+    UploadOrganizationLogoUseCase,
 )
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
@@ -100,6 +102,7 @@ async def get_invite_repository(
 async def get_current_user(user=Depends(current_active_user)) -> AuthenticatedUser:
     membership = None
     organization_name = None
+    organization_logo_url = None
     if user.membership is not None:
         membership = Membership(
             user_id=user.membership.user_id,
@@ -108,12 +111,14 @@ async def get_current_user(user=Depends(current_active_user)) -> AuthenticatedUs
             department_id=user.membership.department_id,
         )
         organization_name = user.membership.organization.name
+        organization_logo_url = user.membership.organization.logo_url
     return AuthenticatedUser(
         id=user.id,
         email=user.email,
         is_superuser=user.is_superuser,
         membership=membership,
         organization_name=organization_name,
+        organization_logo_url=organization_logo_url,
     )
 
 
@@ -363,3 +368,17 @@ async def get_get_active_member_forms_use_case(
     org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> GetActiveMemberFormsUseCase:
     return GetActiveMemberFormsUseCase(org_repo)
+
+
+async def get_upload_organization_logo_use_case(
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    file_storage: FileStorage = Depends(get_file_storage),
+) -> UploadOrganizationLogoUseCase:
+    return UploadOrganizationLogoUseCase(org_repo, file_storage)
+
+
+async def get_delete_organization_logo_use_case(
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    file_storage: FileStorage = Depends(get_file_storage),
+) -> DeleteOrganizationLogoUseCase:
+    return DeleteOrganizationLogoUseCase(org_repo, file_storage)

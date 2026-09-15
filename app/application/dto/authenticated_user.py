@@ -11,3 +11,4 @@ class AuthenticatedUser:
     is_superuser: bool
     membership: Membership | None = None
     organization_name: str | None = None
+    organization_logo_url: str | None = None

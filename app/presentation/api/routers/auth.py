@@ -123,6 +123,7 @@ async def get_me(
         membership = OrganizationMembership(
             organization_id=user.membership.organization_id,
             organization_name=user.organization_name or "",
+            organization_logo_url=user.organization_logo_url,
             roles=[r.value for r in user.membership.roles],
         )
     profile = await member_details_service.get_profile(user.id)

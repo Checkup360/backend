@@ -5,6 +5,7 @@ import uuid
 class OrganizationMembership(BaseModel):
     organization_id: uuid.UUID
     organization_name: str
+    organization_logo_url: str | None = None
     roles: list[str]
 
 

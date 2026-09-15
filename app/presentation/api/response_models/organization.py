@@ -10,10 +10,15 @@ class OrganizationResponse(BaseModel):
     slug: str
     collaborators_count: int
     score_weights: dict[str, float] | None = None
+    logo_url: str | None = None
 
 
 class ScoreWeightsResponse(BaseModel):
     score_weights: dict[str, float]
+
+
+class OrganizationLogoResponse(BaseModel):
+    logo_url: str
 
 
 class OrganizationSummaryResponse(BaseModel):
@@ -24,6 +29,7 @@ class OrganizationSummaryResponse(BaseModel):
     total_employees: int
     total_admins: int
     total_content_managers: int = 0
+    logo_url: str | None = None
 
 
 class DepartmentResponse(BaseModel):

@@ -1,23 +1,36 @@
 import uuid
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 
 from app.presentation.api.authorization import require_superuser
 from app.application.dto import AuthenticatedUser
 from app.presentation.api.dependencies import (
     get_department_service,
     get_current_user,
+    get_delete_organization_logo_use_case,
     get_membership_service,
     get_organization_service,
+    get_upload_organization_logo_use_case,
     get_member_details_service,
     get_get_assessments_use_case,
     get_organization_analytics_use_case,
     get_assessment_submissions_use_case,
     get_risk_score_repository,
 )
-from app.application.use_cases.organizations.get_organization_analytics import (
+from app.application.use_cases.organizations import (
+    DeleteOrganizationLogoUseCase,
     GetOrganizationAnalyticsUseCase,
+    UploadOrganizationLogoUseCase,
 )
 from app.presentation.api.response_models.analytics import (
     DepartmentAnalyticsSummaryResponse,
@@ -51,10 +64,12 @@ from app.presentation.api.request_models.organization import (
     CreateOrganizationRequest,
     DepartmentRequest,
     ScoreWeightsRequest,
+    UpdateOrganizationRequest,
 )
 from app.presentation.api.response_models.organization import (
     DepartmentResponse,
     OrganizationEmployeeResponse,
+    OrganizationLogoResponse,
     OrganizationResponse,
     OrganizationSummaryResponse,
     ScoreWeightsResponse,
@@ -180,7 +195,141 @@ async def get_organization_summary(
         total_employees=total_employees,
         total_admins=total_admins,
         total_content_managers=total_content_managers,
+        logo_url=organization.logo_url,
     )
+
+
+@router.get("/{organization_id}", response_model=OrganizationResponse)
+async def get_organization(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    organization_service: OrganizationService = Depends(get_organization_service),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.get_admin_membership(
+                current_user.id, organization_id
+            )
+        org = await organization_service.get_organization(organization_id)
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="organization_not_found",
+            )
+        return org
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.patch("/{organization_id}", response_model=OrganizationResponse)
+async def update_organization(
+    organization_id: uuid.UUID,
+    request: UpdateOrganizationRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    organization_service: OrganizationService = Depends(get_organization_service),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.get_admin_membership(
+                current_user.id, organization_id
+            )
+        updated_org = await organization_service.update_organization_name(
+            organization_id, request.name
+        )
+        return updated_org
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.post("/{organization_id}/logo", response_model=OrganizationLogoResponse)
+async def upload_organization_logo(
+    organization_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    upload_use_case: UploadOrganizationLogoUseCase = Depends(
+        get_upload_organization_logo_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.get_admin_membership(
+                current_user.id, organization_id
+            )
+        content = await file.read()
+        logo_url = await upload_use_case.execute(
+            organization_id=organization_id,
+            content=content,
+            filename=file.filename or "logo.png",
+            content_type=file.content_type or "image/png",
+        )
+        return OrganizationLogoResponse(logo_url=logo_url)
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+
+
+@router.delete("/{organization_id}/logo", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_organization_logo(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    delete_use_case: DeleteOrganizationLogoUseCase = Depends(
+        get_delete_organization_logo_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+):
+    try:
+        if not current_user.is_superuser:
+            await membership_service.get_admin_membership(
+                current_user.id, organization_id
+            )
+        await delete_use_case.execute(organization_id)
+        return None
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
 
 
 @router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)

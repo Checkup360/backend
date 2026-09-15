@@ -57,3 +57,14 @@ class ScoreWeightsRequest(BaseModel):
         if total <= 0:
             raise ValueError("total_weights_must_be_positive")
         return value
+
+
+class UpdateOrganizationRequest(BaseModel):
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("name_required")
+        return value.strip()

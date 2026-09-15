@@ -64,6 +64,16 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
         result = await self.db.execute(self._base_query)
         return [self._to_domain_with_count(orm, count) for orm, count in result.all()]
 
+    async def update(self, id: UUID, **kwargs) -> Organization | None:
+        orm = await self.db.get(self.model, id)
+        if orm is None:
+            return None
+        for key, value in kwargs.items():
+            setattr(orm, key, value)
+        await self.db.commit()
+        await self.db.refresh(orm)
+        return await self.get(id)
+
     async def update_score_weights(
         self, id: UUID, score_weights: dict[str, float]
     ) -> Organization | None:
@@ -91,6 +101,7 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             slug=orm.slug,
             collaborators_count=collaborators_count,
             score_weights=orm.score_weights,
+            logo_url=orm.logo_url,
         )
 
     def _from_domain(self, entity: Organization) -> dict:
@@ -99,4 +110,5 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             "name": entity.name,
             "slug": entity.slug,
             "score_weights": entity.score_weights,
+            "logo_url": entity.logo_url,
         }
