@@ -1,5 +1,7 @@
 import uuid
 
+from pydantic import ValidationError
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -312,7 +314,13 @@ async def redeem_invite(
 
     request.state.invite_token_override = token
     request.state.invite_validation_error_as_json = True
-    user_create = UserCreate(email=email, password=password)
+    try:
+        user_create = UserCreate(email=email, password=password)
+    except ValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The email address is not valid.",
+        )
     try:
         user = await user_manager.create(user_create, safe=True, request=request)
     except exceptions.InvalidPasswordException as e:
