@@ -8,9 +8,9 @@ from app.domain.services.form_registry import FormDefinition, FormRegistry
 MODULE_TO_FORM_TYPES: dict[InputFormModule, list[str]] = {
     InputFormModule.BASE_BIOMETRICS: ["biometrics"],
     InputFormModule.LABORATORY_CLINIC: ["metabolic"],
-    InputFormModule.LIFESTYLE_HABITS: ["habits"],
-    InputFormModule.OPERATIONAL_FATIGUE: ["sleep"],
-    InputFormModule.PSYCHOLOGICAL_HEALTH: ["mood", "eoss"],
+    InputFormModule.LIFESTYLE_HABITS: ["habits", "audit_c"],
+    InputFormModule.OPERATIONAL_FATIGUE: ["sleep", "nordic_nmq"],
+    InputFormModule.PSYCHOLOGICAL_HEALTH: ["mood", "eoss", "pss10"],
 }
 
 

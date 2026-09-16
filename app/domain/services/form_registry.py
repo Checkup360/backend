@@ -71,6 +71,22 @@ class FormRegistry:
                     form_type="mood",
                     fields=list(PHQ9_ITEM_FIELDS),
                 ),
+                FormDefinition(
+                    form_type="nordic_nmq",
+                    fields=["nordic_nmq_data"],
+                ),
+                FormDefinition(
+                    form_type="audit_c",
+                    fields=[
+                        "audit_c_frequency",
+                        "audit_c_quantity",
+                        "audit_c_heavy_drinking",
+                    ],
+                ),
+                FormDefinition(
+                    form_type="pss10",
+                    fields=[f"pss10_q{i}" for i in range(1, 11)],
+                ),
             ]
         self._forms: dict[str, FormDefinition] = {
             form.form_type: form for form in forms

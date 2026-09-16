@@ -43,4 +43,7 @@ async def test_get_active_member_forms_without_org_id_returns_all_forms():
         "metabolic",
         "eoss",
         "mood",
+        "nordic_nmq",
+        "audit_c",
+        "pss10",
     }

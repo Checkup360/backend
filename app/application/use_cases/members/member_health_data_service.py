@@ -47,6 +47,22 @@ class MemberHealthDataService:
         eoss_physical_health_stage: int | None = None,
         eoss_mental_health_stage: int | None = None,
         eoss_functional_stage: int | None = None,
+        statins: bool | None = None,
+        lab_study_date: str | None = None,
+        nordic_nmq_data: dict | None = None,
+        audit_c_frequency: int | None = None,
+        audit_c_quantity: int | None = None,
+        audit_c_heavy_drinking: int | None = None,
+        pss10_q1: int | None = None,
+        pss10_q2: int | None = None,
+        pss10_q3: int | None = None,
+        pss10_q4: int | None = None,
+        pss10_q5: int | None = None,
+        pss10_q6: int | None = None,
+        pss10_q7: int | None = None,
+        pss10_q8: int | None = None,
+        pss10_q9: int | None = None,
+        pss10_q10: int | None = None,
     ) -> MemberHealthData:
         existing = await self.repo.get_by_user(user_id)
         if existing is None:
@@ -118,6 +134,22 @@ class MemberHealthDataService:
             existing.eoss_mental_health_stage = eoss_mental_health_stage
         if eoss_functional_stage is not None:
             existing.eoss_functional_stage = eoss_functional_stage
+        if statins is not None:
+            existing.statins = statins
+        if lab_study_date is not None:
+            existing.lab_study_date = lab_study_date
+        if nordic_nmq_data is not None:
+            existing.nordic_nmq_data = nordic_nmq_data
+        if audit_c_frequency is not None:
+            existing.audit_c_frequency = audit_c_frequency
+        if audit_c_quantity is not None:
+            existing.audit_c_quantity = audit_c_quantity
+        if audit_c_heavy_drinking is not None:
+            existing.audit_c_heavy_drinking = audit_c_heavy_drinking
+        for i in range(1, 11):
+            val = locals()[f"pss10_q{i}"]
+            if val is not None:
+                setattr(existing, f"pss10_q{i}", val)
 
         await self.repo.save(existing)
         return existing

@@ -33,6 +33,9 @@ LEGACY_SCORE_TO_HEALTH_DOMAIN: dict[str, HealthDomain] = {
     "depression": HealthDomain.MENTAL_HEALTH,
     "phq9": HealthDomain.MENTAL_HEALTH,
     "eoss": HealthDomain.MENTAL_HEALTH,
+    "nordic_nmq": HealthDomain.CARDIOMETABOLIC,
+    "audit_c": HealthDomain.CARDIOMETABOLIC,
+    "pss10": HealthDomain.MENTAL_HEALTH,
 }
 
 

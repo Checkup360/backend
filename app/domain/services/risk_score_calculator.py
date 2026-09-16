@@ -26,6 +26,12 @@ def normalize_score_key(score_name: str) -> str:
         return "eoss"
     if "score2" in lower or "cardiovascular" in lower or "cardio" in lower:
         return "cardiovascular"
+    if "nordic" in lower or "nmq" in lower or "ergonomics" in lower:
+        return "nordic_nmq"
+    if "audit" in lower or "alcohol" in lower:
+        return "audit_c"
+    if "pss" in lower or "stress" in lower:
+        return "pss10"
     return lower.replace(" ", "_").replace("-", "_")
 
 

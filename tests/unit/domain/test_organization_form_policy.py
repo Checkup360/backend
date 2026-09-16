@@ -11,6 +11,9 @@ def test_get_active_form_types_default_weights():
         "metabolic",
         "eoss",
         "mood",
+        "nordic_nmq",
+        "audit_c",
+        "pss10",
     }
 
 
@@ -24,6 +27,9 @@ def test_get_active_form_types_empty_dict():
         "metabolic",
         "eoss",
         "mood",
+        "nordic_nmq",
+        "audit_c",
+        "pss10",
     }
 
 
@@ -56,8 +62,8 @@ def test_get_active_form_types_disabled_all_except_diabetes():
         "cardiovascular": 0.0,
     }
     active_forms = policy.get_active_form_types(score_weights=weights)
-    # Diabetes belongs to Cardiometabolic domain which requires biometrics, habits, and metabolic
-    assert set(active_forms) == {"biometrics", "habits", "metabolic"}
+    # Diabetes belongs to Cardiometabolic domain which requires biometrics, habits/audit_c, and metabolic
+    assert set(active_forms) == {"biometrics", "habits", "metabolic", "audit_c"}
 
 
 def test_get_active_form_definitions():

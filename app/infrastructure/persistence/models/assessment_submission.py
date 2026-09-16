@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -65,6 +65,20 @@ class AssessmentSubmissionModel(Base):
     )
     eoss_mental_health_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     eoss_functional_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nordic_nmq_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    audit_c_frequency: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audit_c_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audit_c_heavy_drinking: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q1: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q2: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q3: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q4: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q5: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q6: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q7: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q8: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q9: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q10: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     user = relationship("User")
     organization = relationship("Organization")
