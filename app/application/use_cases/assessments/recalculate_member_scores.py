@@ -136,6 +136,22 @@ class RecalculateMemberScoresUseCase:
             health_data["mental_health_stage"] = member_health.eoss_mental_health_stage
         if member_health.eoss_functional_stage is not None:
             health_data["functional_stage"] = member_health.eoss_functional_stage
+        if member_health.nordic_nmq_data is not None:
+            health_data["zones"] = member_health.nordic_nmq_data
+            health_data["nordic_nmq_data"] = member_health.nordic_nmq_data
+        if member_health.audit_c_frequency is not None:
+            health_data["frequency"] = member_health.audit_c_frequency
+            health_data["audit_c_frequency"] = member_health.audit_c_frequency
+        if member_health.audit_c_quantity is not None:
+            health_data["quantity"] = member_health.audit_c_quantity
+            health_data["audit_c_quantity"] = member_health.audit_c_quantity
+        if member_health.audit_c_heavy_drinking is not None:
+            health_data["heavy_drinking"] = member_health.audit_c_heavy_drinking
+            health_data["audit_c_heavy_drinking"] = member_health.audit_c_heavy_drinking
+        for i in range(1, 11):
+            val = getattr(member_health, f"pss10_q{i}")
+            if val is not None:
+                health_data[f"pss10_q{i}"] = val
 
         catalog = await self._risk_scoring_service.get_catalog()
         existing_scores = await self._risk_score_repo.get_by_user_id(user_id)

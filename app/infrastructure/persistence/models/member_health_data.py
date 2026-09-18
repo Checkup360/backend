@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -28,6 +28,8 @@ class MemberHealthData(Base):
     glucose_lowering_medication: Mapped[bool | None] = mapped_column(
         Boolean, nullable=True
     )
+    statins: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    lab_study_date: Mapped[str | None] = mapped_column(String, nullable=True)
     neck_circumference: Mapped[float | None] = mapped_column(Float, nullable=True)
     snoring: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     tired: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -52,6 +54,20 @@ class MemberHealthData(Base):
     )
     eoss_mental_health_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     eoss_functional_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nordic_nmq_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    audit_c_frequency: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audit_c_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audit_c_heavy_drinking: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q1: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q2: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q3: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q4: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q5: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q6: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q7: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q8: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q9: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pss10_q10: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

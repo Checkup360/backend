@@ -11,6 +11,9 @@ def test_get_active_form_types_default_weights():
         "metabolic",
         "eoss",
         "mood",
+        "nordic_nmq",
+        "audit_c",
+        "pss10",
     }
 
 
@@ -24,6 +27,9 @@ def test_get_active_form_types_empty_dict():
         "metabolic",
         "eoss",
         "mood",
+        "nordic_nmq",
+        "audit_c",
+        "pss10",
     }
 
 
@@ -56,8 +62,8 @@ def test_get_active_form_types_disabled_all_except_diabetes():
         "cardiovascular": 0.0,
     }
     active_forms = policy.get_active_form_types(score_weights=weights)
-    # Diabetes requires biometrics and habits
-    assert set(active_forms) == {"biometrics", "habits"}
+    # Diabetes belongs to Cardiometabolic domain which requires biometrics, habits/audit_c, and metabolic
+    assert set(active_forms) == {"biometrics", "habits", "metabolic", "audit_c"}
 
 
 def test_get_active_form_definitions():
@@ -78,3 +84,15 @@ def test_get_active_form_definitions():
     assert "biometrics" in form_types
     assert "habits" in form_types
     assert "metabolic" in form_types
+
+    # Verify neck_circumference is removed from biometrics fields when sleep_apnea is 0.0
+    bio_def = next(form for form in active_defs if form.form_type == "biometrics")
+    assert "neck_circumference" not in bio_def.fields
+
+
+def test_biometrics_neck_circumference_included_when_sleep_apnea_active():
+    policy = OrganizationFormPolicy()
+    weights = {"sleep_apnea": 100.0}
+    active_defs = policy.get_active_form_definitions(score_weights=weights)
+    bio_def = next(form for form in active_defs if form.form_type == "biometrics")
+    assert "neck_circumference" in bio_def.fields
