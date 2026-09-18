@@ -57,6 +57,20 @@ class AssessmentSubmissionAnswersResponse(BaseModel):
     eoss_physical_health_stage: int | None = None
     eoss_mental_health_stage: int | None = None
     eoss_functional_stage: int | None = None
+    audit_c_frequency: int | None = None
+    audit_c_quantity: int | None = None
+    audit_c_heavy_drinking: int | None = None
+    pss10_q1: int | None = None
+    pss10_q2: int | None = None
+    pss10_q3: int | None = None
+    pss10_q4: int | None = None
+    pss10_q5: int | None = None
+    pss10_q6: int | None = None
+    pss10_q7: int | None = None
+    pss10_q8: int | None = None
+    pss10_q9: int | None = None
+    pss10_q10: int | None = None
+    nordic_nmq_data: dict[str, Any] | None = None
 
 
 class AssessmentSubmissionScoreResponse(BaseModel):

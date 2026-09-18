@@ -55,13 +55,19 @@ def _format_score_display_name(name: str) -> str:
     if ("stop" in lower and "bang" in lower) or "sleep" in lower:
         return "Sleep Apnea"
     if "phq" in lower or "depression" in lower or "mood" in lower:
-        return "Mood and Emotional Well-being"
+        return "Mood & Well-being"
     if "metabolic" in lower:
         return "Metabolic Health"
     if "eoss" in lower or "obesity" in lower:
         return "Obesity-related Health Impact"
     if "score2" in lower or "cardiovascular" in lower:
-        return "Cardiovascular Health"
+        return "Cardiovascular Risk"
+    if "nordic" in lower or "nmq" in lower or "musculoskeletal" in lower:
+        return "Musculoskeletal Risk"
+    if "audit" in lower or "alcohol" in lower:
+        return "Alcohol Risk Assessment"
+    if "pss" in lower or "stress" in lower:
+        return "Perceived Stress & Burnout"
     return name
 
 
