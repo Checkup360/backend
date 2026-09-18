@@ -272,18 +272,34 @@ async def get_my_active_forms(
     use_case: GetActiveMemberFormsUseCase = Depends(
         get_get_active_member_forms_use_case
     ),
+    health_data_service: MemberHealthDataService = Depends(
+        get_member_health_data_service
+    ),
 ) -> ActiveFormsResponse:
     org_id = user.membership.organization_id if user.membership else None
     active_defs = await use_case.execute(organization_id=org_id)
-    return ActiveFormsResponse(
-        active_forms=[
+    health_data = await health_data_service.get_health_data(user.id)
+
+    response_items = []
+    for f in active_defs:
+        is_completed = False
+        if health_data:
+            for field in f.fields:
+                if field == "nordic_nmq_data":
+                    if health_data.nordic_nmq_data:
+                        is_completed = True
+                        break
+                elif getattr(health_data, field, None) is not None:
+                    is_completed = True
+                    break
+        response_items.append(
             ActiveFormDefinitionResponse(
                 form_type=f.form_type,
                 fields=f.fields,
+                is_completed=is_completed,
             )
-            for f in active_defs
-        ]
-    )
+        )
+    return ActiveFormsResponse(active_forms=response_items)
 
 
 FORM_FIELDS_MAP: dict[str, list[str]] = FormRegistry().get_form_fields_map()
