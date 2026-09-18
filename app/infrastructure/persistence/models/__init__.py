@@ -9,6 +9,12 @@ from app.infrastructure.persistence.models.risk_score import RiskScoreModel
 from app.infrastructure.persistence.models.assessment_submission import (
     AssessmentSubmissionModel,
 )
+from app.infrastructure.persistence.models.member_overall_score import (
+    MemberOverallScoreModel,
+)
+from app.infrastructure.persistence.models.organization_score_weights import (
+    OrganizationScoreWeightsModel,
+)
 from app.infrastructure.persistence.models.refresh_token import RefreshToken
 
 __all__ = [
@@ -16,9 +22,11 @@ __all__ = [
     "Department",
     "MemberDetails",
     "MemberHealthData",
+    "MemberOverallScoreModel",
     "OAuthAccount",
     "User",
     "Organization",
+    "OrganizationScoreWeightsModel",
     "Membership",
     "RiskScoreModel",
     "AssessmentSubmissionModel",

@@ -14,8 +14,10 @@ from app.domain.value_objects import OrgRole
 from app.domain.entities.organization import Organization
 from app.domain.entities.risk_score import RiskScore
 from app.domain.entities.assessment_submission import AssessmentSubmission
-from app.domain.entities.user import User
+from app.domain.entities.member_overall_score import MemberOverallScore
+from app.domain.entities.organization_score_weights import OrganizationScoreWeights
 from app.domain.entities.refresh_token import RefreshToken
+from app.domain.entities.user import User
 
 __all__ = [
     "DepartmentAnalyticsSummary",
@@ -30,6 +32,8 @@ __all__ = [
     "Organization",
     "OrganizationRegistrationTrendPoint",
     "OrganizationRiskTrendPoint",
+    "OrganizationScoreWeights",
+    "MemberOverallScore",
     "RiskScore",
     "AssessmentSubmission",
     "User",

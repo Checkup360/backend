@@ -23,7 +23,7 @@ async def test_get_organization_trends():
     mock_org_res = MagicMock()
     mock_org_res.scalar_one_or_none.return_value = None
 
-    # 2nd execute: raw scores to compute user overall score & per-study score
+    # 2nd execute: raw scores to compute per-study score
     mock_rows = [
         SimpleNamespace(
             period="2026-01",
@@ -77,7 +77,25 @@ async def test_get_organization_trends():
     mock_scores_res = MagicMock()
     mock_scores_res.all.return_value = mock_rows
 
-    mock_db.execute.side_effect = [mock_org_res, mock_scores_res]
+    # 3rd execute: persisted overall scores
+    mock_overall_rows = [
+        SimpleNamespace(
+            period="2026-01",
+            user_id=user_id,
+            overall_score=80.0,
+            evaluated_at=now_jan,
+        ),
+        SimpleNamespace(
+            period="2026-02",
+            user_id=user_id,
+            overall_score=85.0,
+            evaluated_at=now_feb,
+        ),
+    ]
+    mock_overall_res = MagicMock()
+    mock_overall_res.all.return_value = mock_overall_rows
+
+    mock_db.execute.side_effect = [mock_org_res, mock_scores_res, mock_overall_res]
 
     points = await repo.get_organization_trends(org_id, months=12)
 
@@ -106,7 +124,7 @@ async def test_get_organization_trends():
 
 
 @pytest.mark.asyncio
-async def test_get_departments_summary():
+async def test_get_departments_summary_with_persisted_scores():
     mock_db = AsyncMock()
     repo = AnalyticsRepositoryImpl(mock_db)
     org_id = uuid.uuid4()
@@ -128,38 +146,23 @@ async def test_get_departments_summary():
     mock_members_res = MagicMock()
     mock_members_res.all.return_value = [(user_id,)]
 
-    # 4th execute: fetch scores (all 3 required forms completed)
-    mock_scores_rows = [
+    # 4th execute: fetch persisted overall scores directly from member_overall_scores
+    mock_overall_rows = [
         SimpleNamespace(
             user_id=user_id,
-            score_name="Diabetes",
-            normalized_value=15.0,
+            overall_score=15.0,
             risk_level="Low risk",
             evaluated_at=now,
-        ),
-        SimpleNamespace(
-            user_id=user_id,
-            score_name="Sleep Apnea",
-            normalized_value=15.0,
-            risk_level="Low risk",
-            evaluated_at=now,
-        ),
-        SimpleNamespace(
-            user_id=user_id,
-            score_name="Depression",
-            normalized_value=15.0,
-            risk_level="Low risk",
-            evaluated_at=now,
-        ),
+        )
     ]
-    mock_scores_res = MagicMock()
-    mock_scores_res.all.return_value = mock_scores_rows
+    mock_overall_res = MagicMock()
+    mock_overall_res.all.return_value = mock_overall_rows
 
     mock_db.execute.side_effect = [
         mock_depts_res,
         mock_org_res,
         mock_members_res,
-        mock_scores_res,
+        mock_overall_res,
     ]
 
     summaries = await repo.get_departments_summary(org_id)

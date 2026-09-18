@@ -13,6 +13,9 @@ from app.domain.entities.analytics import (
 from app.domain.repositories.analytics import AnalyticsRepository
 from app.domain.services.risk_score_calculator import calculate_weighted_overall_score
 from app.infrastructure.persistence.models.department import Department
+from app.infrastructure.persistence.models.member_overall_score import (
+    MemberOverallScoreModel,
+)
 from app.infrastructure.persistence.models.membership import Membership
 from app.infrastructure.persistence.models.organization import Organization
 from app.infrastructure.persistence.models.risk_score import RiskScoreModel
@@ -28,7 +31,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         months: int = 12,
         department_id: UUID | None = None,
     ) -> list[OrganizationRiskTrendPoint]:
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=months * 31)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
 
         # Fetch org score weights if configured
         org_query = select(Organization.score_weights).where(
@@ -45,7 +48,6 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         )
 
         # Fetch raw scores to compute both per-study and overall scores cumulatively
-        # (Latest score for each user per study carries over into subsequent periods)
         scores_query = (
             select(
                 period_col,
@@ -71,6 +73,30 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         scores_res = await self._db.execute(scores_query)
         all_rows = scores_res.all()
 
+        # Fetch persisted overall scores if present
+        overall_scores_query = (
+            select(
+                func.to_char(MemberOverallScoreModel.evaluated_at, "YYYY-MM").label(
+                    "period"
+                ),
+                MemberOverallScoreModel.user_id,
+                MemberOverallScoreModel.overall_score,
+                MemberOverallScoreModel.evaluated_at,
+            )
+            .join(Membership, Membership.user_id == MemberOverallScoreModel.user_id)
+            .where(
+                MemberOverallScoreModel.organization_id == organization_id,
+                MemberOverallScoreModel.evaluated_at >= cutoff_date,
+            )
+            .order_by(MemberOverallScoreModel.evaluated_at.asc())
+        )
+        if department_id is not None:
+            overall_scores_query = overall_scores_query.where(
+                Membership.department_id == department_id
+            )
+        overall_scores_res = await self._db.execute(overall_scores_query)
+        persisted_overall_rows = overall_scores_res.all()
+
         periods: list[str] = []
         period_month_labels: dict[str, str] = {}
         period_assessments_count: dict[str, int] = {}
@@ -86,18 +112,30 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
             period_assessments_count[p_key] += 1
             user_scores_by_period[p_key].setdefault(r.user_id, []).append(r)
 
+        # Index persisted overall scores by period and user
+        persisted_user_overall_by_period: dict[str, dict[UUID, float]] = {}
+        for r in persisted_overall_rows:
+            p_key = str(r.period)
+            persisted_user_overall_by_period.setdefault(p_key, {})[r.user_id] = float(
+                r.overall_score
+            )
+
         cumulative_user_scores: dict[UUID, list[Any]] = {}
+        cumulative_persisted_overall: dict[UUID, float] = {}
         points: list[OrganizationRiskTrendPoint] = []
 
         for p_key in periods:
             for u_id, u_rows in user_scores_by_period[p_key].items():
                 cumulative_user_scores.setdefault(u_id, []).extend(u_rows)
 
+            if p_key in persisted_user_overall_by_period:
+                cumulative_persisted_overall.update(
+                    persisted_user_overall_by_period[p_key]
+                )
+
             # Compute latest score per study across all members up to this period
-            # (user_id, study_name) -> latest normalized_value
             latest_study_by_user: dict[str, dict[UUID, float]] = {}
             for u_id, all_u_rows in cumulative_user_scores.items():
-                # Sort this user's rows by evaluated_at
                 sorted_u_rows = sorted(
                     all_u_rows,
                     key=lambda x: getattr(x, "evaluated_at", None) or datetime.min,
@@ -117,14 +155,17 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                         sum(user_values.values()) / len(user_values), 1
                     )
 
-            # Compute overall score for users who have completed all required assessments
+            # Prioritize persisted overall scores; compute only for users missing persisted score
             period_overall_scores: list[float] = []
             for u_id, all_u_rows in cumulative_user_scores.items():
-                u_score, _ = calculate_weighted_overall_score(
-                    all_u_rows, weights=score_weights
-                )
-                if u_score is not None:
-                    period_overall_scores.append(u_score)
+                if u_id in cumulative_persisted_overall:
+                    period_overall_scores.append(cumulative_persisted_overall[u_id])
+                else:
+                    u_score, _ = calculate_weighted_overall_score(
+                        all_u_rows, weights=score_weights
+                    )
+                    if u_score is not None:
+                        period_overall_scores.append(u_score)
 
             if period_overall_scores:
                 avg_score = round(
@@ -194,51 +235,77 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 )
                 continue
 
-            # Query scores for these users
-            scores_query = select(
-                RiskScoreModel.user_id,
-                RiskScoreModel.score_name,
-                RiskScoreModel.normalized_value,
-                RiskScoreModel.risk_level,
-                RiskScoreModel.evaluated_at,
-            ).where(
-                RiskScoreModel.user_id.in_(user_ids),
-                RiskScoreModel.normalized_value.isnot(None),
-            )
-            scores_res = await self._db.execute(scores_query)
-            scores_rows = scores_res.all()
-
-            if not scores_rows:
-                summaries.append(
-                    DepartmentAnalyticsSummary(
-                        department_id=dept.id,
-                        name=dept.name,
-                        average_score=None,
-                        total_workers=total_workers,
-                        high_risk_count=0,
-                    )
+            # Query persisted overall scores directly from member_overall_scores
+            overall_scores_query = (
+                select(
+                    MemberOverallScoreModel.user_id,
+                    MemberOverallScoreModel.overall_score,
+                    MemberOverallScoreModel.risk_level,
+                    MemberOverallScoreModel.evaluated_at,
                 )
-                continue
-
-            # Group scores by user
-            user_scores_map: dict[UUID, list[Any]] = {}
-            for row in scores_rows:
-                user_scores_map.setdefault(row.user_id, []).append(row)
+                .where(
+                    MemberOverallScoreModel.organization_id == organization_id,
+                    MemberOverallScoreModel.user_id.in_(user_ids),
+                )
+                .order_by(
+                    MemberOverallScoreModel.user_id,
+                    MemberOverallScoreModel.evaluated_at.desc(),
+                )
+            )
+            overall_res = await self._db.execute(overall_scores_query)
+            overall_rows = overall_res.all()
 
             user_overall_scores: list[float] = []
             high_risk_users: set[UUID] = set()
+            seen_users: set[UUID] = set()
 
-            for u_id, u_scores in user_scores_map.items():
-                u_score, u_risk = calculate_weighted_overall_score(
-                    u_scores, weights=score_weights
-                )
-                if u_score is not None:
-                    user_overall_scores.append(u_score)
-                    if u_score > 50.0 or (
-                        u_risk
-                        and ("attention" in u_risk.lower() or "high" in u_risk.lower())
+            for row in overall_rows:
+                if row.user_id not in seen_users:
+                    seen_users.add(row.user_id)
+                    user_overall_scores.append(float(row.overall_score))
+                    if float(row.overall_score) > 50.0 or (
+                        row.risk_level
+                        and (
+                            "attention" in row.risk_level.lower()
+                            or "high" in row.risk_level.lower()
+                        )
                     ):
-                        high_risk_users.add(u_id)
+                        high_risk_users.add(row.user_id)
+
+            # For any users without a persisted score record, query raw scores as fallback
+            missing_user_ids = [uid for uid in user_ids if uid not in seen_users]
+            if missing_user_ids:
+                scores_query = select(
+                    RiskScoreModel.user_id,
+                    RiskScoreModel.score_name,
+                    RiskScoreModel.normalized_value,
+                    RiskScoreModel.risk_level,
+                    RiskScoreModel.evaluated_at,
+                ).where(
+                    RiskScoreModel.user_id.in_(missing_user_ids),
+                    RiskScoreModel.normalized_value.isnot(None),
+                )
+                scores_res = await self._db.execute(scores_query)
+                scores_rows = scores_res.all()
+
+                user_scores_map: dict[UUID, list[Any]] = {}
+                for row in scores_rows:
+                    user_scores_map.setdefault(row.user_id, []).append(row)
+
+                for u_id, u_scores in user_scores_map.items():
+                    u_score, u_risk = calculate_weighted_overall_score(
+                        u_scores, weights=score_weights
+                    )
+                    if u_score is not None:
+                        user_overall_scores.append(u_score)
+                        if u_score > 50.0 or (
+                            u_risk
+                            and (
+                                "attention" in u_risk.lower()
+                                or "high" in u_risk.lower()
+                            )
+                        ):
+                            high_risk_users.add(u_id)
 
             avg_score = (
                 round(sum(user_overall_scores) / len(user_overall_scores), 1)

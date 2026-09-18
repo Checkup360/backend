@@ -77,6 +77,18 @@ from app.infrastructure.persistence.repositories.user import UserRepository
 from app.infrastructure.persistence.repositories.member_health_data import (
     SQLAlchemyMemberHealthDataRepository,
 )
+from app.domain.repositories.member_overall_score import (
+    MemberOverallScoreRepository,
+)
+from app.domain.repositories.organization_score_weights import (
+    OrganizationScoreWeightsRepository,
+)
+from app.infrastructure.persistence.repositories.member_overall_score import (
+    SQLAlchemyMemberOverallScoreRepository,
+)
+from app.infrastructure.persistence.repositories.organization_score_weights import (
+    OrganizationScoreWeightsRepository as SQLAlchemyOrganizationScoreWeightsRepository,
+)
 from app.domain.repositories.member_health_data import MemberHealthDataRepository
 from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.repositories.analytics import AnalyticsRepository
@@ -215,10 +227,25 @@ async def get_member_health_data_service(
     return MemberHealthDataService(repo)
 
 
+async def get_organization_score_weights_repository(
+    db: AsyncSession = Depends(get_db),
+) -> OrganizationScoreWeightsRepository:
+    return SQLAlchemyOrganizationScoreWeightsRepository(db)
+
+
+async def get_member_overall_score_repository(
+    db: AsyncSession = Depends(get_db),
+) -> MemberOverallScoreRepository:
+    return SQLAlchemyMemberOverallScoreRepository(db)
+
+
 async def get_organization_service(
     repo: OrganizationRepository = Depends(get_organization_repository),
+    score_weights_repo: OrganizationScoreWeightsRepository = Depends(
+        get_organization_score_weights_repository
+    ),
 ) -> OrganizationService:
-    return OrganizationService(repo)
+    return OrganizationService(repo, score_weights_repo=score_weights_repo)
 
 
 async def get_department_service(
@@ -310,9 +337,22 @@ async def get_recalculate_member_scores_use_case(
     details_repo: MemberDetailsRepository = Depends(get_member_details_repository),
     risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
     risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
+    member_overall_score_repo: MemberOverallScoreRepository = Depends(
+        get_member_overall_score_repository
+    ),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    score_weights_repo: OrganizationScoreWeightsRepository = Depends(
+        get_organization_score_weights_repository
+    ),
 ) -> RecalculateMemberScoresUseCase:
     return RecalculateMemberScoresUseCase(
-        health_data_repo, details_repo, risk_score_repo, risk_scoring_service
+        health_data_repo,
+        details_repo,
+        risk_score_repo,
+        risk_scoring_service,
+        member_overall_score_repo=member_overall_score_repo,
+        membership_repo=membership_repo,
+        score_weights_repo=score_weights_repo,
     )
 
 

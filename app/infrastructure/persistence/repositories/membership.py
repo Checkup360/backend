@@ -18,6 +18,12 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
     def __init__(self, db: AsyncSession):
         super().__init__(MembershipORM, db)
 
+    async def get_by_user(self, user_id: uuid.UUID) -> Membership | None:
+        query = select(self.model).where(self.model.user_id == user_id)
+        result = await self.db.execute(query)
+        orm = result.scalars().first()
+        return self._to_domain(orm) if orm else None
+
     async def get_by_user_and_org(
         self, user_id: uuid.UUID, organization_id: uuid.UUID
     ) -> Membership | None:

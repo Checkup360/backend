@@ -4,16 +4,27 @@ from datetime import date, datetime, timezone
 import uuid
 
 from app.application.interfaces.risk_scoring_service import RiskScoringService
+from app.domain.entities.member_overall_score import MemberOverallScore
+from app.domain.entities.organization_score_weights import OrganizationScoreWeights
 from app.domain.entities.risk_score import RiskScore
-from app.domain.repositories.member_health_data import MemberHealthDataRepository
 from app.domain.repositories.member_details import MemberDetailsRepository
+from app.domain.repositories.member_health_data import MemberHealthDataRepository
+from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
+from app.domain.repositories.membership import MembershipRepository
+from app.domain.repositories.organization_score_weights import (
+    OrganizationScoreWeightsRepository,
+)
 from app.domain.repositories.risk_score import RiskScoreRepository
+from app.domain.services.risk_score_calculator import (
+    DEFAULT_SCORE_WEIGHTS,
+    calculate_weighted_overall_score,
+)
 
 
 class RecalculateMemberScoresUseCase:
     """
     Evaluates and persists risk scores for a member based on complete required fields
-    and updated field triggers.
+    and updated field triggers. Also evaluates and persists immutable MemberOverallScore.
     """
 
     def __init__(
@@ -22,11 +33,17 @@ class RecalculateMemberScoresUseCase:
         member_details_repo: MemberDetailsRepository,
         risk_score_repo: RiskScoreRepository,
         risk_scoring_service: RiskScoringService,
+        member_overall_score_repo: MemberOverallScoreRepository | None = None,
+        membership_repo: MembershipRepository | None = None,
+        score_weights_repo: OrganizationScoreWeightsRepository | None = None,
     ) -> None:
         self._health_data_repo = member_health_data_repo
         self._details_repo = member_details_repo
         self._risk_score_repo = risk_score_repo
         self._risk_scoring_service = risk_scoring_service
+        self._member_overall_score_repo = member_overall_score_repo
+        self._membership_repo = membership_repo
+        self._score_weights_repo = score_weights_repo
 
     async def execute(
         self,
@@ -215,6 +232,47 @@ class RecalculateMemberScoresUseCase:
                 )
                 await self._risk_score_repo.save(entity)
                 evaluated_scores.append(entity)
+
+        # Evaluate and persist immutable overall score if dependencies are provided
+        if (
+            self._member_overall_score_repo
+            and self._membership_repo
+            and self._score_weights_repo
+        ):
+            membership = await self._membership_repo.get_by_user(user_id)
+            if membership and membership.organization_id:
+                org_id = membership.organization_id
+                active_weights_record = (
+                    await self._score_weights_repo.get_active_for_organization(org_id)
+                )
+                if not active_weights_record:
+                    active_weights_record = OrganizationScoreWeights(
+                        id=uuid.uuid4(),
+                        organization_id=org_id,
+                        version=1,
+                        weights=dict(DEFAULT_SCORE_WEIGHTS),
+                        changed_by_user_id=None,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    await self._score_weights_repo.save(active_weights_record)
+
+                all_user_scores = await self._risk_score_repo.get_by_user_id(user_id)
+                overall_score, overall_risk_level = calculate_weighted_overall_score(
+                    all_user_scores, active_weights_record.weights
+                )
+
+                if overall_score is not None and overall_risk_level is not None:
+                    overall_entity = MemberOverallScore(
+                        id=uuid.uuid4(),
+                        user_id=user_id,
+                        organization_id=org_id,
+                        score_weights_id=active_weights_record.id,
+                        submission_id=submission_id,
+                        overall_score=overall_score,
+                        risk_level=overall_risk_level,
+                        evaluated_at=now,
+                    )
+                    await self._member_overall_score_repo.save(overall_entity)
 
         return evaluated_scores
 

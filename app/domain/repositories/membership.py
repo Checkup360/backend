@@ -6,6 +6,8 @@ from app.domain.value_objects import OrgRole
 
 
 class MembershipRepository(Protocol):
+    async def get_by_user(self, user_id: uuid.UUID) -> Membership | None: ...
+
     async def get_by_user_and_org(
         self, user_id: uuid.UUID, organization_id: uuid.UUID
     ) -> Membership | None: ...

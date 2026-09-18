@@ -9,6 +9,10 @@ from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
 from app.domain.repositories.user import UserRepository
 from app.domain.repositories.refresh_token import RefreshTokenRepository
+from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
+from app.domain.repositories.organization_score_weights import (
+    OrganizationScoreWeightsRepository,
+)
 
 __all__ = [
     "AnalyticsRepository",
@@ -18,6 +22,8 @@ __all__ = [
     "MemberDetailsRepository",
     "MembershipRepository",
     "OrganizationRepository",
+    "OrganizationScoreWeightsRepository",
+    "MemberOverallScoreRepository",
     "RiskScoreRepository",
     "AssessmentSubmissionRepository",
     "UserRepository",

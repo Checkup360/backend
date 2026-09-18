@@ -9,7 +9,10 @@ from app.presentation.api.dependencies import (
     get_get_assessments_use_case,
     get_organization_service,
     get_assessment_submissions_use_case,
+    get_member_overall_score_repository,
 )
+from app.domain.entities.member_overall_score import MemberOverallScore
+from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.assessments.submit_assessment import (
     SubmitAssessmentUseCase,
 )
@@ -69,6 +72,7 @@ def compute_overall_summary(
 def build_assessment_sessions(
     results: list[AssessmentResultResponse],
     score_weights: dict[str, float] | None = None,
+    persisted_history: list[MemberOverallScore] | None = None,
 ) -> list[AssessmentSessionResponse]:
     if not results:
         return []
@@ -78,6 +82,14 @@ def build_assessment_sessions(
         key=lambda r: r.evaluated_at.timestamp() if r.evaluated_at else 0,
         reverse=True,
     )
+
+    # Index persisted history by evaluated_at timestamp bucket or submission_id if available
+    persisted_by_ts: dict[int, MemberOverallScore] = {}
+    if persisted_history:
+        for p in persisted_history:
+            if p.evaluated_at:
+                p_ts = (int(p.evaluated_at.timestamp()) // 2) * 2
+                persisted_by_ts[p_ts] = p
 
     buckets: dict[int, list[AssessmentResultResponse]] = {}
     for r in sorted_results:
@@ -104,9 +116,15 @@ def build_assessment_sessions(
                     active_at_time[s_key] = r
 
         session_results = list(active_at_time.values())
-        overall_score, overall_risk_level = compute_overall_summary(
-            session_results, score_weights
-        )
+
+        # Use persisted score if available, otherwise compute as fallback
+        if b_ts in persisted_by_ts:
+            overall_score = persisted_by_ts[b_ts].overall_score
+            overall_risk_level = persisted_by_ts[b_ts].risk_level
+        else:
+            overall_score, overall_risk_level = compute_overall_summary(
+                session_results, score_weights
+            )
 
         session_id = f"session_{b_ts}_{idx}"
         sessions.append(
@@ -127,13 +145,21 @@ def build_assessments_response(
     page: int = 1,
     limit: int = 10,
     score_weights: dict[str, float] | None = None,
+    latest_overall: MemberOverallScore | None = None,
+    persisted_history: list[MemberOverallScore] | None = None,
 ) -> AssessmentsResponse:
-    all_sessions = build_assessment_sessions(results, score_weights)
+    all_sessions = build_assessment_sessions(
+        results, score_weights, persisted_history=persisted_history
+    )
     total_sessions = len(all_sessions)
 
-    current_overall_score, current_overall_risk_level = compute_overall_summary(
-        results, score_weights
-    )
+    if latest_overall is not None:
+        current_overall_score = latest_overall.overall_score
+        current_overall_risk_level = latest_overall.risk_level
+    else:
+        current_overall_score, current_overall_risk_level = compute_overall_summary(
+            results, score_weights
+        )
 
     start = (page - 1) * limit
     paginated_sessions = all_sessions[start : start + limit]
@@ -272,11 +298,16 @@ async def get_assessments(
     user: AuthenticatedUser = Depends(get_current_user),
     use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
     organization_service: OrganizationService = Depends(get_organization_service),
+    member_overall_score_repo: MemberOverallScoreRepository = Depends(
+        get_member_overall_score_repository
+    ),
 ) -> AssessmentsResponse:
     if not user.membership or "member" not in user.membership.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     results = await use_case.execute(user_id=user.id)
+    latest_overall = await member_overall_score_repo.get_latest_by_user_id(user.id)
+    persisted_history = await member_overall_score_repo.get_history_by_user_id(user.id)
 
     response_results = [
         AssessmentResultResponse(
@@ -303,7 +334,12 @@ async def get_assessments(
             score_weights = None
 
     return build_assessments_response(
-        response_results, page=page, limit=limit, score_weights=score_weights
+        response_results,
+        page=page,
+        limit=limit,
+        score_weights=score_weights,
+        latest_overall=latest_overall,
+        persisted_history=persisted_history,
     )
 
 

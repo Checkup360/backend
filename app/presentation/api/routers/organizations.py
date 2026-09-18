@@ -26,7 +26,9 @@ from app.presentation.api.dependencies import (
     get_organization_analytics_use_case,
     get_assessment_submissions_use_case,
     get_risk_score_repository,
+    get_member_overall_score_repository,
 )
+from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.organizations import (
     DeleteOrganizationLogoUseCase,
     GetOrganizationAnalyticsUseCase,
@@ -537,6 +539,9 @@ async def list_organization_employees(
     membership_service: MembershipService = Depends(get_membership_service),
     member_details_service: MemberDetailsService = Depends(get_member_details_service),
     risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
+    member_overall_score_repo: MemberOverallScoreRepository = Depends(
+        get_member_overall_score_repository
+    ),
 ):
     try:
         employees = await membership_service.list_employees_for_organization_admin(
@@ -553,16 +558,29 @@ async def list_organization_employees(
             detail="forbidden",
         )
 
+    employee_user_ids = [emp.user.id for emp in employees]
+    latest_overall_map = await member_overall_score_repo.get_latest_by_user_ids(
+        employee_user_ids
+    )
+
     res = []
     for employee in employees:
         profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
         status_val = "active" if onboarded else "onboarding"
-        employee_scores = await risk_score_repository.get_by_user_id(employee.user.id)
-        last_assessment = max(
-            (score.evaluated_at for score in employee_scores if score.evaluated_at),
-            default=None,
-        )
+
+        latest_score = latest_overall_map.get(employee.user.id)
+        if latest_score is not None:
+            last_assessment = latest_score.evaluated_at
+        else:
+            # Fallback for legacy users without persisted overall score
+            employee_scores = await risk_score_repository.get_by_user_id(
+                employee.user.id
+            )
+            last_assessment = max(
+                (score.evaluated_at for score in employee_scores if score.evaluated_at),
+                default=None,
+            )
 
         # Apply department query parameter filter
         if department_id is not None:
@@ -804,7 +822,9 @@ async def update_organization_score_weights(
                 current_user.id, organization_id
             )
         updated_org = await organization_service.update_score_weights(
-            organization_id, request.score_weights
+            organization_id,
+            request.score_weights,
+            changed_by_user_id=current_user.id,
         )
         return ScoreWeightsResponse(
             score_weights=updated_org.score_weights or request.score_weights
