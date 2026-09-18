@@ -20,7 +20,10 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
-from app.domain.services.risk_score_calculator import calculate_weighted_overall_score
+from app.domain.services.risk_score_calculator import (
+    calculate_weighted_overall_score,
+    normalize_score_key,
+)
 from app.application.dto.risk_scoring import HealthDataDTO
 from app.presentation.api.request_models.assessments import ClinicalAssessmentRequest
 from app.presentation.api.response_models.assessments import (
@@ -148,8 +151,16 @@ def build_assessments_response(
     latest_overall: MemberOverallScore | None = None,
     persisted_history: list[MemberOverallScore] | None = None,
 ) -> AssessmentsResponse:
+    if score_weights is not None:
+        active_keys = {k for k, w in score_weights.items() if w > 0}
+        filtered_results = [
+            r for r in results if normalize_score_key(r.score_name) in active_keys
+        ]
+    else:
+        filtered_results = results
+
     all_sessions = build_assessment_sessions(
-        results, score_weights, persisted_history=persisted_history
+        filtered_results, score_weights, persisted_history=persisted_history
     )
     total_sessions = len(all_sessions)
 
@@ -158,14 +169,14 @@ def build_assessments_response(
         current_overall_risk_level = latest_overall.risk_level
     else:
         current_overall_score, current_overall_risk_level = compute_overall_summary(
-            results, score_weights
+            filtered_results, score_weights
         )
 
     start = (page - 1) * limit
     paginated_sessions = all_sessions[start : start + limit]
 
     latest_results_map: dict[str, AssessmentResultResponse] = {}
-    for r in results:
+    for r in filtered_results:
         s_key = r.score_name.lower()
         if s_key not in latest_results_map:
             latest_results_map[s_key] = r

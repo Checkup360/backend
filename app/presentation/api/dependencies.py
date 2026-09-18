@@ -406,8 +406,14 @@ async def get_delete_member_avatar_use_case(
 
 async def get_get_active_member_forms_use_case(
     org_repo: OrganizationRepository = Depends(get_organization_repository),
+    score_weights_repo: OrganizationScoreWeightsRepository = Depends(
+        get_organization_score_weights_repository
+    ),
 ) -> GetActiveMemberFormsUseCase:
-    return GetActiveMemberFormsUseCase(org_repo)
+    return GetActiveMemberFormsUseCase(
+        organization_repository=org_repo,
+        score_weights_repository=score_weights_repo,
+    )
 
 
 async def get_upload_organization_logo_use_case(

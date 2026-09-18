@@ -18,6 +18,7 @@ from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.services.risk_score_calculator import (
     DEFAULT_SCORE_WEIGHTS,
     calculate_weighted_overall_score,
+    normalize_score_key,
 )
 
 
@@ -174,11 +175,41 @@ class RecalculateMemberScoresUseCase:
         existing_scores = await self._risk_score_repo.get_by_user_id(user_id)
         existing_score_ids = {s.score_name.lower(): s for s in existing_scores}
 
+        # Resolve organization and active score weights if available
+        org_id: uuid.UUID | None = None
+        active_weights_record: OrganizationScoreWeights | None = None
+        if self._membership_repo and self._score_weights_repo:
+            membership = await self._membership_repo.get_by_user(user_id)
+            if membership and membership.organization_id:
+                org_id = membership.organization_id
+                active_weights_record = (
+                    await self._score_weights_repo.get_active_for_organization(org_id)
+                )
+                if not active_weights_record:
+                    active_weights_record = OrganizationScoreWeights(
+                        id=uuid.uuid4(),
+                        organization_id=org_id,
+                        version=1,
+                        weights=dict(DEFAULT_SCORE_WEIGHTS),
+                        changed_by_user_id=None,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    await self._score_weights_repo.save(active_weights_record)
+
         updated_set = set(updated_fields) if updated_fields is not None else None
         now = datetime.now(timezone.utc)
         evaluated_scores: list[RiskScore] = []
 
         for item in catalog:
+            # Rule 0: Skip evaluation if domain/score is explicitly disabled in organization (weight == 0)
+            score_key = normalize_score_key(item.score_name or item.score_id)
+            if (
+                active_weights_record is not None
+                and score_key in active_weights_record.weights
+                and active_weights_record.weights[score_key] <= 0
+            ):
+                continue
+
             # Rule 1: 100% of required_fields must be present
             has_all_required = all(
                 field_name in health_data and health_data[field_name] is not None
@@ -233,46 +264,25 @@ class RecalculateMemberScoresUseCase:
                 await self._risk_score_repo.save(entity)
                 evaluated_scores.append(entity)
 
-        # Evaluate and persist immutable overall score if dependencies are provided
-        if (
-            self._member_overall_score_repo
-            and self._membership_repo
-            and self._score_weights_repo
-        ):
-            membership = await self._membership_repo.get_by_user(user_id)
-            if membership and membership.organization_id:
-                org_id = membership.organization_id
-                active_weights_record = (
-                    await self._score_weights_repo.get_active_for_organization(org_id)
-                )
-                if not active_weights_record:
-                    active_weights_record = OrganizationScoreWeights(
-                        id=uuid.uuid4(),
-                        organization_id=org_id,
-                        version=1,
-                        weights=dict(DEFAULT_SCORE_WEIGHTS),
-                        changed_by_user_id=None,
-                        created_at=datetime.now(timezone.utc),
-                    )
-                    await self._score_weights_repo.save(active_weights_record)
+        # Evaluate and persist immutable overall score if dependencies and org are provided
+        if self._member_overall_score_repo and org_id and active_weights_record:
+            all_user_scores = await self._risk_score_repo.get_by_user_id(user_id)
+            overall_score, overall_risk_level = calculate_weighted_overall_score(
+                all_user_scores, active_weights_record.weights
+            )
 
-                all_user_scores = await self._risk_score_repo.get_by_user_id(user_id)
-                overall_score, overall_risk_level = calculate_weighted_overall_score(
-                    all_user_scores, active_weights_record.weights
+            if overall_score is not None and overall_risk_level is not None:
+                overall_entity = MemberOverallScore(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    organization_id=org_id,
+                    score_weights_id=active_weights_record.id,
+                    submission_id=submission_id,
+                    overall_score=overall_score,
+                    risk_level=overall_risk_level,
+                    evaluated_at=now,
                 )
-
-                if overall_score is not None and overall_risk_level is not None:
-                    overall_entity = MemberOverallScore(
-                        id=uuid.uuid4(),
-                        user_id=user_id,
-                        organization_id=org_id,
-                        score_weights_id=active_weights_record.id,
-                        submission_id=submission_id,
-                        overall_score=overall_score,
-                        risk_level=overall_risk_level,
-                        evaluated_at=now,
-                    )
-                    await self._member_overall_score_repo.save(overall_entity)
+                await self._member_overall_score_repo.save(overall_entity)
 
         return evaluated_scores
 
