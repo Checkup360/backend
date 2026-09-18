@@ -651,6 +651,9 @@ async def get_employee_assessments(
     membership_service: MembershipService = Depends(get_membership_service),
     assessments_use_case: GetAssessmentsUseCase = Depends(get_get_assessments_use_case),
     organization_service: OrganizationService = Depends(get_organization_service),
+    member_overall_score_repo: MemberOverallScoreRepository = Depends(
+        get_member_overall_score_repository
+    ),
 ) -> AssessmentsResponse:
     try:
         if not current_user.is_superuser:
@@ -686,8 +689,15 @@ async def get_employee_assessments(
     ]
 
     score_weights = await organization_service.get_score_weights(organization_id)
+    latest_overall = await member_overall_score_repo.get_latest_by_user_id(user_id)
+    persisted_history = await member_overall_score_repo.get_history_by_user_id(user_id)
     return build_assessments_response(
-        response_results, page=page, limit=limit, score_weights=score_weights
+        response_results,
+        page=page,
+        limit=limit,
+        score_weights=score_weights,
+        latest_overall=latest_overall,
+        persisted_history=persisted_history,
     )
 
 
