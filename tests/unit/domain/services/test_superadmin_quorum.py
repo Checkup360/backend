@@ -85,10 +85,9 @@ class TestSuperadminQuorumService:
         assert status == RemovalRequestStatus.APPROVED
 
     def test_evaluate_status_rejected_when_impossible_to_reach_quorum(self):
-        # 3 superadmins, required=2. If 2 reject, max possible approves is 1 < 2 -> REJECTED
+        # 3 superadmins (total_eligible=2), required=2. If 1 other eligible rejects, max possible approves is 1 < 2 -> REJECTED
         req = _make_request(required_votes=2)
         req.votes.append(_make_vote(req.id, VoteDecision.APPROVE))
-        req.votes.append(_make_vote(req.id, VoteDecision.REJECT))
         req.votes.append(_make_vote(req.id, VoteDecision.REJECT))
 
         status = SuperadminQuorumService.evaluate_status(req, total_superadmins=3)

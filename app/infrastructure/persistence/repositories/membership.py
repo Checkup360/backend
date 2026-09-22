@@ -38,7 +38,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool:
         query = select(self.model).where(
             self.model.user_id == user_id,
-            self.model.roles.contains([OrgRole.ADMIN]),
+            self.model.roles.overlap([OrgRole.ADMIN, OrgRole.SUPERADMIN]),
         )
         result = await self.db.execute(query)
         return result.first() is not None
@@ -48,7 +48,7 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             select(self.model.organization_id)
             .where(
                 self.model.user_id == user_id,
-                self.model.roles.contains([OrgRole.ADMIN]),
+                self.model.roles.overlap([OrgRole.ADMIN, OrgRole.SUPERADMIN]),
             )
             .limit(1)
         )

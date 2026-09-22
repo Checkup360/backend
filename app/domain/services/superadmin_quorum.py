@@ -24,8 +24,10 @@ class SuperadminQuorumService:
         if approves >= request.required_votes:
             return RemovalRequestStatus.APPROVED
 
-        # If remaining potential voters cannot possibly reach required_votes
-        max_possible_approves = total_superadmins - rejects
+        # Target superadmin cannot vote on their own removal,
+        # so eligible voters count is total_superadmins - 1
+        total_eligible_voters = max(0, total_superadmins - 1)
+        max_possible_approves = total_eligible_voters - rejects
         if max_possible_approves < request.required_votes:
             return RemovalRequestStatus.REJECTED
 

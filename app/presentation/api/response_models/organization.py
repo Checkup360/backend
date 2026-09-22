@@ -49,3 +49,24 @@ class OrganizationEmployeeResponse(BaseModel):
     status: str
     department: DepartmentResponse | None = None
     last_assessment: datetime | None = None
+
+
+class SuperadminRemovalVoteResponse(BaseModel):
+    id: uuid.UUID
+    request_id: uuid.UUID
+    voter_user_id: uuid.UUID
+    decision: str
+    voted_at: datetime
+
+
+class SuperadminRemovalRequestResponse(BaseModel):
+    id: uuid.UUID
+    organization_id: uuid.UUID
+    target_user_id: uuid.UUID
+    requester_user_id: uuid.UUID
+    status: str
+    required_votes: int
+    reason: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    votes: list[SuperadminRemovalVoteResponse]

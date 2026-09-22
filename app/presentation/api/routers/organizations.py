@@ -28,6 +28,9 @@ from app.presentation.api.dependencies import (
     get_risk_score_repository,
     get_member_overall_score_repository,
     get_update_employee_roles_use_case,
+    get_create_superadmin_removal_request_use_case,
+    get_vote_superadmin_removal_request_use_case,
+    get_list_superadmin_removal_requests_use_case,
 )
 from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.organizations import (
@@ -41,7 +44,14 @@ from app.presentation.api.response_models.analytics import (
     RiskTrendPointResponse,
 )
 from app.domain.value_objects.org_role import OrgRole
+from app.domain.entities.superadmin_removal import (
+    RemovalRequestStatus,
+    SuperadminRemovalRequest,
+    VoteDecision,
+)
 from app.domain.exceptions import (
+    AlreadyVotedError,
+    CannotRemoveLastSuperadminError,
     DepartmentInUseError,
     DepartmentNotFoundError,
     DepartmentSlugAlreadyExists,
@@ -50,12 +60,26 @@ from app.domain.exceptions import (
     NotOrganizationAdminError,
     OrganizationNotFoundError,
     OrganizationSlugAlreadyExists,
+    RemovalRequestAlreadyExistsError,
+    RemovalRequestAlreadyResolvedError,
+    RemovalRequestNotFoundError,
+    SelfVotingForbiddenError,
     SuperadminDirectRemovalForbiddenError,
+    VoterNotSuperadminError,
 )
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.application.use_cases.memberships.membership_service import MembershipService
 from app.application.use_cases.memberships.update_employee_roles import (
     UpdateEmployeeRolesUseCase,
+)
+from app.application.use_cases.memberships.create_superadmin_removal_request import (
+    CreateSuperadminRemovalRequestUseCase,
+)
+from app.application.use_cases.memberships.vote_superadmin_removal_request import (
+    VoteSuperadminRemovalRequestUseCase,
+)
+from app.application.use_cases.memberships.list_superadmin_removal_requests import (
+    ListSuperadminRemovalRequestsUseCase,
 )
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
@@ -71,10 +95,12 @@ from app.domain.repositories.risk_score import RiskScoreRepository
 from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
+    CreateSuperadminRemovalRequest,
     DepartmentRequest,
     ScoreWeightsRequest,
     UpdateEmployeeRolesRequest,
     UpdateOrganizationRequest,
+    VoteSuperadminRemovalRequest,
 )
 from app.presentation.api.response_models.organization import (
     DepartmentResponse,
@@ -83,6 +109,8 @@ from app.presentation.api.response_models.organization import (
     OrganizationResponse,
     OrganizationSummaryResponse,
     ScoreWeightsResponse,
+    SuperadminRemovalRequestResponse,
+    SuperadminRemovalVoteResponse,
 )
 from app.presentation.api.response_models.assessments import (
     AssessmentsResponse,
@@ -651,6 +679,181 @@ async def remove_employee(
             detail=str(exc),
         )
     except SuperadminDirectRemovalForbiddenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+def _to_removal_request_response(
+    request: SuperadminRemovalRequest,
+) -> SuperadminRemovalRequestResponse:
+    return SuperadminRemovalRequestResponse(
+        id=request.id,
+        organization_id=request.organization_id,
+        target_user_id=request.target_user_id,
+        requester_user_id=request.requester_user_id,
+        status=request.status.value,
+        required_votes=request.required_votes,
+        reason=request.reason,
+        created_at=request.created_at,
+        updated_at=request.updated_at,
+        votes=[
+            SuperadminRemovalVoteResponse(
+                id=v.id,
+                request_id=v.request_id,
+                voter_user_id=v.voter_user_id,
+                decision=v.decision.value,
+                voted_at=v.voted_at,
+            )
+            for v in request.votes
+        ],
+    )
+
+
+@router.post(
+    "/{organization_id}/superadmins/{user_id}/removal-requests",
+    response_model=SuperadminRemovalRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_superadmin_removal_request(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    request: CreateSuperadminRemovalRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: CreateSuperadminRemovalRequestUseCase = Depends(
+        get_create_superadmin_removal_request_use_case
+    ),
+):
+    try:
+        removal_req = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            target_user_id=user_id,
+            reason=request.reason,
+        )
+        return _to_removal_request_response(removal_req)
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="membership_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except InsufficientRolePermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+    except SelfVotingForbiddenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    except CannotRemoveLastSuperadminError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    except RemovalRequestAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/{organization_id}/superadmin-removal-requests",
+    response_model=list[SuperadminRemovalRequestResponse],
+)
+async def list_superadmin_removal_requests(
+    organization_id: uuid.UUID,
+    status_filter: str | None = Query(default=None, alias="status"),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: ListSuperadminRemovalRequestsUseCase = Depends(
+        get_list_superadmin_removal_requests_use_case
+    ),
+):
+    try:
+        parsed_status = RemovalRequestStatus(status_filter) if status_filter else None
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid_status_filter",
+        )
+
+    try:
+        requests = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            status=parsed_status,
+        )
+        return [_to_removal_request_response(r) for r in requests]
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.post(
+    "/{organization_id}/superadmin-removal-requests/{request_id}/votes",
+    response_model=SuperadminRemovalRequestResponse,
+)
+async def vote_superadmin_removal_request(
+    organization_id: uuid.UUID,
+    request_id: uuid.UUID,
+    vote_request: VoteSuperadminRemovalRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: VoteSuperadminRemovalRequestUseCase = Depends(
+        get_vote_superadmin_removal_request_use_case
+    ),
+):
+    try:
+        req = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            request_id=request_id,
+            decision=VoteDecision(vote_request.decision),
+        )
+        return _to_removal_request_response(req)
+    except RemovalRequestNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="removal_request_not_found",
+        )
+    except RemovalRequestAlreadyResolvedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    except SelfVotingForbiddenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+    except VoterNotSuperadminError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+    except AlreadyVotedError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
