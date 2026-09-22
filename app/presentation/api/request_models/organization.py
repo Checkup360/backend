@@ -3,6 +3,8 @@ import uuid
 
 from pydantic import BaseModel, field_validator
 
+from app.domain.value_objects import OrgRole
+
 
 class CreateOrganizationRequest(BaseModel):
     name: str
@@ -68,3 +70,7 @@ class UpdateOrganizationRequest(BaseModel):
         if not value or not value.strip():
             raise ValueError("name_required")
         return value.strip()
+
+
+class UpdateEmployeeRolesRequest(BaseModel):
+    roles: list[OrgRole]

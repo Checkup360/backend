@@ -106,6 +106,17 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
             query = query.where(or_(*role_filters))
         return await self.db.scalar(query) or 0
 
+    async def count_superadmins(self, organization_id: uuid.UUID) -> int:
+        query = (
+            select(func.count())
+            .select_from(self.model)
+            .where(
+                self.model.organization_id == organization_id,
+                self.model.roles.contains([OrgRole.SUPERADMIN]),
+            )
+        )
+        return await self.db.scalar(query) or 0
+
     async def save(self, entity: Membership) -> Membership:
         data = self._from_domain(entity)
 

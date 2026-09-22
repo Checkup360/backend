@@ -69,3 +69,15 @@ class NotOrganizationAdminError(DomainError):
 
 class UserNotFoundError(DomainError):
     pass
+
+
+class MembershipNotFoundError(DomainError):
+    pass
+
+
+class InsufficientRolePermissionError(DomainError):
+    pass
+
+
+class SuperadminDirectRemovalForbiddenError(DomainError):
+    pass

@@ -56,6 +56,13 @@ from app.application.use_cases.members.upload_member_avatar import (
 from app.application.use_cases.members.delete_member_avatar import (
     DeleteMemberAvatarUseCase,
 )
+from app.application.use_cases.memberships.update_employee_roles import (
+    UpdateEmployeeRolesUseCase,
+)
+from app.domain.repositories.refresh_token import RefreshTokenRepository
+from app.infrastructure.persistence.repositories.refresh_token import (
+    RefreshTokenRepositoryImpl,
+)
 from app.infrastructure.persistence.database import get_db
 
 from app.infrastructure.persistence.repositories.department import DepartmentRepository
@@ -428,3 +435,21 @@ async def get_delete_organization_logo_use_case(
     file_storage: FileStorage = Depends(get_file_storage),
 ) -> DeleteOrganizationLogoUseCase:
     return DeleteOrganizationLogoUseCase(org_repo, file_storage)
+
+
+async def get_refresh_token_repository(
+    db: AsyncSession = Depends(get_db),
+) -> RefreshTokenRepository:
+    return RefreshTokenRepositoryImpl(db)
+
+
+async def get_update_employee_roles_use_case(
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    refresh_token_repo: RefreshTokenRepository = Depends(get_refresh_token_repository),
+) -> UpdateEmployeeRolesUseCase:
+    return UpdateEmployeeRolesUseCase(
+        membership_repo=membership_repo,
+        org_repo=org_repo,
+        refresh_token_repo=refresh_token_repo,
+    )
