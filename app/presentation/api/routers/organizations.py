@@ -804,7 +804,7 @@ async def list_superadmin_removal_requests(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="organization_not_found",
         )
-    except NotOrganizationAdminError:
+    except (NotOrganizationAdminError, InsufficientRolePermissionError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="forbidden",

@@ -68,6 +68,12 @@ class TestSuperadminQuorum:
         )
         assert response.status_code == 403
 
+        # Also verify regular admin cannot list quorum removal requests
+        list_resp = client.get(
+            f"/organizations/{org.id}/superadmin-removal-requests",
+        )
+        assert list_resp.status_code == 403
+
     @pytest.mark.asyncio
     async def test_full_quorum_workflow_removes_superadmin_and_revokes_tokens(
         self,

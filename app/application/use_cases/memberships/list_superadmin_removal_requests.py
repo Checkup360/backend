@@ -5,6 +5,7 @@ from app.domain.entities.superadmin_removal import (
     SuperadminRemovalRequest,
 )
 from app.domain.exceptions import (
+    InsufficientRolePermissionError,
     NotOrganizationAdminError,
     OrganizationNotFoundError,
 )
@@ -47,12 +48,10 @@ class ListSuperadminRemovalRequestsUseCase:
             if not actor_membership:
                 raise NotOrganizationAdminError()
 
-            is_admin = (
-                OrgRole.ADMIN in actor_membership.roles
-                or OrgRole.SUPERADMIN in actor_membership.roles
-            )
-            if not is_admin:
-                raise NotOrganizationAdminError()
+            if OrgRole.SUPERADMIN not in actor_membership.roles:
+                raise InsufficientRolePermissionError(
+                    "Only superadmins can view removal requests"
+                )
 
         return await self.removal_repo.list_requests_for_organization(
             organization_id, status=status
