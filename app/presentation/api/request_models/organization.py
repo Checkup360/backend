@@ -1,7 +1,7 @@
 import re
 import uuid
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from typing import Literal
 
@@ -79,7 +79,7 @@ class UpdateEmployeeRolesRequest(BaseModel):
 
 
 class CreateSuperadminRemovalRequest(BaseModel):
-    reason: str | None = None
+    reason: str | None = Field(None, max_length=500)
 
 
 class VoteSuperadminRemovalRequest(BaseModel):
