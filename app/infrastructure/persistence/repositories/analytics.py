@@ -12,6 +12,7 @@ from app.domain.entities.analytics import (
 )
 from app.domain.repositories.analytics import AnalyticsRepository
 from app.domain.services.risk_score_calculator import calculate_weighted_overall_score
+from app.domain.value_objects.org_role import OrgRole
 from app.infrastructure.persistence.models.department import Department
 from app.infrastructure.persistence.models.member_overall_score import (
     MemberOverallScoreModel,
@@ -214,10 +215,11 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         summaries: list[DepartmentAnalyticsSummary] = []
 
         for dept in departments:
-            # Query members in department
+            # Query active members in department
             members_query = select(Membership.user_id).where(
                 Membership.organization_id == organization_id,
                 Membership.department_id == dept.id,
+                Membership.roles.contains([OrgRole.MEMBER]),
             )
             members_res = await self._db.execute(members_query)
             user_ids = [row[0] for row in members_res.all()]

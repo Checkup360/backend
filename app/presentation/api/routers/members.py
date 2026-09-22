@@ -39,6 +39,7 @@ from app.application.use_cases.members.member_details_service import (
 from app.application.use_cases.members.member_health_data_service import (
     MemberHealthDataService,
 )
+from app.presentation.api.authorization import require_member_role
 from app.presentation.api.dependencies import get_current_user
 from app.presentation.api.request_models.onboarding import OnboardingRequest
 from app.presentation.api.request_models.member_details import MemberProfileUpdate
@@ -61,7 +62,11 @@ from app.presentation.api.response_models.member_forms import (
     MemberFormSubmissionResponse,
 )
 
-router = APIRouter(prefix="/members", tags=["members"])
+router = APIRouter(
+    prefix="/members",
+    tags=["members"],
+    dependencies=[Depends(require_member_role)],
+)
 
 
 @router.post("/me/details", response_model=MemberDetailsCreated)

@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.dto import AuthenticatedUser
+from app.presentation.api.authorization import require_member_role
 from app.presentation.api.dependencies import (
     get_current_user,
     get_submit_assessment_use_case,
@@ -42,9 +43,15 @@ from app.application.use_cases.assessments.get_submissions import (
     GetAssessmentSubmissionsUseCase,
 )
 
-router = APIRouter(prefix="/members/me/assessments", tags=["assessments"])
+router = APIRouter(
+    prefix="/members/me/assessments",
+    tags=["assessments"],
+    dependencies=[Depends(require_member_role)],
+)
 submissions_router = APIRouter(
-    prefix="/members/me/assessment-submissions", tags=["assessment-submissions"]
+    prefix="/members/me/assessment-submissions",
+    tags=["assessment-submissions"],
+    dependencies=[Depends(require_member_role)],
 )
 
 

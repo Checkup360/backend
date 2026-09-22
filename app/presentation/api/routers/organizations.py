@@ -27,6 +27,7 @@ from app.presentation.api.dependencies import (
     get_assessment_submissions_use_case,
     get_risk_score_repository,
     get_member_overall_score_repository,
+    get_update_employee_roles_use_case,
 )
 from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.organizations import (
@@ -44,12 +45,18 @@ from app.domain.exceptions import (
     DepartmentInUseError,
     DepartmentNotFoundError,
     DepartmentSlugAlreadyExists,
+    InsufficientRolePermissionError,
+    MembershipNotFoundError,
     NotOrganizationAdminError,
     OrganizationNotFoundError,
     OrganizationSlugAlreadyExists,
+    SuperadminDirectRemovalForbiddenError,
 )
 from app.application.use_cases.departments.department_service import DepartmentService
 from app.application.use_cases.memberships.membership_service import MembershipService
+from app.application.use_cases.memberships.update_employee_roles import (
+    UpdateEmployeeRolesUseCase,
+)
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
 )
@@ -66,6 +73,7 @@ from app.presentation.api.request_models.organization import (
     CreateOrganizationRequest,
     DepartmentRequest,
     ScoreWeightsRequest,
+    UpdateEmployeeRolesRequest,
     UpdateOrganizationRequest,
 )
 from app.presentation.api.response_models.organization import (
@@ -500,7 +508,12 @@ async def assign_employee_department(
 
     profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
-    status_val = "active" if onboarded else "onboarding"
+    if OrgRole.MEMBER not in employee.roles:
+        status_val = "inactive"
+    elif onboarded:
+        status_val = "active"
+    else:
+        status_val = "onboarding"
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
@@ -521,6 +534,127 @@ async def assign_employee_department(
             else None
         ),
     )
+
+
+@router.patch(
+    "/{organization_id}/employees/{user_id}/roles",
+    response_model=OrganizationEmployeeResponse,
+)
+async def update_employee_roles(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    request: UpdateEmployeeRolesRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: UpdateEmployeeRolesUseCase = Depends(get_update_employee_roles_use_case),
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
+):
+    try:
+        employee = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            target_user_id=user_id,
+            new_roles=request.roles,
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="membership_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except InsufficientRolePermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+    except SuperadminDirectRemovalForbiddenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    profile = await member_details_service.get_profile(employee.user.id)
+    onboarded = await member_details_service.is_onboarded(employee.user.id)
+    if OrgRole.MEMBER not in employee.roles:
+        status_val = "inactive"
+    elif onboarded:
+        status_val = "active"
+    else:
+        status_val = "onboarding"
+
+    return OrganizationEmployeeResponse(
+        id=employee.user.id,
+        email=employee.user.email,
+        first_name=profile.first_name if profile and profile.first_name else None,
+        last_name=profile.last_name if profile and profile.last_name else None,
+        avatar_url=profile.avatar_url if profile else None,
+        roles=[r.value for r in employee.roles],
+        status=status_val,
+        department=(
+            DepartmentResponse(
+                id=employee.department.id,
+                organization_id=employee.department.organization_id,
+                name=employee.department.name,
+                slug=employee.department.slug,
+            )
+            if employee.department
+            else None
+        ),
+    )
+
+
+@router.delete(
+    "/{organization_id}/employees/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_employee(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: UpdateEmployeeRolesUseCase = Depends(get_update_employee_roles_use_case),
+):
+    try:
+        await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            target_user_id=user_id,
+            new_roles=[],
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="membership_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except InsufficientRolePermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+    except SuperadminDirectRemovalForbiddenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
 
 
 @router.get(
@@ -567,7 +701,12 @@ async def list_organization_employees(
     for employee in employees:
         profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
-        status_val = "active" if onboarded else "onboarding"
+        if OrgRole.MEMBER not in employee.roles:
+            status_val = "inactive"
+        elif onboarded:
+            status_val = "active"
+        else:
+            status_val = "onboarding"
 
         latest_score = latest_overall_map.get(employee.user.id)
         if latest_score is not None:

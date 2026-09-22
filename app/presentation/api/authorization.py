@@ -102,8 +102,8 @@ async def require_member_role(
 ) -> AuthenticatedUser:
     """Ensures user has active member role. Rejects deactivated or non-member users."""
     if (
-        not current_user.membership
-        or OrgRole.MEMBER not in current_user.membership.roles
+        current_user.membership is not None
+        and OrgRole.MEMBER not in current_user.membership.roles
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 

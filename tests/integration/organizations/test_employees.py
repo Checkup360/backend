@@ -290,3 +290,177 @@ class TestOrganizationEmployees:
         assert response.status_code == 200
         data = response.json()
         assert "results" in data
+
+    @pytest.mark.asyncio
+    async def test_admin_cannot_modify_admin_or_superadmin_roles(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="regular-admin@example.com",
+            memberships=[("perm-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(db_session_maker, "perm-org")
+        target_admin = await make_user(email="target-admin@example.com")
+        await make_membership(
+            user_id=target_admin.id,
+            organization_id=organization.id,
+            role="admin",
+        )
+
+        response = client.patch(
+            f"/organizations/{organization.id}/employees/{target_admin.id}/roles",
+            json={"roles": ["member"]},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_cannot_grant_admin_or_superadmin_roles(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="regular-admin-grant@example.com",
+            memberships=[("grant-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(db_session_maker, "grant-org")
+        target_member = await make_user(email="target-member@example.com")
+        await make_membership(
+            user_id=target_member.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.patch(
+            f"/organizations/{organization.id}/employees/{target_member.id}/roles",
+            json={"roles": ["admin"]},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_can_modify_member_or_content_manager_roles(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="regular-admin-mod@example.com",
+            memberships=[("mod-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(db_session_maker, "mod-org")
+        target_member = await make_user(email="target-mod-member@example.com")
+        await make_membership(
+            user_id=target_member.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.patch(
+            f"/organizations/{organization.id}/employees/{target_member.id}/roles",
+            json={"roles": ["content_manager"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["roles"] == ["content_manager"]
+
+    @pytest.mark.asyncio
+    async def test_superadmin_can_remove_admin_role(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="superadmin-actor@example.com",
+            memberships=[("sa-mod-org", OrgRole.SUPERADMIN)],
+        )
+        organization = await _get_organization_by_slug(db_session_maker, "sa-mod-org")
+        target_admin = await make_user(email="target-admin-demote@example.com")
+        await make_membership(
+            user_id=target_admin.id,
+            organization_id=organization.id,
+            role="admin",
+        )
+
+        response = client.patch(
+            f"/organizations/{organization.id}/employees/{target_admin.id}/roles",
+            json={"roles": ["member"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["roles"] == ["member"]
+
+    @pytest.mark.asyncio
+    async def test_superadmin_cannot_remove_superadmin_directly(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="superadmin-remover@example.com",
+            memberships=[("sa-direct-org", OrgRole.SUPERADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "sa-direct-org"
+        )
+        target_sa = await make_user(email="target-sa@example.com")
+        await make_membership(
+            user_id=target_sa.id,
+            organization_id=organization.id,
+            role="superadmin",
+        )
+
+        response = client.patch(
+            f"/organizations/{organization.id}/employees/{target_sa.id}/roles",
+            json={"roles": ["admin"]},
+        )
+        assert response.status_code == 400
+        assert "quorum" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_employee_losing_member_role_becomes_inactive_and_loses_member_portal_access(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-deact@example.com",
+            memberships=[("deact-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(db_session_maker, "deact-org")
+
+        employee_user = await make_user(email="employee-to-deact@example.com")
+        await make_membership(
+            user_id=employee_user.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        delete_resp = client.delete(
+            f"/organizations/{organization.id}/employees/{employee_user.id}"
+        )
+        assert delete_resp.status_code == 204
+
+        list_resp = client.get(f"/organizations/{organization.id}/employees")
+        assert list_resp.status_code == 200
+        employees = list_resp.json()
+        deactivated = next(e for e in employees if e["id"] == str(employee_user.id))
+        assert deactivated["status"] == "inactive"
+        assert deactivated["roles"] == []
