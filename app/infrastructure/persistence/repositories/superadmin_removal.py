@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -105,20 +105,50 @@ class SqlAlchemySuperadminRemovalRepository(SuperadminRemovalRepository):
     async def list_requests_for_organization(
         self,
         organization_id: uuid.UUID,
-        status: RemovalRequestStatus | None = None,
-    ) -> list[SuperadminRemovalRequest]:
+        status: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[SuperadminRemovalRequest], int]:
         query = (
             select(SuperadminRemovalRequestModel)
             .options(selectinload(SuperadminRemovalRequestModel.votes))
             .where(
                 SuperadminRemovalRequestModel.organization_id == organization_id,
             )
-            .order_by(desc(SuperadminRemovalRequestModel.created_at))
         )
-        if status:
-            query = query.where(SuperadminRemovalRequestModel.status == status.value)
+        if status and status != "all":
+            status_clean = status.strip().lower()
+            if status_clean in ("active", "pending"):
+                query = query.where(
+                    SuperadminRemovalRequestModel.status
+                    == RemovalRequestStatus.PENDING.value
+                )
+            elif status_clean in (
+                "inactive",
+                "closed",
+                "completed",
+                "finished",
+                "past",
+            ):
+                query = query.where(
+                    SuperadminRemovalRequestModel.status
+                    != RemovalRequestStatus.PENDING.value
+                )
+            elif status_clean in [s.value for s in RemovalRequestStatus]:
+                query = query.where(
+                    SuperadminRemovalRequestModel.status == status_clean
+                )
+
+        count_query = select(func.count()).select_from(query.order_by(None).subquery())
+        total = await self.db.scalar(count_query) or 0
+
+        query = query.order_by(desc(SuperadminRemovalRequestModel.created_at))
+        if page is not None:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+
         result = await self.db.execute(query)
-        return [self._to_request_domain(orm) for orm in result.scalars().all()]
+        items = [self._to_request_domain(orm) for orm in result.scalars().all()]
+        return items, total
 
     async def update_request_status(
         self, request_id: uuid.UUID, status: RemovalRequestStatus

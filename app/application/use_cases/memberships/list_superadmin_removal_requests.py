@@ -1,7 +1,6 @@
 import uuid
 
 from app.domain.entities.superadmin_removal import (
-    RemovalRequestStatus,
     SuperadminRemovalRequest,
 )
 from app.domain.exceptions import (
@@ -35,8 +34,10 @@ class ListSuperadminRemovalRequestsUseCase:
         actor_user_id: uuid.UUID,
         actor_is_superuser: bool,
         organization_id: uuid.UUID,
-        status: RemovalRequestStatus | None = None,
-    ) -> list[SuperadminRemovalRequest]:
+        status: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[SuperadminRemovalRequest], int]:
         organization = await self.org_repo.get(organization_id)
         if not organization:
             raise OrganizationNotFoundError()
@@ -54,5 +55,5 @@ class ListSuperadminRemovalRequestsUseCase:
                 )
 
         return await self.removal_repo.list_requests_for_organization(
-            organization_id, status=status
+            organization_id, status=status, page=page, page_size=page_size
         )

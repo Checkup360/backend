@@ -223,3 +223,26 @@ class TestSuperadminQuorum:
         employees = emp_resp.json()
         sa3_emp = next(e for e in employees if e["id"] == str(sa3.id))
         assert "superadmin" in sa3_emp["roles"]
+
+        # Test status filtering and pagination
+        active_resp = client.get(
+            f"/organizations/{org.id}/superadmin-removal-requests?status=active",
+        )
+        assert active_resp.status_code == 200
+        assert active_resp.json() == []
+
+        inactive_resp = client.get(
+            f"/organizations/{org.id}/superadmin-removal-requests?status=inactive",
+        )
+        assert inactive_resp.status_code == 200
+        assert len(inactive_resp.json()) == 1
+        assert inactive_resp.headers["X-Total-Count"] == "1"
+
+        page_resp = client.get(
+            f"/organizations/{org.id}/superadmin-removal-requests?page=1&page_size=1",
+        )
+        assert page_resp.status_code == 200
+        assert len(page_resp.json()) == 1
+        assert page_resp.headers["X-Page"] == "1"
+        assert page_resp.headers["X-Page-Size"] == "1"
+        assert page_resp.headers["X-Total-Count"] == "1"

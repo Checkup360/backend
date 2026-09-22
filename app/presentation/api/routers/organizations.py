@@ -777,27 +777,39 @@ async def create_superadmin_removal_request(
 )
 async def list_superadmin_removal_requests(
     organization_id: uuid.UUID,
+    response: Response,
     status_filter: str | None = Query(default=None, alias="status"),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
     use_case: ListSuperadminRemovalRequestsUseCase = Depends(
         get_list_superadmin_removal_requests_use_case
     ),
 ):
-    try:
-        parsed_status = RemovalRequestStatus(status_filter) if status_filter else None
-    except ValueError:
+    valid_statuses = {
+        "active",
+        "inactive",
+        "all",
+        *(s.value for s in RemovalRequestStatus),
+    }
+    if status_filter and status_filter.strip().lower() not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid_status_filter",
         )
 
     try:
-        requests = await use_case.execute(
+        requests, total = await use_case.execute(
             actor_user_id=current_user.id,
             actor_is_superuser=current_user.is_superuser,
             organization_id=organization_id,
-            status=parsed_status,
+            status=status_filter.strip().lower() if status_filter else None,
+            page=page,
+            page_size=page_size,
         )
+        response.headers["X-Total-Count"] = str(total or 0)
+        response.headers["X-Page-Size"] = str(page_size)
+        response.headers["X-Page"] = str(page or 1)
         return [_to_removal_request_response(r) for r in requests]
     except OrganizationNotFoundError:
         raise HTTPException(
