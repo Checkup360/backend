@@ -16,6 +16,10 @@ from app.infrastructure.persistence.models.organization_score_weights import (
     OrganizationScoreWeightsModel,
 )
 from app.infrastructure.persistence.models.refresh_token import RefreshToken
+from app.infrastructure.persistence.models.superadmin_removal import (
+    SuperadminRemovalRequestModel,
+    SuperadminRemovalVoteModel,
+)
 
 __all__ = [
     "InviteToken",
@@ -31,4 +35,6 @@ __all__ = [
     "RiskScoreModel",
     "AssessmentSubmissionModel",
     "RefreshToken",
+    "SuperadminRemovalRequestModel",
+    "SuperadminRemovalVoteModel",
 ]

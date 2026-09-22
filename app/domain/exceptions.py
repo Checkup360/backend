@@ -81,3 +81,31 @@ class InsufficientRolePermissionError(DomainError):
 
 class SuperadminDirectRemovalForbiddenError(DomainError):
     pass
+
+
+class CannotRemoveLastSuperadminError(DomainError):
+    pass
+
+
+class RemovalRequestAlreadyExistsError(DomainError):
+    pass
+
+
+class RemovalRequestNotFoundError(DomainError):
+    pass
+
+
+class RemovalRequestAlreadyResolvedError(DomainError):
+    pass
+
+
+class SelfVotingForbiddenError(DomainError):
+    pass
+
+
+class VoterNotSuperadminError(DomainError):
+    pass
+
+
+class AlreadyVotedError(DomainError):
+    pass
