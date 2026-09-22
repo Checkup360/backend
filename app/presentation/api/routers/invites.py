@@ -32,6 +32,7 @@ from app.infrastructure.authentication.machinery.cookies import (
 from app.presentation.api.responses import response_json
 from app.domain.entities import Membership
 from app.domain.exceptions import InviteError
+from app.domain.value_objects import OrgRole
 from app.presentation.api.request_models import RedeemInviteBody, UserCreate
 from app.presentation.api.request_models.invitations import (
     CreateOrganizationInviteRequest,
@@ -89,8 +90,18 @@ async def create_organization_invite(
                 detail="organization_id_required_for_sysadmin",
             )
         org_id = body.organization_id
+        caller_is_superadmin = admin_entity.is_superuser
     else:
         org_id = admin_entity.organization_id
+        caller_is_superadmin = OrgRole.SUPERADMIN in admin_entity.roles
+
+    if (
+        body.role in (OrgRole.ADMIN, OrgRole.SUPERADMIN) or body.is_superadmin
+    ) and not caller_is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="admin_cannot_invite_admin",
+        )
 
     try:
         invite = await service.create_invite(
@@ -101,6 +112,7 @@ async def create_organization_invite(
             department_id=body.department_id,
             role=body.role,
             is_sysadmin=False,
+            is_superadmin=body.is_superadmin or (body.role == OrgRole.SUPERADMIN),
         )
     except InviteError as e:
         raise HTTPException(
@@ -179,6 +191,7 @@ async def list_organization_invites(
             token=invite.token,
             email=invite.email,
             role=invite.role.value if invite.role else None,
+            is_superadmin=invite.is_superadmin,
             organization_id=invite.organization_id,
             organization_name=(
                 invite.organization.name if invite.organization else None
@@ -232,6 +245,7 @@ async def get_invite_metadata(
         organization_name=invite.organization.name if invite.organization else None,
         role=invite.role.value if invite.role else None,
         is_sysadmin=invite.is_sysadmin,
+        is_superadmin=invite.is_superadmin,
     )
 
 

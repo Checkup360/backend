@@ -12,6 +12,11 @@ from app.application.use_cases.members.member_details_service import (
 )
 from app.application.use_cases.memberships.membership_service import MembershipService
 
+_ADMIN_ROLES: frozenset[OrgRole] = frozenset({OrgRole.ADMIN, OrgRole.SUPERADMIN})
+_CMS_ROLES: frozenset[OrgRole] = frozenset(
+    {OrgRole.SUPERADMIN, OrgRole.ADMIN, OrgRole.CONTENT_MANAGER}
+)
+
 
 def require_superuser(
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -27,7 +32,7 @@ async def _validate_organization_admin(
     if not current_user.membership:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
-    if OrgRole.ADMIN not in current_user.membership.roles:
+    if not _ADMIN_ROLES.intersection(current_user.membership.roles):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     return current_user.membership
@@ -71,13 +76,44 @@ async def require_organization_admin_or_sysadmin(
     return await _validate_organization_admin(current_user)
 
 
-_CMS_ROLES: frozenset[OrgRole] = frozenset({OrgRole.ADMIN, OrgRole.CONTENT_MANAGER})
+async def require_organization_superadmin(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> Membership:
+    if not current_user.membership:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    if OrgRole.SUPERADMIN not in current_user.membership.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    return current_user.membership
+
+
+async def require_organization_superadmin_or_sysadmin(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> Membership | AuthenticatedUser:
+    if current_user.is_superuser:
+        return current_user
+
+    return await require_organization_superadmin(current_user)
+
+
+async def require_member_role(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    """Ensures user has active member role. Rejects deactivated or non-member users."""
+    if (
+        not current_user.membership
+        or OrgRole.MEMBER not in current_user.membership.roles
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    return current_user
 
 
 async def require_content_manager_or_above(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> Membership:
-    """Allows org admins and content managers. Rejects plain members and unauthenticated users."""
+    """Allows org superadmins, admins and content managers. Rejects plain members and unauthenticated users."""
     if not current_user.membership:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 

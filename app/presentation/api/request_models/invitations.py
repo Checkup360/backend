@@ -12,6 +12,7 @@ class CreateOrganizationInviteRequest(BaseModel):
     organization_id: uuid.UUID | None = None
     department_id: uuid.UUID | None = None
     role: OrgRole
+    is_superadmin: bool = False
 
 
 class DeleteInvitesRequest(BaseModel):

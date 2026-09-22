@@ -43,7 +43,7 @@ class TestOrgInvites:
         assert invite.is_sysadmin is False
 
     @pytest.mark.asyncio
-    async def test_org_admin_can_create_admin_invite(
+    async def test_org_admin_without_superadmin_cannot_create_admin_invite(
         self,
         client,
         db_session_maker,
@@ -65,12 +65,71 @@ class TestOrgInvites:
             },
         )
 
+        assert response.status_code == 403
+        assert response.json()["detail"] == "admin_cannot_invite_admin"
+
+    @pytest.mark.asyncio
+    async def test_org_superadmin_can_create_admin_invite(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-superadmin-admin-invite@example.com",
+            memberships=[("superadmin-invite", OrgRole.SUPERADMIN)],
+        )
+        async with db_session_maker() as session:
+            await session.scalar(
+                select(Organization).where(Organization.slug == "superadmin-invite")
+            )
+
+        response = client.post(
+            "/invites/organization",
+            json={
+                "role": "admin",
+            },
+        )
+
         assert response.status_code == 200
         async with db_session_maker() as session:
             invite = await session.scalar(
                 select(InviteToken).where(InviteToken.token == response.json()["token"])
             )
         assert invite.role == OrgRole.ADMIN
+        assert invite.is_superadmin is False
+
+    @pytest.mark.asyncio
+    async def test_org_superadmin_can_create_superadmin_invite(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-superadmin-sa-invite@example.com",
+            memberships=[("superadmin-sa-invite", OrgRole.SUPERADMIN)],
+        )
+        async with db_session_maker() as session:
+            await session.scalar(
+                select(Organization).where(Organization.slug == "superadmin-sa-invite")
+            )
+
+        response = client.post(
+            "/invites/organization",
+            json={
+                "role": "admin",
+                "is_superadmin": True,
+            },
+        )
+
+        assert response.status_code == 200
+        async with db_session_maker() as session:
+            invite = await session.scalar(
+                select(InviteToken).where(InviteToken.token == response.json()["token"])
+            )
+        assert invite.role == OrgRole.ADMIN
+        assert invite.is_superadmin is True
 
     @pytest.mark.asyncio
     async def test_member_cannot_create_org_invite(
@@ -166,7 +225,7 @@ class TestOrgInvites:
     ):
         await auth_scenario.register_and_login(
             email="org-admin-list-invites@example.com",
-            memberships=[("list-invites-org", OrgRole.ADMIN)],
+            memberships=[("list-invites-org", OrgRole.SUPERADMIN)],
         )
 
         # Create two invites
