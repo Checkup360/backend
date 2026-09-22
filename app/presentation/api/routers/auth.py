@@ -48,7 +48,7 @@ async def refresh_token(
         )
     except ValueError as e:
         logout_resp = Response(status_code=status.HTTP_401_UNAUTHORIZED)
-        cookie_transport._set_logout_cookie(logout_resp)
+        cookie_transport._set_logout_cookie(logout_resp, request=request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
@@ -58,7 +58,7 @@ async def refresh_token(
     user = await user_db.get(user_id)
     if not user or not user.is_active:
         logout_resp = Response(status_code=status.HTTP_401_UNAUTHORIZED)
-        cookie_transport._set_logout_cookie(logout_resp)
+        cookie_transport._set_logout_cookie(logout_resp, request=request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
@@ -72,7 +72,7 @@ async def refresh_token(
         media_type="application/json",
     )
     cookie_transport._set_login_cookie(response, new_access_token)
-    cookie_transport._set_refresh_cookie(response, new_raw_token)
+    cookie_transport._set_refresh_cookie(response, new_raw_token, request=request)
 
     return response
 
@@ -86,7 +86,7 @@ async def logout(
     if raw_token:
         await refresh_token_service.revoke_token(raw_token)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    cookie_transport._set_logout_cookie(response)
+    cookie_transport._set_logout_cookie(response, request=request)
     return response
 
 

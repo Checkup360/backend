@@ -84,7 +84,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         if self.refresh_token_service:
             raw_token, _ = await self.refresh_token_service.issue_token(user.id)
-            cookie_transport._set_refresh_cookie(response, raw_token)
+            cookie_transport._set_refresh_cookie(response, raw_token, request=request)
 
     async def on_after_reset_password(
         self,

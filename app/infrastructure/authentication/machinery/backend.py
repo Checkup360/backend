@@ -1,3 +1,4 @@
+from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi_users.authentication import (
@@ -5,6 +6,7 @@ from fastapi_users.authentication import (
     CookieTransport,
     JWTStrategy,
 )
+from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 from app.infrastructure.config import settings
@@ -15,12 +17,25 @@ class RedirectCookieTransport(CookieTransport):
         response = RedirectResponse(settings.frontend_post_login_url, status_code=303)
         return self._set_login_cookie(response, token)
 
-    def _set_refresh_cookie(self, response: Response, refresh_token: str) -> Response:
+    def _resolve_refresh_path(self, request: Optional[Request] = None) -> str:
+        if request:
+            prefix = request.headers.get("x-forwarded-prefix", "").rstrip("/")
+            if prefix:
+                return f"{prefix}/auth"
+        return "/auth"
+
+    def _set_refresh_cookie(
+        self,
+        response: Response,
+        refresh_token: str,
+        request: Optional[Request] = None,
+    ) -> Response:
+        path = self._resolve_refresh_path(request)
         response.set_cookie(
             settings.refresh_token_cookie_name,
             refresh_token,
             max_age=settings.refresh_token_lifetime_seconds,
-            path="/auth",
+            path=path,
             domain=self.cookie_domain,
             secure=self.cookie_secure,
             httponly=self.cookie_httponly,
@@ -28,18 +43,26 @@ class RedirectCookieTransport(CookieTransport):
         )
         return response
 
-    def _set_logout_cookie(self, response: Response) -> Response:
+    def _set_logout_cookie(
+        self,
+        response: Response,
+        request: Optional[Request] = None,
+    ) -> Response:
         super()._set_logout_cookie(response)
-        response.set_cookie(
-            settings.refresh_token_cookie_name,
-            "",
-            max_age=0,
-            path="/auth",
-            domain=self.cookie_domain,
-            secure=self.cookie_secure,
-            httponly=self.cookie_httponly,
-            samesite=self.cookie_samesite,
-        )
+        paths = {"/api/auth", "/auth"}
+        if request:
+            paths.add(self._resolve_refresh_path(request))
+        for path in sorted(paths):
+            response.set_cookie(
+                settings.refresh_token_cookie_name,
+                "",
+                max_age=0,
+                path=path,
+                domain=self.cookie_domain,
+                secure=self.cookie_secure,
+                httponly=self.cookie_httponly,
+                samesite=self.cookie_samesite,
+            )
         return response
 
 
