@@ -42,6 +42,7 @@ class InviteToken(Base):
     )
 
     is_sysadmin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     organization: Mapped[Organization | None] = relationship(
         "Organization", backref="invite_tokens"

@@ -21,6 +21,7 @@ class InviteToken:
     department: Department | None = None
     role: OrgRole | None = None
     is_sysadmin: bool = False
+    is_superadmin: bool = False
 
     @property
     def is_exhausted(self) -> bool:
