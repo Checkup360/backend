@@ -130,9 +130,10 @@ class CreateSuperadminRemovalRequestUseCase:
             await self.removal_repo.update_request_status(saved_request.id, new_status)
             saved_request.status = new_status
             if new_status == RemovalRequestStatus.APPROVED:
-                target_membership.roles = [
-                    r for r in target_membership.roles if r != OrgRole.SUPERADMIN
-                ]
+                roles = [r for r in target_membership.roles if r != OrgRole.SUPERADMIN]
+                if OrgRole.ADMIN not in roles:
+                    roles.append(OrgRole.ADMIN)
+                target_membership.roles = roles
                 await self.membership_repo.save(target_membership)
                 await self.refresh_token_repo.revoke_all_for_user(target_user_id)
 

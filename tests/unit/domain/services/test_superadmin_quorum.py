@@ -92,3 +92,12 @@ class TestSuperadminQuorumService:
 
         status = SuperadminQuorumService.evaluate_status(req, total_superadmins=3)
         assert status == RemovalRequestStatus.REJECTED
+
+    def test_evaluate_status_pending_when_two_superadmins_and_no_rejects(self):
+        # 2 superadmins (total_eligible=1), required=2. Initiator approved, 0 rejects.
+        # Must stay PENDING so a 3rd superadmin can be designated or sysadmin can vote.
+        req = _make_request(required_votes=2)
+        req.votes.append(_make_vote(req.id, VoteDecision.APPROVE))
+
+        status = SuperadminQuorumService.evaluate_status(req, total_superadmins=2)
+        assert status == RemovalRequestStatus.PENDING

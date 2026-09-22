@@ -85,6 +85,10 @@ class VoteSuperadminRemovalRequestUseCase:
         total_superadmins = await self.membership_repo.count_superadmins(
             organization_id
         )
+        if total_superadmins > 1:
+            request.required_votes = SuperadminQuorumService.calculate_required_votes(
+                total_superadmins
+            )
         new_status = SuperadminQuorumService.evaluate_status(request, total_superadmins)
 
         if new_status != request.status:
@@ -95,9 +99,12 @@ class VoteSuperadminRemovalRequestUseCase:
                     request.target_user_id, organization_id
                 )
                 if target_membership:
-                    target_membership.roles = [
+                    roles = [
                         r for r in target_membership.roles if r != OrgRole.SUPERADMIN
                     ]
+                    if OrgRole.ADMIN not in roles:
+                        roles.append(OrgRole.ADMIN)
+                    target_membership.roles = roles
                     await self.membership_repo.save(target_membership)
                     await self.refresh_token_repo.revoke_all_for_user(
                         request.target_user_id

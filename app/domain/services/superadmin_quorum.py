@@ -28,7 +28,7 @@ class SuperadminQuorumService:
         # so eligible voters count is total_superadmins - 1
         total_eligible_voters = max(0, total_superadmins - 1)
         max_possible_approves = total_eligible_voters - rejects
-        if max_possible_approves < request.required_votes:
+        if rejects > 0 and max_possible_approves < request.required_votes:
             return RemovalRequestStatus.REJECTED
 
         return RemovalRequestStatus.PENDING
