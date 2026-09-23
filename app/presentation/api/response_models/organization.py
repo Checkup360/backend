@@ -49,6 +49,7 @@ class OrganizationEmployeeResponse(BaseModel):
     status: str
     department: DepartmentResponse | None = None
     last_assessment: datetime | None = None
+    overall_score: float | None = None
 
 
 class SuperadminRemovalVoteResponse(BaseModel):

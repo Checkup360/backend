@@ -21,10 +21,7 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
-from app.domain.services.risk_score_calculator import (
-    calculate_weighted_overall_score,
-    normalize_score_key,
-)
+from app.domain.services.risk_score_calculator import normalize_score_key
 from app.application.dto.risk_scoring import HealthDataDTO
 from app.presentation.api.request_models.assessments import ClinicalAssessmentRequest
 from app.presentation.api.response_models.assessments import (
@@ -78,13 +75,6 @@ def _format_score_display_name(name: str) -> str:
     return name
 
 
-def compute_overall_summary(
-    results: list[AssessmentResultResponse],
-    weights: dict[str, float] | None = None,
-) -> tuple[float | None, str | None]:
-    return calculate_weighted_overall_score(results, weights)
-
-
 def build_assessment_sessions(
     results: list[AssessmentResultResponse],
     score_weights: dict[str, float] | None = None,
@@ -133,14 +123,23 @@ def build_assessment_sessions(
 
         session_results = list(active_at_time.values())
 
-        # Use persisted score if available, otherwise compute as fallback
+        # Use persisted score if available
+        matched_persisted: MemberOverallScore | None = None
         if b_ts in persisted_by_ts:
-            overall_score = persisted_by_ts[b_ts].overall_score
-            overall_risk_level = persisted_by_ts[b_ts].risk_level
+            matched_persisted = persisted_by_ts[b_ts]
+        elif persisted_history:
+            target_ts = primary_eval_at.timestamp()
+            for p in persisted_history:
+                if p.evaluated_at and abs(p.evaluated_at.timestamp() - target_ts) <= 5:
+                    matched_persisted = p
+                    break
+
+        if matched_persisted is not None:
+            overall_score = matched_persisted.overall_score
+            overall_risk_level = matched_persisted.risk_level
         else:
-            overall_score, overall_risk_level = compute_overall_summary(
-                session_results, score_weights
-            )
+            overall_score = None
+            overall_risk_level = None
 
         session_id = f"session_{b_ts}_{idx}"
         sessions.append(
@@ -181,9 +180,8 @@ def build_assessments_response(
         current_overall_score = latest_overall.overall_score
         current_overall_risk_level = latest_overall.risk_level
     else:
-        current_overall_score, current_overall_risk_level = compute_overall_summary(
-            filtered_results, score_weights
-        )
+        current_overall_score = None
+        current_overall_risk_level = None
 
     start = (page - 1) * limit
     paginated_sessions = all_sessions[start : start + limit]

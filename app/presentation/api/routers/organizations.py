@@ -881,6 +881,7 @@ async def list_organization_employees(
     role: list[OrgRole] | None = Query(default=None),
     department_id: uuid.UUID | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
+    score_filter: str | None = Query(default=None, alias="score"),
     search: str | None = Query(default=None),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
@@ -946,6 +947,12 @@ async def list_organization_employees(
             if status_val.lower() != status_filter.lower():
                 continue
 
+        # Apply score query parameter filter
+        if score_filter == "scored" and latest_score is None:
+            continue
+        if score_filter == "unscored" and latest_score is not None:
+            continue
+
         if search is not None and search.strip():
             search_lower = search.strip().lower()
             department_name = (
@@ -979,6 +986,7 @@ async def list_organization_employees(
                     else None
                 ),
                 last_assessment=last_assessment,
+                overall_score=latest_score.overall_score if latest_score else None,
             )
         )
     total = len(res)
