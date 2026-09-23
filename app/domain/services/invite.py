@@ -30,7 +30,6 @@ def build_invite_token(
     department_id: uuid.UUID | None = None,
     role: OrgRole | None = None,
     is_sysadmin: bool = False,
-    is_superadmin: bool = False,
     time_provider: TimeProvider,
 ) -> InviteToken:
     token = secrets.token_urlsafe(32)
@@ -45,7 +44,6 @@ def build_invite_token(
         department_id=department_id,
         role=role,
         is_sysadmin=is_sysadmin,
-        is_superadmin=is_superadmin,
     )
 
 
@@ -74,7 +72,6 @@ class InviteService:
         department_id: uuid.UUID | None = None,
         role: OrgRole | None = None,
         is_sysadmin: bool = False,
-        is_superadmin: bool = False,
     ) -> InviteToken:
         if department_id is not None and self.department_repo is not None:
             if organization_id is None:
@@ -93,7 +90,6 @@ class InviteService:
             department_id=department_id,
             role=role,
             is_sysadmin=is_sysadmin,
-            is_superadmin=is_superadmin,
             time_provider=self.time_provider,
         )
         return await self.invite_repo.save(invite)
@@ -144,7 +140,7 @@ class InviteService:
                 invite_role = OrgRole(invite_role)
 
             roles_to_assign = [invite_role]
-            if invite.is_superadmin or invite_role == OrgRole.SUPERADMIN:
+            if invite_role == OrgRole.SUPERADMIN:
                 if OrgRole.SUPERADMIN not in roles_to_assign:
                     roles_to_assign.append(OrgRole.SUPERADMIN)
                 if OrgRole.ADMIN not in roles_to_assign:

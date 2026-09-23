@@ -97,7 +97,6 @@ class TestOrgInvites:
                 select(InviteToken).where(InviteToken.token == response.json()["token"])
             )
         assert invite.role == OrgRole.ADMIN
-        assert invite.is_superadmin is False
 
     @pytest.mark.asyncio
     async def test_org_superadmin_can_create_superadmin_invite(
@@ -118,8 +117,7 @@ class TestOrgInvites:
         response = client.post(
             "/invites/organization",
             json={
-                "role": "admin",
-                "is_superadmin": True,
+                "role": "superadmin",
             },
         )
 
@@ -128,8 +126,7 @@ class TestOrgInvites:
             invite = await session.scalar(
                 select(InviteToken).where(InviteToken.token == response.json()["token"])
             )
-        assert invite.role == OrgRole.ADMIN
-        assert invite.is_superadmin is True
+        assert invite.role == OrgRole.SUPERADMIN
 
     @pytest.mark.asyncio
     async def test_member_cannot_create_org_invite(

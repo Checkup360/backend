@@ -95,9 +95,7 @@ async def create_organization_invite(
         org_id = admin_entity.organization_id
         caller_is_superadmin = OrgRole.SUPERADMIN in admin_entity.roles
 
-    if (
-        body.role in (OrgRole.ADMIN, OrgRole.SUPERADMIN) or body.is_superadmin
-    ) and not caller_is_superadmin:
+    if (body.role in (OrgRole.ADMIN, OrgRole.SUPERADMIN)) and not caller_is_superadmin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="admin_cannot_invite_admin",
@@ -112,7 +110,6 @@ async def create_organization_invite(
             department_id=body.department_id,
             role=body.role,
             is_sysadmin=False,
-            is_superadmin=body.is_superadmin or (body.role == OrgRole.SUPERADMIN),
         )
     except InviteError as e:
         raise HTTPException(
@@ -191,7 +188,6 @@ async def list_organization_invites(
             token=invite.token,
             email=invite.email,
             role=invite.role.value if invite.role else None,
-            is_superadmin=invite.is_superadmin,
             organization_id=invite.organization_id,
             organization_name=(
                 invite.organization.name if invite.organization else None
@@ -245,7 +241,6 @@ async def get_invite_metadata(
         organization_name=invite.organization.name if invite.organization else None,
         role=invite.role.value if invite.role else None,
         is_sysadmin=invite.is_sysadmin,
-        is_superadmin=invite.is_superadmin,
     )
 
 

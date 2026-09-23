@@ -9,7 +9,6 @@ class OrganizationInviteResponse(BaseModel):
     token: str
     email: str | None = None
     role: str | None = None
-    is_superadmin: bool = False
     organization_id: uuid.UUID | None = None
     organization_name: str | None = None
     department_id: uuid.UUID | None = None
@@ -34,7 +33,6 @@ class InviteMetadataResponse(BaseModel):
     organization_name: str | None = None
     role: str | None = None
     is_sysadmin: bool = False
-    is_superadmin: bool = False
 
 
 class RedeemResponse(BaseModel):

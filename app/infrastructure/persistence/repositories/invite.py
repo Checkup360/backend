@@ -88,7 +88,6 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             department_id=orm.department_id,
             role=role,
             is_sysadmin=orm.is_sysadmin,
-            is_superadmin=getattr(orm, "is_superadmin", False),
             organization=_organization_from_orm(orm),
             department=_department_from_orm(orm),
         )
@@ -164,5 +163,4 @@ class InviteRepository(BaseRepository[InviteTokenORM, InviteToken]):
             "department_id": entity.department_id,
             "role": entity.role,
             "is_sysadmin": entity.is_sysadmin,
-            "is_superadmin": entity.is_superadmin,
         }
