@@ -49,7 +49,7 @@ class OrganizationFormPolicy:
         Returns list of active form_type strings under configured score/domain weights.
         """
         all_registered = self._form_registry.get_registered_form_types()
-        if not score_weights:
+        if score_weights is None:
             return all_registered
 
         active_form_types: set[str] = {"biometrics"}
@@ -73,7 +73,22 @@ class OrganizationFormPolicy:
                 except ValueError:
                     pass
 
-        return [ft for ft in all_registered if ft in active_form_types]
+        # These forms belong exclusively to a specific score.
+        # If the score is explicitly disabled (or missing, thus weight 0),
+        # they must not be shown, even if a broad HealthDomain was enabled.
+        score_specific_forms = {"audit_c", "nordic_nmq", "pss10", "eoss"}
+        final_form_types = set()
+
+        normalized_weights = {
+            k.lower().replace("-", "_").strip(): v for k, v in score_weights.items()
+        }
+
+        for ft in active_form_types:
+            if ft in score_specific_forms and normalized_weights.get(ft, 0.0) <= 0.0:
+                continue
+            final_form_types.add(ft)
+
+        return [ft for ft in all_registered if ft in final_form_types]
 
     def get_active_form_definitions(
         self, score_weights: dict[str, float] | None = None
@@ -84,12 +99,15 @@ class OrganizationFormPolicy:
 
         sleep_apnea_active = True
         if score_weights is not None:
-            sleep_weight = score_weights.get("sleep_apnea", 0.0) or score_weights.get(
-                "stop_bang", 0.0
-            )
-            fatigue_weight = score_weights.get(
+            normalized_weights = {
+                k.lower().replace("-", "_").strip(): v for k, v in score_weights.items()
+            }
+            sleep_weight = normalized_weights.get(
+                "sleep_apnea", 0.0
+            ) or normalized_weights.get("stop_bang", 0.0)
+            fatigue_weight = normalized_weights.get(
                 HealthDomain.FATIGUE_SLEEP.value, 0.0
-            ) or score_weights.get("fatigue_sleep", 0.0)
+            ) or normalized_weights.get("fatigue_sleep", 0.0)
             sleep_apnea_active = (sleep_weight > 0.0) or (fatigue_weight > 0.0)
 
         result: list[FormDefinition] = []

@@ -22,14 +22,6 @@ def test_get_active_form_types_empty_dict():
     active_forms = policy.get_active_form_types(score_weights={})
     assert set(active_forms) == {
         "biometrics",
-        "sleep",
-        "habits",
-        "metabolic",
-        "eoss",
-        "mood",
-        "nordic_nmq",
-        "audit_c",
-        "pss10",
     }
 
 
@@ -62,7 +54,7 @@ def test_get_active_form_types_disabled_all_except_diabetes():
         "cardiovascular": 0.0,
     }
     active_forms = policy.get_active_form_types(score_weights=weights)
-    # Diabetes requires only biometrics and habits
+    # diabetes score specifically requires biometrics and habits
     assert set(active_forms) == {"biometrics", "habits"}
 
 
