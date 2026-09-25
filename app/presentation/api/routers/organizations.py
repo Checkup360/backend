@@ -1000,6 +1000,21 @@ async def list_organization_employees(
     return res
 
 
+async def _ensure_employee_access(
+    current_user: AuthenticatedUser,
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    membership_service: MembershipService,
+) -> None:
+    if current_user.is_superuser:
+        return
+    employees = await membership_service.list_employees_for_organization_admin(
+        current_user.id, organization_id
+    )
+    if not any(employee.user.id == user_id for employee in employees):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+
 @router.get(
     "/{organization_id}/employees/{user_id}/assessments",
     response_model=AssessmentsResponse,
@@ -1018,10 +1033,9 @@ async def get_employee_assessments(
     ),
 ) -> AssessmentsResponse:
     try:
-        if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
-                current_user.id, organization_id
-            )
+        await _ensure_employee_access(
+            current_user, organization_id, user_id, membership_service
+        )
     except OrganizationNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1061,21 +1075,6 @@ async def get_employee_assessments(
         latest_overall=latest_overall,
         persisted_history=persisted_history,
     )
-
-
-async def _ensure_employee_access(
-    current_user: AuthenticatedUser,
-    organization_id: uuid.UUID,
-    user_id: uuid.UUID,
-    membership_service: MembershipService,
-) -> None:
-    if current_user.is_superuser:
-        return
-    employees = await membership_service.list_employees_for_organization_admin(
-        current_user.id, organization_id
-    )
-    if not any(employee.user.id == user_id for employee in employees):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
 
 
 @router.get(
