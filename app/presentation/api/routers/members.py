@@ -289,13 +289,11 @@ async def get_my_active_forms(
     for f in active_defs:
         is_completed = False
         if health_data:
+            is_completed = True
             for field in f.fields:
-                if field == "nordic_nmq_data":
-                    if health_data.nordic_nmq_data:
-                        is_completed = True
-                        break
-                elif getattr(health_data, field, None) is not None:
-                    is_completed = True
+                val = getattr(health_data, field, None)
+                if val is None or (isinstance(val, dict) and not val):
+                    is_completed = False
                     break
         response_items.append(
             ActiveFormDefinitionResponse(
