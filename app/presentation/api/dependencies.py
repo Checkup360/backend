@@ -122,6 +122,9 @@ from app.application.use_cases.organizations import (
     GetOrganizationAnalyticsUseCase,
     UploadOrganizationLogoUseCase,
 )
+from app.application.use_cases.organizations.recalculate_org_scores import (
+    RecalculateOrganizationOverallScoresUseCase,
+)
 from app.infrastructure.email import SmtpEmailSender
 from app.infrastructure.config import settings
 from app.infrastructure.authentication.machinery.users import current_active_user
@@ -374,6 +377,24 @@ async def get_recalculate_member_scores_use_case(
         risk_scoring_service,
         member_overall_score_repo=member_overall_score_repo,
         membership_repo=membership_repo,
+        score_weights_repo=score_weights_repo,
+    )
+
+
+async def get_recalculate_org_scores_use_case(
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
+    member_overall_score_repo: MemberOverallScoreRepository = Depends(
+        get_member_overall_score_repository
+    ),
+    score_weights_repo: OrganizationScoreWeightsRepository = Depends(
+        get_organization_score_weights_repository
+    ),
+) -> RecalculateOrganizationOverallScoresUseCase:
+    return RecalculateOrganizationOverallScoresUseCase(
+        membership_repo=membership_repo,
+        risk_score_repo=risk_score_repo,
+        member_overall_score_repo=member_overall_score_repo,
         score_weights_repo=score_weights_repo,
     )
 

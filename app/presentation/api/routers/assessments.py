@@ -164,9 +164,11 @@ def build_assessments_response(
     persisted_history: list[MemberOverallScore] | None = None,
 ) -> AssessmentsResponse:
     if score_weights is not None:
-        active_keys = {k for k, w in score_weights.items() if w > 0}
         filtered_results = [
-            r for r in results if normalize_score_key(r.score_name) in active_keys
+            r
+            for r in results
+            if normalize_score_key(r.score_name) not in score_weights
+            or score_weights[normalize_score_key(r.score_name)] > 0
         ]
     else:
         filtered_results = results

@@ -3,6 +3,7 @@ from typing import NoReturn
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     HTTPException,
@@ -31,6 +32,10 @@ from app.presentation.api.dependencies import (
     get_create_superadmin_removal_request_use_case,
     get_vote_superadmin_removal_request_use_case,
     get_list_superadmin_removal_requests_use_case,
+    get_recalculate_org_scores_use_case,
+)
+from app.application.use_cases.organizations.recalculate_org_scores import (
+    RecalculateOrganizationOverallScoresUseCase,
 )
 from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.organizations import (
@@ -1183,9 +1188,13 @@ async def get_organization_score_weights(
 async def update_organization_score_weights(
     organization_id: uuid.UUID,
     request: ScoreWeightsRequest,
+    background_tasks: BackgroundTasks,
     current_user: AuthenticatedUser = Depends(get_current_user),
     organization_service: OrganizationService = Depends(get_organization_service),
     membership_service: MembershipService = Depends(get_membership_service),
+    recalculate_scores_use_case: RecalculateOrganizationOverallScoresUseCase = Depends(
+        get_recalculate_org_scores_use_case
+    ),
 ):
     try:
         if not current_user.is_superuser:
@@ -1197,6 +1206,12 @@ async def update_organization_score_weights(
             request.score_weights,
             changed_by_user_id=current_user.id,
         )
+
+        # Trigger background recalculation for all organization members
+        background_tasks.add_task(
+            recalculate_scores_use_case.execute, organization_id=organization_id
+        )
+
         return ScoreWeightsResponse(
             score_weights=updated_org.score_weights or request.score_weights
         )
