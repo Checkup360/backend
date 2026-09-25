@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from sqlalchemy import select
 
@@ -277,6 +279,90 @@ class TestOrganizationEmployees:
             db_session_maker, "assessments-org"
         )
         employee = await make_user(email="assessed.employee@example.com")
+        await make_membership(
+            user_id=employee.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees/{employee.id}/assessments"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "results" in data
+
+    @pytest.mark.asyncio
+    async def test_admin_cannot_get_other_organization_employee_assessments(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_organization,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-a-admin@example.com",
+            memberships=[("org-a", OrgRole.ADMIN)],
+        )
+        org_a = await _get_organization_by_slug(db_session_maker, "org-a")
+        org_b = await make_organization(name="Org B", slug="org-b")
+        employee_b = await make_user(email="emp-b@example.com")
+        await make_membership(
+            user_id=employee_b.id,
+            organization_id=org_b.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{org_a.id}/employees/{employee_b.id}/assessments"
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "not_found"
+
+    @pytest.mark.asyncio
+    async def test_admin_getting_nonexistent_employee_assessments_returns_404(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+    ):
+        await auth_scenario.register_and_login(
+            email="nonexistent-emp-admin@example.com",
+            memberships=[("nonexistent-emp-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "nonexistent-emp-org"
+        )
+        random_user_id = uuid.uuid4()
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees/{random_user_id}/assessments"
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "not_found"
+
+    @pytest.mark.asyncio
+    async def test_superuser_can_get_any_employee_assessments(
+        self,
+        client,
+        auth_scenario,
+        make_organization,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="superuser-assessments@example.com",
+            is_superuser=True,
+        )
+        organization = await make_organization(
+            name="Superuser Target Org", slug="su-target-org"
+        )
+        employee = await make_user(email="su-assessed.employee@example.com")
         await make_membership(
             user_id=employee.id,
             organization_id=organization.id,
