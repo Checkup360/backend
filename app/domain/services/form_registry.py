@@ -9,6 +9,7 @@ class FormDefinition:
 
     form_type: str
     fields: list[str]
+    version: str = "1"
 
 
 class FormRegistry:
@@ -104,6 +105,11 @@ class FormRegistry:
     def is_valid_form_type(self, form_type: str) -> bool:
         """Returns True if form_type is registered in the registry."""
         return form_type in self._forms
+
+    def get_form_version(self, form_type: str) -> str:
+        """Returns the version string of the specified form type, defaulting to '1'."""
+        form = self._forms.get(form_type)
+        return form.version if form else "1"
 
     def get_form_fields_map(self) -> dict[str, list[str]]:
         """Returns a dictionary mapping form_type to its list of fields."""

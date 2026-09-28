@@ -89,6 +89,7 @@ from app.infrastructure.persistence.repositories.membership import MembershipRep
 from app.infrastructure.persistence.repositories.organization import (
     OrganizationRepository,
 )
+from app.domain.repositories.risk_score import RiskScoreRepository
 from app.infrastructure.persistence.repositories.risk_score import (
     SQLAlchemyRiskScoreRepository,
 )
@@ -112,10 +113,17 @@ from app.infrastructure.persistence.repositories.organization_score_weights impo
     OrganizationScoreWeightsRepository as SQLAlchemyOrganizationScoreWeightsRepository,
 )
 from app.domain.repositories.member_health_data import MemberHealthDataRepository
-from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.repositories.analytics import AnalyticsRepository
+from app.domain.repositories.legal_document import LegalDocumentRepository
+from app.domain.repositories.user_consent import UserConsentRepository
 from app.infrastructure.persistence.repositories.analytics import (
     AnalyticsRepositoryImpl,
+)
+from app.infrastructure.persistence.repositories.legal_document import (
+    SQLAlchemyLegalDocumentRepository,
+)
+from app.infrastructure.persistence.repositories.user_consent import (
+    SQLAlchemyUserConsentRepository,
 )
 from app.application.use_cases.organizations import (
     DeleteOrganizationLogoUseCase,
@@ -218,6 +226,18 @@ async def get_membership_service(
 
 def get_form_registry() -> FormRegistry:
     return FormRegistry()
+
+
+async def get_legal_document_repository(
+    db: AsyncSession = Depends(get_db),
+) -> LegalDocumentRepository:
+    return SQLAlchemyLegalDocumentRepository(db)
+
+
+async def get_user_consent_repository(
+    db: AsyncSession = Depends(get_db),
+) -> UserConsentRepository:
+    return SQLAlchemyUserConsentRepository(db)
 
 
 async def get_assessment_submission_repository(

@@ -8,6 +8,7 @@ from app.domain.repositories.risk_score import RiskScoreRepository
 from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
 from app.domain.entities.assessment_submission import AssessmentSubmission
 from app.domain.entities.risk_score import RiskScore
+from app.domain.services.form_registry import FormRegistry
 from app.domain.services.time_provider import TimeProvider
 
 
@@ -19,12 +20,14 @@ class SubmitAssessmentUseCase:
         risk_score_repository: RiskScoreRepository,
         time_provider: TimeProvider,
         assessment_submission_repository: AssessmentSubmissionRepository | None = None,
+        form_registry: FormRegistry | None = None,
     ) -> None:
         self._risk_scoring_service = risk_scoring_service
         self._member_details_repository = member_details_repository
         self._risk_score_repository = risk_score_repository
         self._time_provider = time_provider
         self._assessment_submission_repository = assessment_submission_repository
+        self._form_registry = form_registry or FormRegistry()
 
     async def execute(
         self,
@@ -48,12 +51,13 @@ class SubmitAssessmentUseCase:
         now = self._time_provider.utcnow()
         submission_id: uuid.UUID | None = None
         if self._assessment_submission_repository and organization_id:
+            form_version = self._form_registry.get_form_version("clinical_assessment")
             submission = AssessmentSubmission(
                 id=uuid.uuid4(),
                 user_id=user_id,
                 organization_id=organization_id,
                 form_type="clinical_assessment",
-                form_version="1",
+                form_version=form_version,
                 status="pending",
                 submitted_at=now,
                 **vars(supplemented_data),

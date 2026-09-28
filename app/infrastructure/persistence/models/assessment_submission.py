@@ -20,11 +20,23 @@ class AssessmentSubmissionModel(Base):
         ForeignKey("organizations.id", ondelete="CASCADE"),
         index=True,
     )
+    consent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_consents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     form_type: Mapped[str] = mapped_column(String(100), nullable=False)
     form_version: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+    consent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_consents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sex: Mapped[str | None] = mapped_column(String(30), nullable=True)

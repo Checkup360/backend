@@ -12,6 +12,7 @@ class AssessmentSubmission:
     form_version: str
     status: str
     submitted_at: datetime
+    consent_id: uuid.UUID | None = None
     age: int | None = None
     sex: str | None = None
     weight: float | None = None
