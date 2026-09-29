@@ -38,6 +38,17 @@ class TestMemberFormsRouter:
         assert res_get.json()["form_type"] == "biometrics"
         assert res_get.json()["data"] == {}
 
+        # Accept Level 1 Health Data Processing Consent
+        client.post(
+            "/consents",
+            json={"consent_type": "HEALTH_DATA_PROCESSING_CONSENT"},
+        )
+        # Accept Level 2 Form Consent for biometrics
+        client.post(
+            "/consents",
+            json={"consent_type": "FORM_CONSENT", "form_type": "biometrics"},
+        )
+
         # PUT biometrics form
         res_put = client.put(
             "/members/me/forms/biometrics",
@@ -60,6 +71,12 @@ class TestMemberFormsRouter:
         assert res_get_again.json()["data"]["biological_sex"] == "M"
         assert res_get_again.json()["data"]["height"] == 1.80
 
+        # Accept Level 2 Form Consent for habits
+        client.post(
+            "/consents",
+            json={"consent_type": "FORM_CONSENT", "form_type": "habits"},
+        )
+
         # PUT habits form
         res_habits = client.put(
             "/members/me/forms/habits",
@@ -74,6 +91,12 @@ class TestMemberFormsRouter:
         data_habits = res_habits.json()
         assert data_habits["form_type"] == "habits"
         assert "daily_physical_activity" in data_habits["updated_fields"]
+
+        # Accept Level 2 Form Consent for mood
+        client.post(
+            "/consents",
+            json={"consent_type": "FORM_CONSENT", "form_type": "mood"},
+        )
 
         res_mood = client.put(
             "/members/me/forms/mood",
@@ -104,6 +127,15 @@ class TestMemberFormsRouter:
         await auth_scenario.register_and_login(
             email="cm-height@example.com",
             memberships=None,
+        )
+
+        client.post(
+            "/consents",
+            json={"consent_type": "HEALTH_DATA_PROCESSING_CONSENT"},
+        )
+        client.post(
+            "/consents",
+            json={"consent_type": "FORM_CONSENT", "form_type": "biometrics"},
         )
 
         res_put = client.put(

@@ -42,6 +42,12 @@ class TestAssessmentsRouter:
             memberships=[("my-org", "member")],
         )
 
+        consent_res = client.post(
+            "/consents",
+            json={"consent_type": "HEALTH_DATA_PROCESSING_CONSENT"},
+        )
+        assert consent_res.status_code == 201
+
         # Mock the use case so we don't actually hit the external Engine service
         mock_use_case = AsyncMock(spec=SubmitAssessmentUseCase)
         mock_use_case.execute.return_value = [

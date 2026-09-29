@@ -22,6 +22,7 @@ class SaveAssessmentSubmissionUseCase:
         form_type: str,
         answers: dict,
         submitted_at: datetime,
+        consent_id: uuid.UUID | None = None,
     ) -> AssessmentSubmission:
         normalized_answers = {
             "sex": answers.get("biological_sex", answers.get("sex")),
@@ -36,6 +37,7 @@ class SaveAssessmentSubmissionUseCase:
             form_version=form_version,
             status="completed",
             submitted_at=submitted_at,
+            consent_id=consent_id,
             **normalized_answers,
         )
         return await self._repository.save(submission)

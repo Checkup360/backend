@@ -68,6 +68,15 @@ class TestMembersRouter:
             memberships=None,
         )
 
+        client.post(
+            "/consents",
+            json={"consent_type": "HEALTH_DATA_PROCESSING_CONSENT"},
+        )
+        client.post(
+            "/consents",
+            json={"consent_type": "FORM_CONSENT", "form_type": "biometrics"},
+        )
+
         res = client.patch(
             "/members/me/biometrics",
             json={

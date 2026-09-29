@@ -2,10 +2,13 @@ from fastapi import Depends, HTTPException, status
 
 from app.application.dto import AuthenticatedUser
 from app.domain.entities import Membership, OrgRole
+from app.domain.entities.user_consent import ConsentType, UserConsent
+from app.domain.repositories.user_consent import UserConsentRepository
 from app.presentation.api.dependencies import (
     get_current_user,
     get_member_details_service,
     get_membership_service,
+    get_user_consent_repository,
 )
 from app.application.use_cases.members.member_details_service import (
     MemberDetailsService,
@@ -110,6 +113,19 @@ async def require_member_role(
     return current_user
 
 
+async def require_active_member(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    """Ensures user has active organization membership with the member role."""
+    if (
+        not current_user.membership
+        or OrgRole.MEMBER not in current_user.membership.roles
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+    return current_user
+
+
 async def require_content_manager_or_above(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> Membership:
@@ -121,3 +137,64 @@ async def require_content_manager_or_above(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     return current_user.membership
+
+
+async def require_health_data_consent(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+) -> AuthenticatedUser:
+    """Ensures user has active general health data processing consent."""
+    consent = await consent_repo.get_active_consent(
+        user_id=current_user.id,
+        consent_type=ConsentType.HEALTH_DATA_PROCESSING_CONSENT,
+    )
+    if not consent or not consent.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="health_data_processing_consent_required",
+        )
+    return current_user
+
+
+async def require_form_consent(
+    form_type: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+) -> UserConsent:
+    """Ensures user has active general health consent AND specific form consent."""
+    # 1. Verify Level 1 Health Data Processing consent
+    health_consent = await consent_repo.get_active_consent(
+        user_id=current_user.id,
+        consent_type=ConsentType.HEALTH_DATA_PROCESSING_CONSENT,
+    )
+    if not health_consent or not health_consent.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="health_data_processing_consent_required",
+        )
+
+    # 2. Verify Level 2 specific form consent
+    form_consent = await consent_repo.get_active_consent(
+        user_id=current_user.id,
+        consent_type=ConsentType.FORM_CONSENT,
+        form_type=form_type,
+    )
+    if not form_consent or not form_consent.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"active_consent_required_for_form_{form_type}",
+        )
+
+    return form_consent
+
+
+async def require_biometrics_consent(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+) -> UserConsent:
+    """Ensures user has active biometrics consent."""
+    return await require_form_consent(
+        form_type="biometrics",
+        current_user=current_user,
+        consent_repo=consent_repo,
+    )

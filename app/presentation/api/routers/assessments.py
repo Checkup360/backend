@@ -3,7 +3,11 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.dto import AuthenticatedUser
-from app.presentation.api.authorization import require_member_role
+from app.presentation.api.authorization import (
+    require_active_member,
+    require_health_data_consent,
+    require_member_role,
+)
 from app.presentation.api.dependencies import (
     get_current_user,
     get_submit_assessment_use_case,
@@ -218,13 +222,11 @@ def build_assessments_response(
 @router.post("/evaluate", response_model=AssessmentsResponse)
 async def evaluate_assessments(
     body: ClinicalAssessmentRequest,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_active_member),
+    _consent: AuthenticatedUser = Depends(require_health_data_consent),
     use_case: SubmitAssessmentUseCase = Depends(get_submit_assessment_use_case),
     organization_service: OrganizationService = Depends(get_organization_service),
 ) -> AssessmentsResponse:
-    # Validate user role
-    if not user.membership or "member" not in user.membership.roles:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     # Map request model to HealthDataDTO
     health_data = HealthDataDTO(

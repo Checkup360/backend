@@ -39,7 +39,12 @@ from app.application.use_cases.members.member_details_service import (
 from app.application.use_cases.members.member_health_data_service import (
     MemberHealthDataService,
 )
-from app.presentation.api.authorization import require_member_role
+from app.domain.entities.user_consent import UserConsent
+from app.presentation.api.authorization import (
+    require_biometrics_consent,
+    require_form_consent,
+    require_member_role,
+)
 from app.presentation.api.dependencies import get_current_user
 from app.presentation.api.request_models.onboarding import OnboardingRequest
 from app.presentation.api.request_models.member_details import MemberProfileUpdate
@@ -244,6 +249,7 @@ async def get_my_biometrics(
 async def update_my_biometrics(
     body: MemberBiometricsUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
+    _consent: UserConsent = Depends(require_biometrics_consent),
     health_data_service: MemberHealthDataService = Depends(
         get_member_health_data_service
     ),
@@ -339,6 +345,7 @@ async def update_my_form_data(
     form_type: str,
     body: MemberFormUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
+    form_consent: UserConsent = Depends(require_form_consent),
     health_data_service: MemberHealthDataService = Depends(
         get_member_health_data_service
     ),
@@ -373,6 +380,7 @@ async def update_my_form_data(
             form_type=form_type,
             answers=update_kwargs,
             submitted_at=time_provider.utcnow(),
+            consent_id=form_consent.id,
         )
         submission_id = submission.id
 
