@@ -80,6 +80,15 @@ class TestRequestModelsValidation:
                 phone_number="+541112345678",
             )
 
+    def test_member_details_create_under_18_raises(self):
+        under_18 = date.today() - timedelta(days=365 * 17)
+        with pytest.raises(ValidationError) as exc_info:
+            MemberDetailsCreate(
+                date_of_birth=under_18,
+                phone_number="+541112345678",
+            )
+        assert "minimum_age_required_18" in str(exc_info.value)
+
     def test_member_details_create_invalid_phone_raises(self):
         with pytest.raises(ValidationError):
             MemberDetailsCreate(
@@ -105,6 +114,15 @@ class TestRequestModelsValidation:
                 phone_number="abc",
                 date_of_birth=date(1990, 5, 20),
             )
+
+        under_18 = date.today() - timedelta(days=365 * 16)
+        with pytest.raises(ValidationError) as exc_info:
+            MemberProfileUpdate(
+                first_name="Bob",
+                last_name="Jones",
+                date_of_birth=under_18,
+            )
+        assert "minimum_age_required_18" in str(exc_info.value)
 
     def test_create_organization_request(self):
         req = CreateOrganizationRequest(name="Alpha Org", slug="alpha-org")

@@ -83,6 +83,33 @@ class TestMemberDetailsOnboarding:
         assert details is None
 
     @pytest.mark.asyncio
+    async def test_under_18_date_is_rejected_without_creating_details(
+        self, client, auth_scenario, db_session_maker
+    ):
+        user = await auth_scenario.register_and_login(
+            email="member-onboarding-minor@example.com",
+            memberships=[("member-onboarding-minor", OrgRole.MEMBER)],
+        )
+        under_18_date = date.today() - timedelta(days=365 * 16)
+
+        response = client.post(
+            "/members/me/details",
+            json={
+                "date_of_birth": under_18_date.isoformat(),
+                "phone_number": "+541112345678",
+            },
+        )
+
+        assert response.status_code == 422
+        assert "minimum_age_required_18" in response.text
+        async with db_session_maker() as session:
+            details = await session.scalar(
+                select(MemberDetails).where(MemberDetails.user_id == user.id)
+            )
+
+        assert details is None
+
+    @pytest.mark.asyncio
     async def test_org_admin_and_sysadmin_do_not_require_onboarding(
         self, client, auth_scenario
     ):
