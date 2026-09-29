@@ -1,12 +1,15 @@
 import uuid
 
 from app.application.dto.consent import UserConsentDTO
+from app.domain.entities.audit_log import AuditLog
 from app.domain.entities.user_consent import ConsentType, UserConsent
 from app.domain.exceptions import (
     FormTypeRequiredError,
     InvalidConsentTypeError,
     InvalidFormTypeError,
 )
+from app.domain.repositories.audit_log import AuditLogRepository
+from app.domain.repositories.membership import MembershipRepository
 from app.domain.repositories.user_consent import UserConsentRepository
 from app.domain.services.form_registry import FormRegistry
 from app.domain.services.time_provider import TimeProvider
@@ -20,10 +23,14 @@ class AcceptConsentUseCase:
         repository: UserConsentRepository,
         time_provider: TimeProvider,
         form_registry: FormRegistry | None = None,
+        audit_log_repository: AuditLogRepository | None = None,
+        membership_repository: MembershipRepository | None = None,
     ) -> None:
         self._repository = repository
         self._time_provider = time_provider
         self._form_registry = form_registry or FormRegistry()
+        self._audit_log_repository = audit_log_repository
+        self._membership_repository = membership_repository
 
     async def execute(
         self,
@@ -79,6 +86,31 @@ class AcceptConsentUseCase:
         )
 
         saved = await self._repository.save(consent)
+
+        if self._audit_log_repository:
+            org_id = None
+            if self._membership_repository:
+                membership = await self._membership_repository.get_by_user(user_id)
+                if membership:
+                    org_id = membership.organization_id
+
+            audit_entry = AuditLog.create(
+                action="CONSENT_ACCEPTED",
+                resource_type="USER_CONSENT",
+                user_id=user_id,
+                organization_id=org_id,
+                resource_id=str(saved.id),
+                details={
+                    "consent_type": parsed_consent_type.value,
+                    "form_type": form_type,
+                    "document_version": document_version,
+                    "document_hash": document_hash,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                },
+            )
+            await self._audit_log_repository.log(audit_entry)
+
         return self._to_dto(saved)
 
     def _parse_consent_type(self, consent_type: str | ConsentType) -> ConsentType:

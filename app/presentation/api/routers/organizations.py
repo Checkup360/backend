@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 from typing import NoReturn
 
@@ -33,6 +34,8 @@ from app.presentation.api.dependencies import (
     get_vote_superadmin_removal_request_use_case,
     get_list_superadmin_removal_requests_use_case,
     get_recalculate_org_scores_use_case,
+    get_get_organization_audit_logs_use_case,
+    get_get_organization_compliance_summary_use_case,
 )
 from app.application.use_cases.organizations.recalculate_org_scores import (
     RecalculateOrganizationOverallScoresUseCase,
@@ -42,6 +45,15 @@ from app.application.use_cases.organizations import (
     DeleteOrganizationLogoUseCase,
     GetOrganizationAnalyticsUseCase,
     UploadOrganizationLogoUseCase,
+)
+from app.application.use_cases.audit import (
+    GetOrganizationAuditLogsUseCase,
+    GetOrganizationComplianceSummaryUseCase,
+)
+from app.presentation.api.response_models.audit_logs import (
+    AuditLogItemResponse,
+    AuditLogListResponse,
+    ConsentComplianceSummaryResponse,
 )
 from app.presentation.api.response_models.analytics import (
     DepartmentAnalyticsSummaryResponse,
@@ -1349,6 +1361,109 @@ async def get_organization_registration_trends(
             )
             for p in points
         ]
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.get(
+    "/{organization_id}/audit-logs",
+    response_model=AuditLogListResponse,
+)
+async def get_organization_audit_logs(
+    organization_id: uuid.UUID,
+    action: str | None = Query(default=None),
+    user_id: uuid.UUID | None = Query(default=None),
+    from_date: datetime | None = Query(default=None),
+    to_date: datetime | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetOrganizationAuditLogsUseCase = Depends(
+        get_get_organization_audit_logs_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+) -> AuditLogListResponse:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        result = await use_case.execute(
+            organization_id=organization_id,
+            action=action,
+            user_id=user_id,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        return AuditLogListResponse(
+            items=[
+                AuditLogItemResponse(
+                    id=item.id,
+                    user_id=item.user_id,
+                    user_email=item.user_email,
+                    user_name=item.user_name,
+                    organization_id=item.organization_id,
+                    action=item.action,
+                    resource_type=item.resource_type,
+                    resource_id=item.resource_id,
+                    details=item.details,
+                    created_at=item.created_at,
+                )
+                for item in result.items
+            ],
+            total=result.total,
+            page=result.page,
+            page_size=result.page_size,
+            has_next=result.has_next,
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+
+
+@router.get(
+    "/{organization_id}/compliance-summary",
+    response_model=ConsentComplianceSummaryResponse,
+)
+async def get_organization_compliance_summary(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetOrganizationComplianceSummaryUseCase = Depends(
+        get_get_organization_compliance_summary_use_case
+    ),
+    membership_service: MembershipService = Depends(get_membership_service),
+) -> ConsentComplianceSummaryResponse:
+    try:
+        if not current_user.is_superuser:
+            await membership_service.list_employees_for_organization_admin(
+                current_user.id, organization_id
+            )
+        summary = await use_case.execute(organization_id=organization_id)
+        return ConsentComplianceSummaryResponse(
+            total_audit_events=summary.total_audit_events,
+            consent_accepted_count=summary.consent_accepted_count,
+            consent_revoked_count=summary.consent_revoked_count,
+            data_exported_count=summary.data_exported_count,
+            audited_members_count=summary.audited_members_count,
+            actions_breakdown=summary.actions_breakdown,
+        )
     except OrganizationNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

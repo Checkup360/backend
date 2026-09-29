@@ -42,6 +42,11 @@ from app.application.use_cases.assessments.save_submission import (
     SaveAssessmentSubmissionUseCase,
 )
 from app.application.use_cases.admin.list_sysadmins import ListSysadminsUseCase
+from app.application.use_cases.audit import (
+    GetOrganizationAuditLogsUseCase,
+    GetOrganizationComplianceSummaryUseCase,
+    GetSystemAuditLogsUseCase,
+)
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
 )
@@ -583,11 +588,15 @@ async def get_accept_consent_use_case(
     consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
     time_provider: TimeProvider = Depends(get_time_provider),
     form_registry: FormRegistry = Depends(get_form_registry),
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
 ) -> AcceptConsentUseCase:
     return AcceptConsentUseCase(
         repository=consent_repo,
         time_provider=time_provider,
         form_registry=form_registry,
+        audit_log_repository=audit_log_repo,
+        membership_repository=membership_repo,
     )
 
 
@@ -600,10 +609,56 @@ async def get_active_consents_use_case(
 async def get_revoke_consent_use_case(
     consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
     time_provider: TimeProvider = Depends(get_time_provider),
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
 ) -> RevokeConsentUseCase:
     return RevokeConsentUseCase(
         repository=consent_repo,
         time_provider=time_provider,
+        audit_log_repository=audit_log_repo,
+        membership_repository=membership_repo,
+    )
+
+
+async def get_get_organization_audit_logs_use_case(
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+    member_details_repo: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
+) -> GetOrganizationAuditLogsUseCase:
+    return GetOrganizationAuditLogsUseCase(
+        audit_log_repository=audit_log_repo,
+        organization_repository=org_repo,
+        user_repository=user_repo,
+        member_details_repository=member_details_repo,
+    )
+
+
+async def get_get_organization_compliance_summary_use_case(
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+) -> GetOrganizationComplianceSummaryUseCase:
+    return GetOrganizationComplianceSummaryUseCase(
+        audit_log_repository=audit_log_repo,
+        organization_repository=org_repo,
+        membership_repository=membership_repo,
+    )
+
+
+async def get_get_system_audit_logs_use_case(
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+    member_details_repo: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
+) -> GetSystemAuditLogsUseCase:
+    return GetSystemAuditLogsUseCase(
+        audit_log_repository=audit_log_repo,
+        user_repository=user_repo,
+        member_details_repository=member_details_repo,
     )
 
 

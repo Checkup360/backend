@@ -3,27 +3,26 @@ from app.presentation.api.response_models.analytics import (
     RegistrationTrendPointResponse,
     RiskTrendPointResponse,
 )
+from app.presentation.api.response_models.audit_logs import (
+    AuditLogItemResponse,
+    AuditLogListResponse,
+    ConsentComplianceSummaryResponse,
+)
 from app.presentation.api.response_models.auth import (
     AuthMeResponse,
     OAuthAuthorizeResponse,
     OrganizationMembership,
 )
+from app.presentation.api.response_models.consents import (
+    ActiveConsentsResponse,
+    UserConsentResponse,
+)
 from app.presentation.api.response_models.invite import (
     InviteRejected,
     PrepareGoogleSessionResponse,
 )
-from app.presentation.api.response_models.member_details import (
-    AvatarUploadResponse,
-    MemberDetailsCreated,
-    MemberProfileResponse,
-)
 from app.presentation.api.response_models.member_biometrics import (
     MemberBiometricsResponse,
-)
-from app.presentation.api.response_models.user import UserRead
-from app.presentation.api.response_models.consents import (
-    ActiveConsentsResponse,
-    UserConsentResponse,
 )
 from app.presentation.api.response_models.member_data_export import (
     ExportedConsentResponse,
@@ -32,9 +31,18 @@ from app.presentation.api.response_models.member_data_export import (
     ExportedSubmissionResponse,
     MemberDataExportResponse,
 )
+from app.presentation.api.response_models.member_details import (
+    AvatarUploadResponse,
+    MemberDetailsCreated,
+    MemberProfileResponse,
+)
+from app.presentation.api.response_models.user import UserRead
 
 __all__ = [
     "AuthMeResponse",
+    "AuditLogItemResponse",
+    "AuditLogListResponse",
+    "ConsentComplianceSummaryResponse",
     "AvatarUploadResponse",
     "DepartmentAnalyticsSummaryResponse",
     "InviteRejected",
