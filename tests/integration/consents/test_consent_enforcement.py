@@ -239,3 +239,155 @@ class TestConsentEnforcement:
         res2 = client.post("/members/me/assessments/evaluate", json=eval_payload)
         app.dependency_overrides.pop(get_submit_assessment_use_case, None)
         assert res2.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_form_a_consent_does_not_enable_form_b(self, client, auth_scenario):
+        await auth_scenario.register_and_login(
+            email="isolated_form_user@example.com",
+            memberships=[("acme-corp", "member")],
+        )
+
+        # Accept Level 1
+        client.post(
+            "/consents",
+            json={"consent_type": ConsentType.HEALTH_DATA_PROCESSING_CONSENT.value},
+        )
+
+        # Accept Form Consent ONLY for biometrics
+        client.post(
+            "/consents",
+            json={
+                "consent_type": ConsentType.FORM_CONSENT.value,
+                "form_type": "biometrics",
+                "document_version": "1",
+            },
+        )
+
+        # Biometrics submission succeeds
+        res_bio = client.put(
+            "/members/me/forms/biometrics",
+            json={"biological_sex": "M", "height": 178.0, "weight": 72.0},
+        )
+        assert res_bio.status_code == 200
+
+        # Sleep submission is blocked (form A consent does not enable form B)
+        res_sleep = client.put(
+            "/members/me/forms/sleep",
+            json={"snoring": True, "tired": False},
+        )
+        assert res_sleep.status_code == 403
+        assert res_sleep.json()["detail"] == "active_consent_required_for_form_sleep"
+
+    @pytest.mark.asyncio
+    async def test_version_bump_requires_reconsent_only_for_bumped_form(
+        self, client, auth_scenario
+    ):
+        from app.presentation.api.dependencies import get_form_registry
+        from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+        await auth_scenario.register_and_login(
+            email="bump_version_user@example.com",
+            memberships=[("acme-corp", "member")],
+        )
+
+        # Accept Level 1
+        client.post(
+            "/consents",
+            json={"consent_type": ConsentType.HEALTH_DATA_PROCESSING_CONSENT.value},
+        )
+
+        # Accept v1 for biometrics and v1 for sleep
+        client.post(
+            "/consents",
+            json={
+                "consent_type": ConsentType.FORM_CONSENT.value,
+                "form_type": "biometrics",
+                "document_version": "1",
+            },
+        )
+        client.post(
+            "/consents",
+            json={
+                "consent_type": ConsentType.FORM_CONSENT.value,
+                "form_type": "sleep",
+                "document_version": "1",
+            },
+        )
+
+        # Both forms succeed with v1
+        assert (
+            client.put(
+                "/members/me/forms/biometrics",
+                json={"biological_sex": "M", "height": 180.0, "weight": 75.0},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.put(
+                "/members/me/forms/sleep",
+                json={"snoring": True, "tired": False},
+            ).status_code
+            == 200
+        )
+
+        # Now simulate a version bump on biometrics from "1" -> "2"
+        default_registry = FormRegistry()
+        bumped_forms = [
+            f
+            if f.form_type != "biometrics"
+            else FormDefinition(
+                form_type="biometrics",
+                fields=f.fields,
+                version="2",
+            )
+            for f in default_registry._forms.values()
+        ]
+        bumped_registry = FormRegistry(forms=bumped_forms)
+        app.dependency_overrides[get_form_registry] = lambda: bumped_registry
+
+        try:
+            # Biometrics is now blocked because user only consented to v1
+            res_bumped = client.put(
+                "/members/me/forms/biometrics",
+                json={"biological_sex": "M", "height": 180.0, "weight": 75.0},
+            )
+            assert res_bumped.status_code == 403
+            assert (
+                res_bumped.json()["detail"]
+                == "active_consent_required_for_form_biometrics"
+            )
+
+            # Sleep form (still on v1) remains completely unaffected and succeeds!
+            res_unaffected = client.put(
+                "/members/me/forms/sleep",
+                json={"snoring": False, "tired": False},
+            )
+            assert res_unaffected.status_code == 200
+
+            # Re-consent to biometrics v2
+            reconsent_res = client.post(
+                "/consents",
+                json={
+                    "consent_type": ConsentType.FORM_CONSENT.value,
+                    "form_type": "biometrics",
+                    "document_version": "2",
+                },
+            )
+            assert reconsent_res.status_code == 201
+
+            # Biometrics now succeeds again
+            res_reconsent = client.put(
+                "/members/me/forms/biometrics",
+                json={"biological_sex": "M", "height": 180.0, "weight": 75.0},
+            )
+            assert res_reconsent.status_code == 200
+        finally:
+            app.dependency_overrides.pop(get_form_registry, None)
+
+    @pytest.mark.asyncio
+    async def test_unauthenticated_endpoints_return_401(self, client):
+        client.cookies.clear()
+        assert client.get("/consents/current").status_code == 401
+        assert client.post("/consents", json={}).status_code == 401
+        assert client.get("/members/me/export").status_code == 401
+        assert client.put("/members/me/forms/biometrics", json={}).status_code == 401

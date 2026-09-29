@@ -65,7 +65,7 @@ class TestExportMemberDataEndpoint:
             json={
                 "consent_type": "FORM_CONSENT",
                 "form_type": "biometrics",
-                "document_version": "1.0",
+                "document_version": "1",
             },
         )
 

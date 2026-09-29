@@ -4,8 +4,10 @@ from app.application.dto import AuthenticatedUser
 from app.domain.entities import Membership, OrgRole
 from app.domain.entities.user_consent import ConsentType, UserConsent
 from app.domain.repositories.user_consent import UserConsentRepository
+from app.domain.services.form_registry import FormRegistry
 from app.presentation.api.dependencies import (
     get_current_user,
+    get_form_registry,
     get_member_details_service,
     get_membership_service,
     get_user_consent_repository,
@@ -160,8 +162,9 @@ async def require_form_consent(
     form_type: str,
     current_user: AuthenticatedUser = Depends(get_current_user),
     consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+    form_registry: FormRegistry = Depends(get_form_registry),
 ) -> UserConsent:
-    """Ensures user has active general health consent AND specific form consent."""
+    """Ensures user has active general health consent AND specific form consent for the current version."""
     # 1. Verify Level 1 Health Data Processing consent
     health_consent = await consent_repo.get_active_consent(
         user_id=current_user.id,
@@ -173,13 +176,18 @@ async def require_form_consent(
             detail="health_data_processing_consent_required",
         )
 
-    # 2. Verify Level 2 specific form consent
+    # 2. Verify Level 2 specific form consent matching current form version
     form_consent = await consent_repo.get_active_consent(
         user_id=current_user.id,
         consent_type=ConsentType.FORM_CONSENT,
         form_type=form_type,
     )
-    if not form_consent or not form_consent.is_active:
+    current_version = form_registry.get_form_version(form_type)
+    if (
+        not form_consent
+        or not form_consent.is_active
+        or form_consent.document_version != current_version
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"active_consent_required_for_form_{form_type}",
@@ -191,10 +199,12 @@ async def require_form_consent(
 async def require_biometrics_consent(
     current_user: AuthenticatedUser = Depends(get_current_user),
     consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+    form_registry: FormRegistry = Depends(get_form_registry),
 ) -> UserConsent:
     """Ensures user has active biometrics consent."""
     return await require_form_consent(
         form_type="biometrics",
         current_user=current_user,
         consent_repo=consent_repo,
+        form_registry=form_registry,
     )
