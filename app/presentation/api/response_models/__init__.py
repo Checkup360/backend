@@ -26,6 +26,10 @@ from app.presentation.api.response_models.consents import (
     UserConsentResponse,
 )
 from app.presentation.api.response_models.member_data_export import (
+    ExportedConsentResponse,
+    ExportedEvaluationResponse,
+    ExportedProfileResponse,
+    ExportedSubmissionResponse,
     MemberDataExportResponse,
 )
 
@@ -34,6 +38,10 @@ __all__ = [
     "AvatarUploadResponse",
     "DepartmentAnalyticsSummaryResponse",
     "InviteRejected",
+    "ExportedConsentResponse",
+    "ExportedEvaluationResponse",
+    "ExportedProfileResponse",
+    "ExportedSubmissionResponse",
     "MemberDataExportResponse",
     "MemberDetailsCreated",
     "MemberProfileResponse",

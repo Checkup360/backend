@@ -56,11 +56,14 @@ from app.presentation.api.request_models.member_biometrics import MemberBiometri
 from app.presentation.api.request_models.member_forms import MemberFormUpdate
 from app.presentation.api.response_models import (
     AvatarUploadResponse,
+    ExportedConsentResponse,
+    ExportedEvaluationResponse,
+    ExportedProfileResponse,
+    ExportedSubmissionResponse,
     MemberDataExportResponse,
     MemberDetailsCreated,
     MemberProfileResponse,
     MemberBiometricsResponse,
-    UserConsentResponse,
 )
 from app.presentation.api.response_models.member_details import (
     MemberRiskPrioritiesResponse,
@@ -442,32 +445,46 @@ async def export_my_member_data(
         user_agent=user_agent,
     )
     return MemberDataExportResponse(
-        user_id=export_dto.user_id,
-        email=export_dto.email,
-        first_name=export_dto.first_name,
-        last_name=export_dto.last_name,
-        phone_number=export_dto.phone_number,
-        date_of_birth=export_dto.date_of_birth,
-        avatar_url=export_dto.avatar_url,
-        organization_id=export_dto.organization_id,
-        organization_name=export_dto.organization_name,
-        roles=export_dto.roles,
+        profile=ExportedProfileResponse(
+            email=export_dto.profile.email,
+            first_name=export_dto.profile.first_name,
+            last_name=export_dto.profile.last_name,
+            phone_number=export_dto.profile.phone_number,
+            date_of_birth=export_dto.profile.date_of_birth,
+            avatar_url=export_dto.profile.avatar_url,
+            organization=export_dto.profile.organization,
+            roles=export_dto.profile.roles,
+        ),
         consents=[
-            UserConsentResponse(
-                id=c.id,
-                user_id=c.user_id,
-                consent_type=c.consent_type,
-                form_type=c.form_type,
-                document_version=c.document_version,
-                document_hash=c.document_hash,
+            ExportedConsentResponse(
+                type=c.type,
+                version=c.version,
                 accepted_at=c.accepted_at,
                 revoked_at=c.revoked_at,
+                status=c.status,
             )
             for c in export_dto.consents
         ],
-        health_data=export_dto.health_data,
-        assessment_submissions=export_dto.assessment_submissions,
-        risk_scores=export_dto.risk_scores,
+        health_measurements=export_dto.health_measurements,
+        assessment_history=[
+            ExportedSubmissionResponse(
+                form_type=s.form_type,
+                form_name=s.form_name,
+                form_version=s.form_version,
+                status=s.status,
+                submitted_at=s.submitted_at,
+                answers=s.answers,
+            )
+            for s in export_dto.assessment_history
+        ],
+        health_evaluations=[
+            ExportedEvaluationResponse(
+                indicator=e.indicator,
+                risk_level=e.risk_level,
+                evaluated_at=e.evaluated_at,
+            )
+            for e in export_dto.health_evaluations
+        ],
         exported_at=export_dto.exported_at,
         compliance_notice=export_dto.compliance_notice,
     )

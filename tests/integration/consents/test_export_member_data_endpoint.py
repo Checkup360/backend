@@ -87,12 +87,17 @@ class TestExportMemberDataEndpoint:
         assert export_res.status_code == 200
         data = export_res.json()
 
-        assert data["email"] == member_user.email
-        assert data["first_name"] == "Maria"
-        assert data["last_name"] == "Gonzalez"
-        assert data["date_of_birth"] == "1990-01-01"
+        assert data["profile"]["email"] == member_user.email
+        assert data["profile"]["first_name"] == "Maria"
+        assert data["profile"]["last_name"] == "Gonzalez"
+        assert data["profile"]["date_of_birth"] == "1990-01-01"
+        assert data["profile"]["organization"] == "Acme Corp"
         assert len(data["consents"]) == 4
-        assert data["health_data"] is not None
-        assert data["health_data"]["height"] == 165.0
-        assert data["health_data"]["weight"] == 60.0
+        assert any(c["type"] == "Terms and Conditions" for c in data["consents"])
+        assert any("Form Consent" in c["type"] for c in data["consents"])
+        assert data["health_measurements"] is not None
+        assert data["health_measurements"]["height"] == 165.0
+        assert data["health_measurements"]["weight"] == 60.0
+        assert len(data["assessment_history"]) >= 1
+        assert data["assessment_history"][0]["form_type"] == "biometrics"
         assert "Habeas Data" in data["compliance_notice"]

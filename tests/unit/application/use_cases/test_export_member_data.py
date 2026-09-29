@@ -144,18 +144,19 @@ async def test_export_member_data_success():
         user_agent="TestBrowser/1.0",
     )
 
-    assert result.user_id == user_id
-    assert result.email == "test@example.com"
-    assert result.first_name == "Facundo"
-    assert result.organization_name == "Acme Corp"
+    assert result.profile.email == "test@example.com"
+    assert result.profile.first_name == "Facundo"
+    assert result.profile.organization == "Acme Corp"
     assert len(result.consents) == 1
-    assert result.consents[0].consent_type == "TERMS_AND_CONDITIONS"
-    assert result.health_data is not None
-    assert result.health_data["height"] == 180.0
-    assert len(result.assessment_submissions) == 1
-    assert result.assessment_submissions[0]["form_type"] == "biometrics"
-    assert len(result.risk_scores) == 1
-    assert result.risk_scores[0]["score_name"] == "cardiovascular"
+    assert result.consents[0].type == "Terms and Conditions"
+    assert result.consents[0].status == "Active"
+    assert result.health_measurements["height"] == 180.0
+    assert len(result.assessment_history) == 1
+    assert result.assessment_history[0].form_type == "biometrics"
+    assert result.assessment_history[0].form_name == "Physical Biometrics"
+    assert len(result.health_evaluations) == 1
+    assert result.health_evaluations[0].indicator == "Cardiovascular Risk"
+    assert result.health_evaluations[0].risk_level == "low"
 
     # Verify audit log was recorded
     audit_repo.log.assert_called_once()
@@ -187,3 +188,96 @@ async def test_export_member_data_user_not_found():
 
     with pytest.raises(UserNotFoundError):
         await use_case.execute(user_id=uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_export_member_data_preserves_all_historical_evaluations_and_consents():
+    user_id = uuid.uuid4()
+    t1 = datetime(2026, 9, 28, 10, 0, 0, tzinfo=timezone.utc)
+    t2 = datetime(2026, 9, 29, 12, 0, 0, tzinfo=timezone.utc)
+
+    user = User(
+        id=user_id, email="test@example.com", is_active=True, is_superuser=False
+    )
+
+    # Multiple historical consents of same type
+    consent_v1 = UserConsent(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        consent_type=ConsentType.TERMS_AND_CONDITIONS,
+        form_type=None,
+        document_version="1.0",
+        accepted_at=t1,
+    )
+    consent_v2 = UserConsent(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        consent_type=ConsentType.TERMS_AND_CONDITIONS,
+        form_type=None,
+        document_version="2.0",
+        accepted_at=t2,
+    )
+
+    # Multiple historical evaluations of different domains
+    score_cardio = RiskScore(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        score_name="score2",
+        raw_value=5.0,
+        normalized_value=50.0,
+        risk_level="moderate",
+        explanation=None,
+        contributing_factors={},
+        attention_flags={},
+        evaluated_at=t1,
+    )
+    score_diabetes = RiskScore(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        score_name="findrisc",
+        raw_value=2.0,
+        normalized_value=20.0,
+        risk_level="low",
+        explanation=None,
+        contributing_factors={},
+        attention_flags={},
+        evaluated_at=t2,
+    )
+
+    user_repo = AsyncMock()
+    user_repo.get.return_value = user
+    user_consent_repo = AsyncMock()
+    user_consent_repo.list_by_user_id.return_value = [consent_v1, consent_v2]
+    risk_score_repo = AsyncMock()
+    risk_score_repo.get_by_user_id.return_value = [score_cardio, score_diabetes]
+
+    use_case = ExportMemberDataUseCase(
+        user_repository=user_repo,
+        member_details_repository=AsyncMock(get_by_user=AsyncMock(return_value=None)),
+        membership_repository=AsyncMock(get_by_user=AsyncMock(return_value=None)),
+        organization_repository=AsyncMock(),
+        user_consent_repository=user_consent_repo,
+        member_health_data_repository=AsyncMock(
+            get_by_user=AsyncMock(return_value=None)
+        ),
+        assessment_submission_repository=AsyncMock(
+            list_by_user=AsyncMock(return_value=([], 0))
+        ),
+        risk_score_repository=risk_score_repo,
+        audit_log_repository=AsyncMock(),
+        time_provider=MockTimeProvider(t2),
+    )
+
+    result = await use_case.execute(user_id=user_id)
+
+    # All consents preserved
+    assert len(result.consents) == 2
+    assert result.consents[0].version == "1.0"
+    assert result.consents[1].version == "2.0"
+
+    # All evaluations preserved with unique friendly names
+    assert len(result.health_evaluations) == 2
+    assert result.health_evaluations[0].indicator == "Cardiovascular Risk"
+    assert result.health_evaluations[0].risk_level == "moderate"
+    assert result.health_evaluations[1].indicator == "Type 2 Diabetes Risk"
+    assert result.health_evaluations[1].risk_level == "low"
