@@ -101,3 +101,26 @@ class TestExportMemberDataEndpoint:
         assert len(data["assessment_history"]) >= 1
         assert data["assessment_history"][0]["form_type"] == "biometrics"
         assert "Habeas Data" in data["compliance_notice"]
+
+        # 5. Verify audit log was created and reflected in compliance summary
+        me_res = client.get("/auth/me")
+        org_id = me_res.json()["membership"]["organization_id"]
+
+        # Log out member and log in as sysadmin to inspect org compliance dashboard
+        client.cookies.clear()
+        await auth_scenario.register_and_login(
+            email="sysadmin@checkup360.com",
+            is_superuser=True,
+        )
+
+        summary_res = client.get(f"/organizations/{org_id}/compliance-summary")
+        assert summary_res.status_code == 200
+        assert summary_res.json()["data_exported_count"] == 1
+
+        logs_res = client.get(
+            f"/organizations/{org_id}/audit-logs?action=DATA_EXPORTED"
+        )
+        assert logs_res.status_code == 200
+        assert logs_res.json()["total"] == 1
+        assert logs_res.json()["items"][0]["action"] == "DATA_EXPORTED"
+        assert logs_res.json()["items"][0]["user_email"] == "maria.gonzalez@example.com"

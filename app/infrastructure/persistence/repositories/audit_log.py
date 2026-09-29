@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Any
 import uuid
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.audit_log import AuditLog
 from app.domain.repositories.audit_log import AuditLogRepository
 from app.infrastructure.persistence.models.audit_log import AuditLogModel
+from app.infrastructure.persistence.models.membership import Membership
 
 
 class SQLAlchemyAuditLogRepository(AuditLogRepository):
@@ -65,9 +66,17 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         limit: int = 50,
         offset: int = 0,
     ) -> list[AuditLog]:
+        org_filter = or_(
+            AuditLogModel.organization_id == organization_id,
+            AuditLogModel.user_id.in_(
+                select(Membership.user_id).where(
+                    Membership.organization_id == organization_id
+                )
+            ),
+        )
         query = (
             select(AuditLogModel)
-            .where(AuditLogModel.organization_id == organization_id)
+            .where(org_filter)
             .order_by(AuditLogModel.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -86,7 +95,15 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AuditLog], int]:
-        filters = [AuditLogModel.organization_id == organization_id]
+        org_filter = or_(
+            AuditLogModel.organization_id == organization_id,
+            AuditLogModel.user_id.in_(
+                select(Membership.user_id).where(
+                    Membership.organization_id == organization_id
+                )
+            ),
+        )
+        filters = [org_filter]
         if action:
             filters.append(AuditLogModel.action == action)
         if user_id:
@@ -161,10 +178,18 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         self,
         organization_id: uuid.UUID,
     ) -> dict[str, Any]:
+        org_filter = or_(
+            AuditLogModel.organization_id == organization_id,
+            AuditLogModel.user_id.in_(
+                select(Membership.user_id).where(
+                    Membership.organization_id == organization_id
+                )
+            ),
+        )
         # Aggregate actions count
         actions_query = (
             select(AuditLogModel.action, func.count(AuditLogModel.id))
-            .where(AuditLogModel.organization_id == organization_id)
+            .where(org_filter)
             .group_by(AuditLogModel.action)
         )
         actions_res = await self._session.execute(actions_query)
@@ -174,7 +199,7 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         unique_users_query = select(
             func.count(func.distinct(AuditLogModel.user_id))
         ).where(
-            AuditLogModel.organization_id == organization_id,
+            org_filter,
             AuditLogModel.user_id.is_not(None),
         )
         unique_users_res = await self._session.execute(unique_users_query)
