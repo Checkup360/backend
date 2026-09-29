@@ -1,6 +1,7 @@
 """HTTP adapter for communicating with the external Engine API."""
 
 from collections.abc import Mapping
+import logging
 from typing import Any
 
 import httpx
@@ -11,6 +12,8 @@ from app.application.dto.risk_scoring import (
     ScoreResultDTO,
 )
 from app.application.interfaces.risk_scoring_service import RiskScoringService
+
+logger = logging.getLogger(__name__)
 
 
 class HttpEngineScoringAdapter(RiskScoringService):
@@ -73,7 +76,11 @@ class HttpEngineScoringAdapter(RiskScoringService):
         try:
             response = await self._client.post(url, json=normalized_payload)
             if response.status_code != 200:
-                print(f"ENGINE ERROR for {score_id}: {response.text}", flush=True)
+                logger.error(
+                    "Engine API returned non-200 status for score '%s' (status_code=%s)",
+                    score_id,
+                    response.status_code,
+                )
             response.raise_for_status()
         except httpx.HTTPError as e:
             raise RuntimeError(
@@ -111,9 +118,7 @@ class HttpEngineScoringAdapter(RiskScoringService):
                 res = await self.evaluate_single_score(score_id, payload)
                 results.append(res)
             except Exception as e:
-                import logging
-
-                logging.error(f"Failed to evaluate {score_id}: {e}")
+                logger.error("Failed to evaluate risk score '%s': %s", score_id, e)
                 continue
 
         return results

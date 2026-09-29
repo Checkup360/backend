@@ -175,3 +175,24 @@ async def test_evaluate_risk_translates_cm_to_meters() -> None:
         sent_json = call_kwargs["json"]
         assert sent_json["sex"] == "F"
         assert sent_json["height"] == 1.65
+
+
+@pytest.mark.asyncio
+async def test_evaluate_single_score_handles_error_and_raises() -> None:
+    engine_url = "http://fake-engine:8000"
+    client = httpx.AsyncClient()
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
+
+    mock_response = httpx.Response(
+        status_code=422,
+        text='{"detail": "invalid health value"}',
+        request=httpx.Request("POST", f"{engine_url}/risk-scores/findrisc"),
+    )
+
+    with patch.object(client, "post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = mock_response
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await adapter.evaluate_single_score("findrisc", {"age": 45})
+
+        assert "Failed to compute risk score 'findrisc'" in str(exc_info.value)
