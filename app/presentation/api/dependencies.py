@@ -119,16 +119,23 @@ from app.infrastructure.persistence.repositories.organization_score_weights impo
 )
 from app.domain.repositories.member_health_data import MemberHealthDataRepository
 from app.domain.repositories.analytics import AnalyticsRepository
+from app.domain.repositories.audit_log import AuditLogRepository
 from app.domain.repositories.legal_document import LegalDocumentRepository
 from app.domain.repositories.user_consent import UserConsentRepository
 from app.infrastructure.persistence.repositories.analytics import (
     AnalyticsRepositoryImpl,
+)
+from app.infrastructure.persistence.repositories.audit_log import (
+    SQLAlchemyAuditLogRepository,
 )
 from app.infrastructure.persistence.repositories.legal_document import (
     SQLAlchemyLegalDocumentRepository,
 )
 from app.infrastructure.persistence.repositories.user_consent import (
     SQLAlchemyUserConsentRepository,
+)
+from app.application.use_cases.members.export_member_data import (
+    ExportMemberDataUseCase,
 )
 from app.application.use_cases.organizations import (
     DeleteOrganizationLogoUseCase,
@@ -243,6 +250,12 @@ async def get_user_consent_repository(
     db: AsyncSession = Depends(get_db),
 ) -> UserConsentRepository:
     return SQLAlchemyUserConsentRepository(db)
+
+
+async def get_audit_log_repository(
+    db: AsyncSession = Depends(get_db),
+) -> AuditLogRepository:
+    return SQLAlchemyAuditLogRepository(db)
 
 
 async def get_assessment_submission_repository(
@@ -590,5 +603,37 @@ async def get_revoke_consent_use_case(
 ) -> RevokeConsentUseCase:
     return RevokeConsentUseCase(
         repository=consent_repo,
+        time_provider=time_provider,
+    )
+
+
+async def get_export_member_data_use_case(
+    user_repo: UserRepository = Depends(get_user_repository),
+    member_details_repo: MemberDetailsRepository = Depends(
+        get_member_details_repository
+    ),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+    health_data_repo: MemberHealthDataRepository = Depends(
+        get_member_health_data_repository
+    ),
+    submission_repo: SQLAlchemyAssessmentSubmissionRepository = Depends(
+        get_assessment_submission_repository
+    ),
+    risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
+) -> ExportMemberDataUseCase:
+    return ExportMemberDataUseCase(
+        user_repository=user_repo,
+        member_details_repository=member_details_repo,
+        membership_repository=membership_repo,
+        organization_repository=org_repo,
+        user_consent_repository=consent_repo,
+        member_health_data_repository=health_data_repo,
+        assessment_submission_repository=submission_repo,
+        risk_score_repository=risk_score_repo,
+        audit_log_repository=audit_log_repo,
         time_provider=time_provider,
     )

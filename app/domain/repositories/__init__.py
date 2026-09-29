@@ -1,5 +1,6 @@
 from app.domain.repositories.analytics import AnalyticsRepository
 from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
+from app.domain.repositories.audit_log import AuditLogRepository
 from app.domain.repositories.department import DepartmentRepository
 from app.domain.repositories.invite import InviteRepository
 from app.domain.repositories.legal_document import LegalDocumentRepository
@@ -18,6 +19,8 @@ from app.domain.repositories.user_consent import UserConsentRepository
 
 __all__ = [
     "AnalyticsRepository",
+    "AssessmentSubmissionRepository",
+    "AuditLogRepository",
     "DepartmentRepository",
     "InviteRepository",
     "LegalDocumentRepository",
@@ -28,7 +31,6 @@ __all__ = [
     "OrganizationScoreWeightsRepository",
     "MemberOverallScoreRepository",
     "RiskScoreRepository",
-    "AssessmentSubmissionRepository",
     "UserRepository",
     "UserConsentRepository",
     "RefreshTokenRepository",

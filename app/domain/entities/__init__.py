@@ -22,10 +22,12 @@ from app.domain.entities.legal_document import (
 from app.domain.entities.member_overall_score import MemberOverallScore
 from app.domain.entities.organization_score_weights import OrganizationScoreWeights
 from app.domain.entities.refresh_token import RefreshToken
+from app.domain.entities.audit_log import AuditLog
 from app.domain.entities.user import User
 from app.domain.entities.user_consent import ConsentType, UserConsent
 
 __all__ = [
+    "AuditLog",
     "DepartmentAnalyticsSummary",
     "DepartmentRiskTrendPoint",
     "Employee",

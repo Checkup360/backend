@@ -1,3 +1,7 @@
+from app.infrastructure.persistence.models.assessment_submission import (
+    AssessmentSubmissionModel,
+)
+from app.infrastructure.persistence.models.audit_log import AuditLogModel
 from app.infrastructure.persistence.models.department import Department
 from app.infrastructure.persistence.models.invite import InviteToken
 from app.infrastructure.persistence.models.legal_document import LegalDocumentModel
@@ -21,6 +25,8 @@ from app.infrastructure.persistence.models.user import OAuthAccount, User
 from app.infrastructure.persistence.models.user_consent import UserConsentModel
 
 __all__ = [
+    "AssessmentSubmissionModel",
+    "AuditLogModel",
     "InviteToken",
     "Department",
     "LegalDocumentModel",
@@ -34,7 +40,6 @@ __all__ = [
     "OrganizationScoreWeightsModel",
     "Membership",
     "RiskScoreModel",
-    "AssessmentSubmissionModel",
     "RefreshToken",
     "SuperadminRemovalRequestModel",
     "SuperadminRemovalVoteModel",

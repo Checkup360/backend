@@ -25,12 +25,16 @@ from app.presentation.api.response_models.consents import (
     ActiveConsentsResponse,
     UserConsentResponse,
 )
+from app.presentation.api.response_models.member_data_export import (
+    MemberDataExportResponse,
+)
 
 __all__ = [
     "AuthMeResponse",
     "AvatarUploadResponse",
     "DepartmentAnalyticsSummaryResponse",
     "InviteRejected",
+    "MemberDataExportResponse",
     "MemberDetailsCreated",
     "MemberProfileResponse",
     "OAuthAuthorizeResponse",
