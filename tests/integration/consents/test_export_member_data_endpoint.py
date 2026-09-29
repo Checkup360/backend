@@ -1,9 +1,20 @@
+from unittest.mock import AsyncMock
 import pytest
 
 from app.domain.value_objects import OrgRole
+from app.presentation.api.dependencies import get_risk_scoring_service
+from app.presentation.main import app
 
 
 class TestExportMemberDataEndpoint:
+    @pytest.fixture(autouse=True)
+    def mock_risk_scoring_service(self):
+        mock_service = AsyncMock()
+        mock_service.get_catalog.return_value = []
+        app.dependency_overrides[get_risk_scoring_service] = lambda: mock_service
+        yield mock_service
+        app.dependency_overrides.pop(get_risk_scoring_service, None)
+
     @pytest.mark.asyncio
     async def test_export_unauthenticated(self, client):
         response = client.get("/members/me/export")
