@@ -109,3 +109,27 @@ class VoterNotSuperadminError(DomainError):
 
 class AlreadyVotedError(DomainError):
     pass
+
+
+class ConsentNotFoundError(DomainError):
+    pass
+
+
+class ConsentAlreadyRevokedError(DomainError):
+    pass
+
+
+class InvalidConsentTypeError(DomainError):
+    pass
+
+
+class FormTypeRequiredError(DomainError):
+    pass
+
+
+class InvalidFormTypeError(DomainError):
+    pass
+
+
+class CannotRevokeFundamentalConsentError(DomainError):
+    pass

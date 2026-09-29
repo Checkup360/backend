@@ -21,6 +21,10 @@ from app.presentation.api.response_models.member_biometrics import (
     MemberBiometricsResponse,
 )
 from app.presentation.api.response_models.user import UserRead
+from app.presentation.api.response_models.consents import (
+    ActiveConsentsResponse,
+    UserConsentResponse,
+)
 
 __all__ = [
     "AuthMeResponse",
@@ -36,4 +40,6 @@ __all__ = [
     "RiskTrendPointResponse",
     "UserRead",
     "MemberBiometricsResponse",
+    "UserConsentResponse",
+    "ActiveConsentsResponse",
 ]

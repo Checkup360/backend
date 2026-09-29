@@ -11,6 +11,7 @@ from app.presentation.api.request_models.member_biometrics import (
     MemberBiometricsCreate,
 )
 from app.presentation.api.request_models.user import UserCreate
+from app.presentation.api.request_models.consents import AcceptConsentRequest
 
 __all__ = [
     "InvitePasswordRegisterBody",
@@ -20,4 +21,5 @@ __all__ = [
     "OnboardingRequest",
     "RedeemInviteBody",
     "UserCreate",
+    "AcceptConsentRequest",
 ]

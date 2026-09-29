@@ -68,6 +68,11 @@ from app.application.use_cases.memberships.vote_superadmin_removal_request impor
 from app.application.use_cases.memberships.list_superadmin_removal_requests import (
     ListSuperadminRemovalRequestsUseCase,
 )
+from app.application.use_cases.consents import (
+    AcceptConsentUseCase,
+    GetActiveConsentsUseCase,
+    RevokeConsentUseCase,
+)
 from app.domain.repositories.superadmin_removal import (
     SuperadminRemovalRepository,
 )
@@ -558,4 +563,32 @@ async def get_list_superadmin_removal_requests_use_case(
         membership_repo=membership_repo,
         org_repo=org_repo,
         removal_repo=removal_repo,
+    )
+
+
+async def get_accept_consent_use_case(
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
+    form_registry: FormRegistry = Depends(get_form_registry),
+) -> AcceptConsentUseCase:
+    return AcceptConsentUseCase(
+        repository=consent_repo,
+        time_provider=time_provider,
+        form_registry=form_registry,
+    )
+
+
+async def get_active_consents_use_case(
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+) -> GetActiveConsentsUseCase:
+    return GetActiveConsentsUseCase(repository=consent_repo)
+
+
+async def get_revoke_consent_use_case(
+    consent_repo: UserConsentRepository = Depends(get_user_consent_repository),
+    time_provider: TimeProvider = Depends(get_time_provider),
+) -> RevokeConsentUseCase:
+    return RevokeConsentUseCase(
+        repository=consent_repo,
+        time_provider=time_provider,
     )

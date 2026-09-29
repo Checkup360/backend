@@ -17,6 +17,7 @@ from app.infrastructure.persistence.database import get_db
 from app.presentation.api.routers import (
     admin,
     auth,
+    consents,
     invites,
     members,
     organizations,
@@ -53,6 +54,7 @@ app.include_router(members.router)
 app.include_router(assessments.router)
 app.include_router(assessments.submissions_router)
 app.include_router(admin.router)
+app.include_router(consents.router)
 
 
 @app.get("/")
