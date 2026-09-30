@@ -147,7 +147,8 @@ from app.presentation.api.response_models.assessment_submissions import (
 router = APIRouter(prefix="/organizations", tags=["orgs"])
 
 
-@router.get("/", response_model=list[OrganizationResponse])
+@router.get("", response_model=list[OrganizationResponse])
+@router.get("/", response_model=list[OrganizationResponse], include_in_schema=False)
 async def list_organizations(
     response: Response,
     status_filter: str | None = Query(default=None, alias="status"),
@@ -185,7 +186,13 @@ async def list_organizations(
 
 
 @router.post(
-    "/", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED
+)
+@router.post(
+    "/",
+    response_model=OrganizationResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
 )
 async def create_organization(
     request: CreateOrganizationRequest,
