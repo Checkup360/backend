@@ -30,7 +30,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Diabetes",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -38,7 +38,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Sleep Apnea",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -46,7 +46,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Depression",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -54,7 +54,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Diabetes",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
         SimpleNamespace(
@@ -62,7 +62,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Sleep Apnea",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
         SimpleNamespace(
@@ -70,7 +70,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Depression",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
     ]
@@ -82,13 +82,13 @@ async def test_get_organization_trends():
         SimpleNamespace(
             period="2026-01",
             user_id=user_id,
-            overall_score=80.0,
+            overall_health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
             period="2026-02",
             user_id=user_id,
-            overall_score=85.0,
+            overall_health_index=85.0,
             evaluated_at=now_feb,
         ),
     ]
@@ -150,7 +150,7 @@ async def test_get_departments_summary_with_persisted_scores():
     mock_overall_rows = [
         SimpleNamespace(
             user_id=user_id,
-            overall_score=15.0,
+            overall_health_index=15.0,
             risk_level="Low risk",
             evaluated_at=now,
         )

@@ -82,7 +82,7 @@ async def test_execute_recalculates_scores_for_all_members(
         id=uuid.uuid4(),
         user_id=user1_id,
         score_name="diabetes",
-        normalized_value=20.0,
+        health_index=20.0,
         risk_level="Low",
         evaluated_at=datetime.now(timezone.utc),
         raw_value=20.0,
@@ -94,7 +94,7 @@ async def test_execute_recalculates_scores_for_all_members(
         id=uuid.uuid4(),
         user_id=user2_id,
         score_name="diabetes",
-        normalized_value=60.0,
+        health_index=60.0,
         risk_level="High",
         evaluated_at=datetime.now(timezone.utc),
         raw_value=60.0,
@@ -130,13 +130,13 @@ async def test_execute_recalculates_scores_for_all_members(
     assert saved_entity_1.user_id == user1_id
     assert saved_entity_1.organization_id == org_id
     assert saved_entity_1.score_weights_id == active_weights.id
-    assert saved_entity_1.overall_score == 20.0
+    assert saved_entity_1.overall_health_index == 20.0
 
     saved_entity_2 = call_args_list[1][0][0]
     assert saved_entity_2.user_id == user2_id
     assert saved_entity_2.organization_id == org_id
     assert saved_entity_2.score_weights_id == active_weights.id
-    assert saved_entity_2.overall_score == 60.0
+    assert saved_entity_2.overall_health_index == 60.0
 
 
 @pytest.mark.asyncio
@@ -165,7 +165,7 @@ async def test_execute_handles_no_active_weights(
         id=uuid.uuid4(),
         user_id=user1_id,
         score_name="diabetes",
-        normalized_value=50.0,
+        health_index=50.0,
         risk_level="Medium",
         evaluated_at=datetime.now(timezone.utc),
         raw_value=50.0,
@@ -177,7 +177,7 @@ async def test_execute_handles_no_active_weights(
         id=uuid.uuid4(),
         user_id=user1_id,
         score_name="sleep_apnea",
-        normalized_value=50.0,
+        health_index=50.0,
         risk_level="Medium",
         evaluated_at=datetime.now(timezone.utc),
         raw_value=50.0,
@@ -189,7 +189,7 @@ async def test_execute_handles_no_active_weights(
         id=uuid.uuid4(),
         user_id=user1_id,
         score_name="depression",
-        normalized_value=50.0,
+        health_index=50.0,
         risk_level="Medium",
         evaluated_at=datetime.now(timezone.utc),
         raw_value=50.0,
@@ -211,4 +211,4 @@ async def test_execute_handles_no_active_weights(
     saved_entity = member_overall_score_repo.save.call_args[0][0]
     assert saved_entity.user_id == user1_id
     assert saved_entity.score_weights_id is None
-    assert saved_entity.overall_score == 50.0
+    assert saved_entity.overall_health_index == 50.0

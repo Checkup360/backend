@@ -1005,7 +1005,9 @@ async def list_organization_employees(
                     else None
                 ),
                 last_assessment=last_assessment,
-                overall_score=latest_score.overall_score if latest_score else None,
+                overall_health_index=latest_score.overall_health_index
+                if latest_score
+                else None,
             )
         )
     total = len(res)
@@ -1074,7 +1076,7 @@ async def get_employee_assessments(
             score_name=_format_score_display_name(res.score_name),
             risk_level=res.risk_level,
             raw_value=res.raw_value,
-            normalized_value=res.normalized_value,
+            health_index=res.health_index,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
             attention_flags=res.attention_flags,

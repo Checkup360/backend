@@ -78,7 +78,7 @@ class SubmitAssessmentUseCase:
                 score_name=result.score_name,
                 risk_level=result.risk_level,
                 raw_value=result.raw_value,
-                normalized_value=result.normalized_value,
+                health_index=result.health_index,
                 explanation=result.explanation,
                 contributing_factors=result.contributing_factors,
                 attention_flags=result.attention_flags,

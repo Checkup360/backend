@@ -19,7 +19,7 @@ def test_member_overall_score_entity_instantiation():
         organization_id=org_id,
         score_weights_id=weights_id,
         submission_id=sub_id,
-        overall_score=42.5,
+        overall_health_index=42.5,
         risk_level="Moderate risk",
         evaluated_at=now,
     )
@@ -29,7 +29,7 @@ def test_member_overall_score_entity_instantiation():
     assert entity.organization_id == org_id
     assert entity.score_weights_id == weights_id
     assert entity.submission_id == sub_id
-    assert entity.overall_score == 42.5
+    assert entity.overall_health_index == 42.5
     assert entity.risk_level == "Moderate risk"
     assert entity.evaluated_at == now
 

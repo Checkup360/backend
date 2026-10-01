@@ -9,7 +9,7 @@ from app.domain.services.risk_score_calculator import (
 @dataclass
 class DummyScoreResult:
     score_name: str
-    normalized_value: float | None
+    health_index: float | None
     evaluated_at: datetime | None = None
 
 
@@ -39,9 +39,9 @@ def test_calculate_weighted_overall_score_empty():
 
 def test_calculate_weighted_overall_score_default_weights():
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=10.0),
-        DummyScoreResult(score_name="Sleep Apnea", normalized_value=10.0),
-        DummyScoreResult(score_name="Depression", normalized_value=10.0),
+        DummyScoreResult(score_name="Diabetes", health_index=10.0),
+        DummyScoreResult(score_name="Sleep Apnea", health_index=10.0),
+        DummyScoreResult(score_name="Depression", health_index=10.0),
     ]
     score, level = calculate_weighted_overall_score(results)
     assert score == 10.0
@@ -52,8 +52,8 @@ def test_calculate_weighted_overall_score_custom_weights():
     # Diabetes: 10, Sleep Apnea: 30 with weights 80% Diabetes / 20% Sleep Apnea
     # (10*80 + 30*20)/100 = (800 + 600)/100 = 14.0 -> Low risk
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=10.0),
-        DummyScoreResult(score_name="Sleep Apnea", normalized_value=30.0),
+        DummyScoreResult(score_name="Diabetes", health_index=10.0),
+        DummyScoreResult(score_name="Sleep Apnea", health_index=30.0),
     ]
     weights = {"diabetes": 80.0, "sleep_apnea": 20.0}
     score, level = calculate_weighted_overall_score(results, weights)
@@ -63,8 +63,8 @@ def test_calculate_weighted_overall_score_custom_weights():
 
 def test_calculate_weighted_overall_score_includes_new_score_weights():
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=0.0),
-        DummyScoreResult(score_name="Metabolic Syndrome", normalized_value=100.0),
+        DummyScoreResult(score_name="Diabetes", health_index=0.0),
+        DummyScoreResult(score_name="Metabolic Syndrome", health_index=100.0),
     ]
     score, level = calculate_weighted_overall_score(
         results,
@@ -79,7 +79,7 @@ def test_calculate_weighted_overall_score_partial_results():
     # Employee only completed Diabetes (score 30) with custom weights 60/40
     # Because sleep_apnea is missing, overall score cannot be computed
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=30.0),
+        DummyScoreResult(score_name="Diabetes", health_index=30.0),
     ]
     weights = {"diabetes": 60.0, "sleep_apnea": 40.0}
     score, level = calculate_weighted_overall_score(results, weights)
@@ -90,7 +90,7 @@ def test_calculate_weighted_overall_score_partial_results():
 def test_calculate_weighted_overall_score_zero_weight_for_missing_score():
     # If a disease has 0 weight, its absence does not block overall score
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=30.0),
+        DummyScoreResult(score_name="Diabetes", health_index=30.0),
     ]
     weights = {"diabetes": 100.0, "sleep_apnea": 0.0}
     score, level = calculate_weighted_overall_score(results, weights)
@@ -102,14 +102,10 @@ def test_calculate_weighted_overall_score_latest_timestamp_filtering():
     t1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
     t2 = datetime(2026, 2, 1, tzinfo=timezone.utc)
     results = [
-        DummyScoreResult(score_name="Diabetes", normalized_value=50.0, evaluated_at=t1),
-        DummyScoreResult(score_name="Diabetes", normalized_value=10.0, evaluated_at=t2),
-        DummyScoreResult(
-            score_name="Sleep Apnea", normalized_value=10.0, evaluated_at=t2
-        ),
-        DummyScoreResult(
-            score_name="Depression", normalized_value=10.0, evaluated_at=t2
-        ),
+        DummyScoreResult(score_name="Diabetes", health_index=50.0, evaluated_at=t1),
+        DummyScoreResult(score_name="Diabetes", health_index=10.0, evaluated_at=t2),
+        DummyScoreResult(score_name="Sleep Apnea", health_index=10.0, evaluated_at=t2),
+        DummyScoreResult(score_name="Depression", health_index=10.0, evaluated_at=t2),
     ]
     score, level = calculate_weighted_overall_score(results)
     assert score == 10.0

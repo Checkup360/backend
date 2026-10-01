@@ -55,13 +55,13 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 month_label_col,
                 RiskScoreModel.user_id,
                 RiskScoreModel.score_name,
-                RiskScoreModel.normalized_value,
+                RiskScoreModel.health_index,
                 RiskScoreModel.evaluated_at,
             )
             .join(Membership, Membership.user_id == RiskScoreModel.user_id)
             .where(
                 Membership.organization_id == organization_id,
-                RiskScoreModel.normalized_value.isnot(None),
+                RiskScoreModel.health_index.isnot(None),
                 RiskScoreModel.evaluated_at >= cutoff_date,
             )
         )
@@ -81,7 +81,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                     "period"
                 ),
                 MemberOverallScoreModel.user_id,
-                MemberOverallScoreModel.overall_score,
+                MemberOverallScoreModel.overall_health_index,
                 MemberOverallScoreModel.evaluated_at,
             )
             .join(Membership, Membership.user_id == MemberOverallScoreModel.user_id)
@@ -118,7 +118,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
         for r in persisted_overall_rows:
             p_key = str(r.period)
             persisted_user_overall_by_period.setdefault(p_key, {})[r.user_id] = float(
-                r.overall_score
+                r.overall_health_index
             )
 
         cumulative_user_scores: dict[UUID, list[Any]] = {}
@@ -145,7 +145,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                     s_name = str(r.score_name)
                     if s_name:
                         latest_study_by_user.setdefault(s_name, {})[u_id] = float(
-                            r.normalized_value
+                            r.health_index
                         )
 
             # Average per study in this period
@@ -241,7 +241,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
             overall_scores_query = (
                 select(
                     MemberOverallScoreModel.user_id,
-                    MemberOverallScoreModel.overall_score,
+                    MemberOverallScoreModel.overall_health_index,
                     MemberOverallScoreModel.risk_level,
                     MemberOverallScoreModel.evaluated_at,
                 )
@@ -264,8 +264,8 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
             for row in overall_rows:
                 if row.user_id not in seen_users:
                     seen_users.add(row.user_id)
-                    user_overall_scores.append(float(row.overall_score))
-                    if float(row.overall_score) > 50.0 or (
+                    user_overall_scores.append(float(row.overall_health_index))
+                    if float(row.overall_health_index) > 50.0 or (
                         row.risk_level
                         and (
                             "attention" in row.risk_level.lower()
@@ -280,12 +280,12 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 scores_query = select(
                     RiskScoreModel.user_id,
                     RiskScoreModel.score_name,
-                    RiskScoreModel.normalized_value,
+                    RiskScoreModel.health_index,
                     RiskScoreModel.risk_level,
                     RiskScoreModel.evaluated_at,
                 ).where(
                     RiskScoreModel.user_id.in_(missing_user_ids),
-                    RiskScoreModel.normalized_value.isnot(None),
+                    RiskScoreModel.health_index.isnot(None),
                 )
                 scores_res = await self._db.execute(scores_query)
                 scores_rows = scores_res.all()

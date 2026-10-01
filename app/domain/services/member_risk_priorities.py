@@ -19,13 +19,13 @@ CLINICAL_CATEGORIES: list[str] = [
 DEFAULT_UNASSESSED_SEVERITY = 0.20
 
 
-def map_normalized_value_to_severity(normalized_value: float | None) -> float:
+def map_health_index_to_severity(health_index: float | None) -> float:
     """
-    Maps normalized_value (0.0 to 100.0, where 0 is low risk and 100 is highest risk)
+    Maps health_index (0.0 to 100.0, where 0 is low risk and 100 is highest risk)
     to a continuous severity factor [0.0, 1.0].
     """
-    if normalized_value is not None:
-        severity = max(0.0, min(100.0, float(normalized_value))) / 100.0
+    if health_index is not None:
+        severity = max(0.0, min(100.0, float(health_index))) / 100.0
         return round(severity, 4)
 
     return DEFAULT_UNASSESSED_SEVERITY
@@ -37,7 +37,7 @@ def calculate_member_risk_weights(
 ) -> dict[str, float]:
     """
     Calculates normalized clinical priority weights for a member.
-    Balances the member's clinical risk severity (from normalized_value)
+    Balances the member's clinical risk severity (from health_index)
     with their organization's disease weights.
 
     Returns a dict mapping clinical disease categories to normalized weights summing to ~1.0.
@@ -65,8 +65,8 @@ def calculate_member_risk_weights(
     raw_priorities: dict[str, float] = {}
     for cat in CLINICAL_CATEGORIES:
         score = latest_by_key.get(cat)
-        if score is not None and score.normalized_value is not None:
-            severity = map_normalized_value_to_severity(score.normalized_value)
+        if score is not None and score.health_index is not None:
+            severity = map_health_index_to_severity(score.health_index)
         else:
             severity = DEFAULT_UNASSESSED_SEVERITY
 

@@ -22,7 +22,7 @@ class SQLAlchemyMemberOverallScoreRepository(MemberOverallScoreRepository):
             organization_id=model.organization_id,
             score_weights_id=model.score_weights_id,
             submission_id=model.submission_id,
-            overall_score=model.overall_score,
+            overall_health_index=model.overall_health_index,
             risk_level=model.risk_level,
             evaluated_at=model.evaluated_at,
         )
@@ -34,7 +34,7 @@ class SQLAlchemyMemberOverallScoreRepository(MemberOverallScoreRepository):
             organization_id=entity.organization_id,
             score_weights_id=entity.score_weights_id,
             submission_id=entity.submission_id,
-            overall_score=entity.overall_score,
+            overall_health_index=entity.overall_health_index,
             risk_level=entity.risk_level,
             evaluated_at=entity.evaluated_at,
         )

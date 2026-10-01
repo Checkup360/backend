@@ -254,7 +254,7 @@ class RecalculateMemberScoresUseCase:
                     score_name=res.score_name,
                     risk_level=res.risk_level,
                     raw_value=res.raw_value,
-                    normalized_value=res.normalized_value,
+                    health_index=res.health_index,
                     explanation=res.explanation,
                     contributing_factors=res.contributing_factors,
                     attention_flags=res.attention_flags,
@@ -267,18 +267,18 @@ class RecalculateMemberScoresUseCase:
         # Evaluate and persist immutable overall score if dependencies and org are provided
         if self._member_overall_score_repo and org_id and active_weights_record:
             all_user_scores = await self._risk_score_repo.get_by_user_id(user_id)
-            overall_score, overall_risk_level = calculate_weighted_overall_score(
+            overall_health_index, overall_risk_level = calculate_weighted_overall_score(
                 all_user_scores, active_weights_record.weights
             )
 
-            if overall_score is not None and overall_risk_level is not None:
+            if overall_health_index is not None and overall_risk_level is not None:
                 overall_entity = MemberOverallScore(
                     id=uuid.uuid4(),
                     user_id=user_id,
                     organization_id=org_id,
                     score_weights_id=active_weights_record.id,
                     submission_id=submission_id,
-                    overall_score=overall_score,
+                    overall_health_index=overall_health_index,
                     risk_level=overall_risk_level,
                     evaluated_at=now,
                 )

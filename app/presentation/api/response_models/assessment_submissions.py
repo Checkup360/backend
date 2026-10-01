@@ -78,7 +78,7 @@ class AssessmentSubmissionScoreResponse(BaseModel):
     score_name: str
     risk_level: str | None = None
     raw_value: float | None = None
-    normalized_value: float | None = None
+    health_index: float | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any]
     attention_flags: dict[str, bool] = {}

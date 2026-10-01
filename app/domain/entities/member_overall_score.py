@@ -9,7 +9,7 @@ class MemberOverallScore:
     user_id: uuid.UUID
     organization_id: uuid.UUID
     score_weights_id: uuid.UUID
-    overall_score: float
+    overall_health_index: float
     risk_level: str
     evaluated_at: datetime
     submission_id: uuid.UUID | None = None
