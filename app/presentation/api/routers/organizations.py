@@ -536,6 +536,16 @@ async def delete_department(
         _map_department_error(exc)
 
 
+def _determine_employee_status(roles: list[OrgRole], onboarded: bool) -> str | None:
+    if not roles:
+        return "inactive"
+    if OrgRole.MEMBER not in roles:
+        return None
+    if onboarded:
+        return "active"
+    return "onboarding"
+
+
 @router.patch(
     "/{organization_id}/employees/{user_id}/department",
     response_model=OrganizationEmployeeResponse,
@@ -560,12 +570,7 @@ async def assign_employee_department(
 
     profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
-    if OrgRole.MEMBER not in employee.roles:
-        status_val = "inactive"
-    elif onboarded:
-        status_val = "active"
-    else:
-        status_val = "onboarding"
+    status_val = _determine_employee_status(employee.roles, onboarded)
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
@@ -636,12 +641,7 @@ async def update_employee_roles(
 
     profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
-    if OrgRole.MEMBER not in employee.roles:
-        status_val = "inactive"
-    elif onboarded:
-        status_val = "active"
-    else:
-        status_val = "onboarding"
+    status_val = _determine_employee_status(employee.roles, onboarded)
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
@@ -941,12 +941,7 @@ async def list_organization_employees(
     for employee in employees:
         profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
-        if OrgRole.MEMBER not in employee.roles:
-            status_val = "inactive"
-        elif onboarded:
-            status_val = "active"
-        else:
-            status_val = "onboarding"
+        status_val = _determine_employee_status(employee.roles, onboarded)
 
         latest_score = latest_overall_map.get(employee.user.id)
         if latest_score is not None:
@@ -968,7 +963,7 @@ async def list_organization_employees(
 
         # Apply status query parameter filter
         if status_filter is not None:
-            if status_val.lower() != status_filter.lower():
+            if status_val is None or status_val.lower() != status_filter.lower():
                 continue
 
         # Apply score query parameter filter

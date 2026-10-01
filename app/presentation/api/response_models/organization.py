@@ -46,7 +46,7 @@ class OrganizationEmployeeResponse(BaseModel):
     last_name: str | None = None
     avatar_url: str | None = None
     roles: list[str]
-    status: str
+    status: str | None = None
     department: DepartmentResponse | None = None
     last_assessment: datetime | None = None
     overall_score: float | None = None
