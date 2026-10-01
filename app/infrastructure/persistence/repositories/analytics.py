@@ -173,17 +173,14 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 avg_score = round(
                     sum(period_overall_scores) / len(period_overall_scores), 1
                 )
-                risk_index = avg_score
             else:
                 avg_score = None
-                risk_index = None
 
             points.append(
                 OrganizationRiskTrendPoint(
                     period=p_key,
                     month_label=period_month_labels[p_key],
                     average_score=avg_score,
-                    risk_index=risk_index,
                     total_assessments=period_assessments_count[p_key],
                     scores_by_study=period_study_scores,
                 )

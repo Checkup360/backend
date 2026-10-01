@@ -103,7 +103,6 @@ async def test_get_organization_trends():
     assert points[0].period == "2026-01"
     assert points[0].month_label == "Jan"
     assert points[0].average_score == 80.0
-    assert points[0].risk_index == 80.0
     assert points[0].total_assessments == 3
     assert points[0].scores_by_study == {
         "Diabetes": 80.0,
@@ -119,7 +118,6 @@ async def test_get_organization_trends():
     assert points[1].period == "2026-02"
     assert points[1].month_label == "Feb"
     assert points[1].average_score == 85.0
-    assert points[1].risk_index == 85.0
     assert points[1].total_assessments == 3
 
 

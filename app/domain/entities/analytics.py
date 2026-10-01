@@ -7,7 +7,6 @@ class OrganizationRiskTrendPoint:
     period: str
     month_label: str
     average_score: float | None
-    risk_index: float | None
     total_assessments: int
     scores_by_study: dict[str, float] = field(default_factory=dict)
 
@@ -19,7 +18,6 @@ class DepartmentRiskTrendPoint:
     department_id: uuid.UUID | None
     department_name: str | None
     average_score: float
-    risk_index: float
     total_assessments: int
 
 

@@ -26,7 +26,6 @@ async def test_get_trends_success():
         period="2026-01",
         month_label="Jan",
         average_score=80.0,
-        risk_index=20.0,
         total_assessments=10,
     )
     analytics_repo.get_organization_trends.return_value = [mock_point]
