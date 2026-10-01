@@ -41,7 +41,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Diabetes",
                         risk_level="Low",
                         raw_value=5.0,
-                        normalized_value=85.0,
+                        health_index=85.0,
                         explanation="Low risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -52,7 +52,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Sleep Apnea",
                         risk_level="Low",
                         raw_value=2.0,
-                        normalized_value=85.0,
+                        health_index=85.0,
                         explanation="Low risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -63,7 +63,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Depression",
                         risk_level="Low",
                         raw_value=1.0,
-                        normalized_value=85.0,
+                        health_index=85.0,
                         explanation="Low risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -130,7 +130,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Diabetes",
                         risk_level="High risk",
                         raw_value=18.0,
-                        normalized_value=75.0,
+                        health_index=25.0,
                         explanation="High risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -141,7 +141,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Sleep Apnea",
                         risk_level="High risk",
                         raw_value=6.0,
-                        normalized_value=75.0,
+                        health_index=25.0,
                         explanation="High risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -152,7 +152,7 @@ class TestOrganizationAnalyticsRouter:
                         score_name="Depression",
                         risk_level="High risk",
                         raw_value=15.0,
-                        normalized_value=75.0,
+                        health_index=25.0,
                         explanation="High risk",
                         contributing_factors={},
                         evaluated_at=now,
@@ -166,7 +166,7 @@ class TestOrganizationAnalyticsRouter:
         data = res.json()
         assert len(data) == 1
         assert data[0]["name"] == "Engineering"
-        assert data[0]["average_score"] == 75.0
+        assert data[0]["average_score"] == 25.0
         assert data[0]["total_workers"] == 1
         assert data[0]["high_risk_count"] == 1
 
@@ -214,7 +214,7 @@ class TestOrganizationAnalyticsRouter:
                     score_name="Diabetes",
                     risk_level="High",
                     raw_value=18.0,
-                    normalized_value=50.0,
+                    health_index=50.0,
                     explanation="High risk",
                     contributing_factors={},
                     evaluated_at=datetime.now(timezone.utc),

@@ -51,7 +51,7 @@ async def test_evaluate_single_score_success() -> None:
             "domain": "Diabetes",
             "status": "CALCULATED",
             "raw_value": 12.0,
-            "normalized_value": None,
+            "health_index": 53.8,
             "risk_level": "Moderate",
             "explanation": "Moderate risk of type 2 diabetes.",
             "contributing_factors": {"age": 2},
@@ -68,6 +68,7 @@ async def test_evaluate_single_score_success() -> None:
 
     assert result.score_id == "findrisc"
     assert result.raw_value == 12.0
+    assert result.health_index == 53.8
     assert result.risk_level == "Moderate"
 
 
@@ -87,7 +88,7 @@ async def test_evaluate_risk_success() -> None:
             "domain": "Diabetes",
             "status": "CALCULATED",
             "raw_value": 12.0,
-            "normalized_value": None,
+            "health_index": None,
             "risk_level": "Moderate",
             "explanation": "Moderate risk of type 2 diabetes.",
             "contributing_factors": {"age": 2},
@@ -118,7 +119,7 @@ async def test_evaluate_single_score_translates_cm_to_meters_and_sex() -> None:
             "domain": "Diabetes",
             "status": "CALCULATED",
             "raw_value": 10.0,
-            "normalized_value": None,
+            "health_index": None,
             "risk_level": "Low",
             "explanation": "Low risk.",
             "contributing_factors": {},
@@ -157,7 +158,7 @@ async def test_evaluate_risk_translates_cm_to_meters() -> None:
             "domain": "Diabetes",
             "status": "CALCULATED",
             "raw_value": 5.0,
-            "normalized_value": None,
+            "health_index": None,
             "risk_level": "Low",
             "explanation": "Low risk.",
             "contributing_factors": {},

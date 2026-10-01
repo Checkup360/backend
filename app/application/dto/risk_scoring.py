@@ -54,7 +54,7 @@ class ScoreResultDTO:
     domain: str
     status: str
     raw_value: float | None = None
-    normalized_value: float | None = None
+    health_index: float | None = None
     risk_level: str | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = field(default_factory=dict)

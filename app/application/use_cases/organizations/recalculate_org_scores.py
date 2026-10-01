@@ -53,18 +53,18 @@ class RecalculateOrganizationOverallScoresUseCase:
         # 3. For each member, recalculate and persist overall score
         for employee in employees:
             user_scores = await self._risk_score_repo.get_by_user_id(employee.user.id)
-            overall_score, risk_level = calculate_weighted_overall_score(
+            overall_health_index, risk_level = calculate_weighted_overall_score(
                 user_scores, weights
             )
 
-            if overall_score is not None and risk_level is not None:
+            if overall_health_index is not None and risk_level is not None:
                 overall_entity = MemberOverallScore(
                     id=uuid.uuid4(),
                     user_id=employee.user.id,
                     organization_id=organization_id,
                     score_weights_id=weights_record_id,
                     submission_id=None,
-                    overall_score=overall_score,
+                    overall_health_index=overall_health_index,
                     risk_level=risk_level,
                     evaluated_at=datetime.now(timezone.utc),
                 )

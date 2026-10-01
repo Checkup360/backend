@@ -26,7 +26,7 @@ class RiskScoreModel(Base):
     score_name = Column(String(100), nullable=False)
     risk_level = Column(String(100), nullable=True)
     raw_value = Column(Float, nullable=True)
-    normalized_value = Column(Float, nullable=True)
+    health_index = Column(Float, nullable=True)
     explanation = Column(String, nullable=True)
     contributing_factors = Column(JSON, nullable=False, default=dict)
     attention_flags = Column(JSON, nullable=False, default=dict)

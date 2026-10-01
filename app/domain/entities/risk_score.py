@@ -10,7 +10,7 @@ class RiskScore:
     score_name: str
     risk_level: str | None
     raw_value: float | None
-    normalized_value: float | None
+    health_index: float | None
     explanation: str | None
     contributing_factors: dict[str, any]
     attention_flags: dict[str, bool]

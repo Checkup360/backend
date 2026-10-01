@@ -38,7 +38,7 @@ class MemberOverallScoreModel(Base):
         nullable=True,
         index=True,
     )
-    overall_score: Mapped[float] = mapped_column(Float, nullable=False)
+    overall_health_index: Mapped[float] = mapped_column(Float, nullable=False)
     risk_level: Mapped[str] = mapped_column(String(100), nullable=False)
     evaluated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

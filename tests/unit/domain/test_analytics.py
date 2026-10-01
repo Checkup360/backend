@@ -12,13 +12,11 @@ def test_organization_risk_trend_point():
         period="2026-01",
         month_label="Jan",
         average_score=78.5,
-        risk_index=21.5,
         total_assessments=12,
     )
     assert point.period == "2026-01"
     assert point.month_label == "Jan"
     assert point.average_score == 78.5
-    assert point.risk_index == 21.5
     assert point.total_assessments == 12
 
 
@@ -30,7 +28,6 @@ def test_department_risk_trend_point():
         department_id=dept_id,
         department_name="Engineering",
         average_score=85.0,
-        risk_index=15.0,
         total_assessments=8,
     )
     assert point.period == "2026-02"
@@ -38,7 +35,6 @@ def test_department_risk_trend_point():
     assert point.department_id == dept_id
     assert point.department_name == "Engineering"
     assert point.average_score == 85.0
-    assert point.risk_index == 15.0
     assert point.total_assessments == 8
 
 

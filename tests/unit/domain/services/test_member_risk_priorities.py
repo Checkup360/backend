@@ -4,13 +4,13 @@ from datetime import datetime, timezone
 from app.domain.entities.risk_score import RiskScore
 from app.domain.services.member_risk_priorities import (
     calculate_member_risk_weights,
-    map_normalized_value_to_severity,
+    map_health_index_to_severity,
 )
 
 
 def _make_score(
     score_name: str,
-    normalized_value: float | None,
+    health_index: float | None,
     risk_level: str | None = None,
     evaluated_at: datetime | None = None,
 ) -> RiskScore:
@@ -20,7 +20,7 @@ def _make_score(
         score_name=score_name,
         risk_level=risk_level,
         raw_value=10.0,
-        normalized_value=normalized_value,
+        health_index=health_index,
         explanation="test",
         contributing_factors={},
         attention_flags={},
@@ -28,17 +28,17 @@ def _make_score(
     )
 
 
-def test_map_normalized_value_to_severity():
-    # 0.0 (optimal / no risk) -> 0.0 severity
-    assert map_normalized_value_to_severity(0.0) == 0.0
-    # 100.0 (maximum risk) -> 1.0 severity
-    assert map_normalized_value_to_severity(100.0) == 1.0
-    # 20.0 -> 0.2 severity
-    assert map_normalized_value_to_severity(20.0) == 0.2
+def test_map_health_index_to_severity():
+    # 100.0 (healthiest) -> 0.0 severity
+    assert map_health_index_to_severity(100.0) == 0.0
+    # 0.0 (least healthy) -> 1.0 severity
+    assert map_health_index_to_severity(0.0) == 1.0
+    # 80.0 -> 0.2 severity
+    assert map_health_index_to_severity(80.0) == 0.2
     # 50.0 -> 0.5 severity
-    assert map_normalized_value_to_severity(50.0) == 0.5
+    assert map_health_index_to_severity(50.0) == 0.5
     # None -> 0.2 baseline
-    assert map_normalized_value_to_severity(None) == 0.2
+    assert map_health_index_to_severity(None) == 0.2
 
 
 def test_calculate_member_risk_weights_empty_scores():
@@ -52,13 +52,13 @@ def test_calculate_member_risk_weights_empty_scores():
 
 
 def test_calculate_member_risk_weights_prioritizes_high_risk():
-    # Diabetes normalized_value=90.0 (high risk, severity 0.9)
-    # Sleep apnea normalized_value=10.0 (low risk, severity 0.1)
-    # Depression normalized_value=10.0 (low risk, severity 0.1)
+    # Diabetes health_index=10.0 (high risk, severity 0.9)
+    # Sleep apnea health_index=90.0 (low risk, severity 0.1)
+    # Depression health_index=90.0 (low risk, severity 0.1)
     scores = [
-        _make_score("FINDRISC", normalized_value=90.0),
-        _make_score("STOP-BANG", normalized_value=10.0),
-        _make_score("PHQ-9", normalized_value=10.0),
+        _make_score("FINDRISC", health_index=10.0),
+        _make_score("STOP-BANG", health_index=90.0),
+        _make_score("PHQ-9", health_index=90.0),
     ]
     weights = calculate_member_risk_weights(scores)
     assert weights["diabetes"] > weights["sleep_apnea"]
@@ -67,10 +67,10 @@ def test_calculate_member_risk_weights_prioritizes_high_risk():
 
 
 def test_calculate_member_risk_weights_custom_org_weights():
-    # Both have high risk (normalized_value=90.0), but org prioritizes depression:
+    # Both have high risk (health_index=10.0), but org prioritizes depression:
     scores = [
-        _make_score("FINDRISC", normalized_value=90.0),
-        _make_score("PHQ-9", normalized_value=90.0),
+        _make_score("FINDRISC", health_index=10.0),
+        _make_score("PHQ-9", health_index=10.0),
     ]
     org_weights = {
         "diabetes": 10.0,
@@ -85,12 +85,8 @@ def test_calculate_member_risk_weights_latest_score_only():
     t_old = datetime(2026, 1, 1, tzinfo=timezone.utc)
     t_new = datetime(2026, 2, 1, tzinfo=timezone.utc)
     scores = [
-        _make_score(
-            "FINDRISC", normalized_value=90.0, evaluated_at=t_old
-        ),  # was high risk
-        _make_score(
-            "FINDRISC", normalized_value=10.0, evaluated_at=t_new
-        ),  # now low risk
+        _make_score("FINDRISC", health_index=10.0, evaluated_at=t_old),  # was high risk
+        _make_score("FINDRISC", health_index=90.0, evaluated_at=t_new),  # now low risk
     ]
     weights = calculate_member_risk_weights(scores)
     # Latest score is low risk (0.1 severity)

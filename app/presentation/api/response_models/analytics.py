@@ -7,7 +7,6 @@ class RiskTrendPointResponse(BaseModel):
     period: str
     month_label: str
     average_score: float | None = None
-    risk_index: float | None = None
     total_assessments: int
     scores_by_study: dict[str, float] = Field(default_factory=dict)
 

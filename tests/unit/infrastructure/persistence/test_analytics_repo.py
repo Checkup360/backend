@@ -30,7 +30,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Diabetes",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -38,7 +38,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Sleep Apnea",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -46,7 +46,7 @@ async def test_get_organization_trends():
             month_label="Jan",
             user_id=user_id,
             score_name="Depression",
-            normalized_value=80.0,
+            health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
@@ -54,7 +54,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Diabetes",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
         SimpleNamespace(
@@ -62,7 +62,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Sleep Apnea",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
         SimpleNamespace(
@@ -70,7 +70,7 @@ async def test_get_organization_trends():
             month_label="Feb",
             user_id=user_id,
             score_name="Depression",
-            normalized_value=85.0,
+            health_index=85.0,
             evaluated_at=now_feb,
         ),
     ]
@@ -82,13 +82,13 @@ async def test_get_organization_trends():
         SimpleNamespace(
             period="2026-01",
             user_id=user_id,
-            overall_score=80.0,
+            overall_health_index=80.0,
             evaluated_at=now_jan,
         ),
         SimpleNamespace(
             period="2026-02",
             user_id=user_id,
-            overall_score=85.0,
+            overall_health_index=85.0,
             evaluated_at=now_feb,
         ),
     ]
@@ -103,7 +103,6 @@ async def test_get_organization_trends():
     assert points[0].period == "2026-01"
     assert points[0].month_label == "Jan"
     assert points[0].average_score == 80.0
-    assert points[0].risk_index == 80.0
     assert points[0].total_assessments == 3
     assert points[0].scores_by_study == {
         "Diabetes": 80.0,
@@ -119,7 +118,6 @@ async def test_get_organization_trends():
     assert points[1].period == "2026-02"
     assert points[1].month_label == "Feb"
     assert points[1].average_score == 85.0
-    assert points[1].risk_index == 85.0
     assert points[1].total_assessments == 3
 
 
@@ -150,7 +148,7 @@ async def test_get_departments_summary_with_persisted_scores():
     mock_overall_rows = [
         SimpleNamespace(
             user_id=user_id,
-            overall_score=15.0,
+            overall_health_index=85.0,
             risk_level="Low risk",
             evaluated_at=now,
         )
@@ -170,9 +168,61 @@ async def test_get_departments_summary_with_persisted_scores():
     assert len(summaries) == 1
     assert summaries[0].department_id == dept_id
     assert summaries[0].name == "Engineering"
-    assert summaries[0].average_score == 15.0
+    assert summaries[0].average_score == 85.0
     assert summaries[0].total_workers == 1
     assert summaries[0].high_risk_count == 0
+
+
+@pytest.mark.asyncio
+async def test_get_departments_summary_counts_low_health_index_as_high_risk():
+    mock_db = AsyncMock()
+    repo = AnalyticsRepositoryImpl(mock_db)
+    org_id = uuid.uuid4()
+    dept_id = uuid.uuid4()
+    now = datetime.now(timezone.utc)
+
+    mock_dept = SimpleNamespace(id=dept_id, name="Engineering", organization_id=org_id)
+
+    # 1st execute: fetch departments
+    mock_depts_res = MagicMock()
+    mock_depts_res.scalars.return_value.all.return_value = [mock_dept]
+
+    # 2nd execute: fetch org score weights
+    mock_org_res = MagicMock()
+    mock_org_res.scalar_one_or_none.return_value = None
+
+    user_id = uuid.uuid4()
+    # 3rd execute: fetch members
+    mock_members_res = MagicMock()
+    mock_members_res.all.return_value = [(user_id,)]
+
+    # 4th execute: fetch persisted overall scores directly from member_overall_scores
+    mock_overall_rows = [
+        SimpleNamespace(
+            user_id=user_id,
+            overall_health_index=30.0,
+            risk_level="Needs attention",
+            evaluated_at=now,
+        )
+    ]
+    mock_overall_res = MagicMock()
+    mock_overall_res.all.return_value = mock_overall_rows
+
+    mock_db.execute.side_effect = [
+        mock_depts_res,
+        mock_org_res,
+        mock_members_res,
+        mock_overall_res,
+    ]
+
+    summaries = await repo.get_departments_summary(org_id)
+
+    assert len(summaries) == 1
+    assert summaries[0].department_id == dept_id
+    assert summaries[0].name == "Engineering"
+    assert summaries[0].average_score == 30.0
+    assert summaries[0].total_workers == 1
+    assert summaries[0].high_risk_count == 1
 
 
 @pytest.mark.asyncio

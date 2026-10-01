@@ -1,5 +1,7 @@
 from typing import Any
 
+from app.domain.services.health_index_classification import classify_health_index
+
 DEFAULT_SCORE_WEIGHTS: dict[str, float] = {
     "diabetes": 34.0,
     "sleep_apnea": 33.0,
@@ -68,7 +70,7 @@ def calculate_weighted_overall_score(
             if key not in latest_by_key:
                 return None, None
             r = latest_by_key[key]
-            norm_val = getattr(r, "normalized_value", None)
+            norm_val = getattr(r, "health_index", None)
             if norm_val is None:
                 return None, None
             score_entries.append((float(norm_val), float(w)))
@@ -80,17 +82,10 @@ def calculate_weighted_overall_score(
     total_weight = sum(w for _, w in score_entries)
 
     if total_weight <= 0:
-        overall_score = round(
+        overall_health_index = round(
             sum(val for val, _ in score_entries) / len(score_entries), 1
         )
     else:
-        overall_score = round(total_weighted_sum / total_weight, 1)
+        overall_health_index = round(total_weighted_sum / total_weight, 1)
 
-    if overall_score <= 20:
-        risk_level = "Low risk"
-    elif overall_score <= 50:
-        risk_level = "Moderate risk"
-    else:
-        risk_level = "Needs attention"
-
-    return overall_score, risk_level
+    return overall_health_index, classify_health_index(overall_health_index)

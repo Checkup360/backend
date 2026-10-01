@@ -139,10 +139,10 @@ def build_assessment_sessions(
                     break
 
         if matched_persisted is not None:
-            overall_score = matched_persisted.overall_score
+            overall_health_index = matched_persisted.overall_health_index
             overall_risk_level = matched_persisted.risk_level
         else:
-            overall_score = None
+            overall_health_index = None
             overall_risk_level = None
 
         session_id = f"session_{b_ts}_{idx}"
@@ -150,7 +150,7 @@ def build_assessment_sessions(
             AssessmentSessionResponse(
                 id=session_id,
                 evaluated_at=primary_eval_at,
-                overall_score=overall_score,
+                overall_health_index=overall_health_index,
                 overall_risk_level=overall_risk_level,
                 results=session_results,
             )
@@ -183,7 +183,7 @@ def build_assessments_response(
     total_sessions = len(all_sessions)
 
     if latest_overall is not None:
-        current_overall_score = latest_overall.overall_score
+        current_overall_score = latest_overall.overall_health_index
         current_overall_risk_level = latest_overall.risk_level
     else:
         current_overall_score = None
@@ -209,7 +209,7 @@ def build_assessments_response(
     latest_results = list(latest_results_map.values())
 
     return AssessmentsResponse(
-        overall_score=current_overall_score,
+        overall_health_index=current_overall_score,
         overall_risk_level=current_overall_risk_level,
         total_sessions=total_sessions,
         page=page,
@@ -293,7 +293,7 @@ async def evaluate_assessments(
             score_name=_format_score_display_name(res.score_name),
             risk_level=res.risk_level,
             raw_value=res.raw_value,
-            normalized_value=res.normalized_value,
+            health_index=res.health_index,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
             attention_flags=res.attention_flags,
@@ -341,7 +341,7 @@ async def get_assessments(
             score_name=_format_score_display_name(res.score_name),
             risk_level=res.risk_level,
             raw_value=res.raw_value,
-            normalized_value=res.normalized_value,
+            health_index=res.health_index,
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
             attention_flags=res.attention_flags,
@@ -387,7 +387,7 @@ def _submission_detail_response(submission, scores):
                 score_name=_format_score_display_name(score.score_name),
                 risk_level=score.risk_level,
                 raw_value=score.raw_value,
-                normalized_value=score.normalized_value,
+                health_index=score.health_index,
                 explanation=score.explanation,
                 contributing_factors=score.contributing_factors,
                 attention_flags=score.attention_flags,

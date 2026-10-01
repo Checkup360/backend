@@ -94,7 +94,7 @@ class HttpEngineScoringAdapter(RiskScoringService):
             domain=s["domain"],
             status=s["status"],
             raw_value=s.get("raw_value"),
-            normalized_value=s.get("normalized_value"),
+            health_index=s.get("health_index"),
             risk_level=s.get("risk_level"),
             explanation=s.get("explanation"),
             contributing_factors=s.get("contributing_factors", {}),

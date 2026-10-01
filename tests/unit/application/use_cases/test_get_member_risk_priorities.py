@@ -24,7 +24,7 @@ async def test_get_member_risk_priorities_use_case():
             score_name="FINDRISC",
             risk_level="High",
             raw_value=18.0,
-            normalized_value=30.0,
+            health_index=30.0,
             explanation="High diabetes risk",
             contributing_factors={},
             attention_flags={},

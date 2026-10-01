@@ -13,6 +13,13 @@ from app.infrastructure.persistence.repositories.member_details import (
 from app.infrastructure.persistence.repositories.risk_score import (
     SQLAlchemyRiskScoreRepository,
 )
+from app.infrastructure.persistence.repositories.member_overall_score import (
+    SQLAlchemyMemberOverallScoreRepository,
+)
+from app.infrastructure.persistence.repositories.membership import MembershipRepository
+from app.infrastructure.persistence.repositories.organization_score_weights import (
+    OrganizationScoreWeightsRepository,
+)
 from app.infrastructure.external.engine_api_adapter import HttpEngineScoringAdapter
 from app.infrastructure.config import settings
 from app.application.use_cases.assessments.recalculate_member_scores import (
@@ -44,7 +51,15 @@ async def main():
             scoring_service = HttpEngineScoringAdapter(settings.engine_api_url, client)
 
             use_case = RecalculateMemberScoresUseCase(
-                health_repo, details_repo, risk_repo, scoring_service
+                health_repo,
+                details_repo,
+                risk_repo,
+                scoring_service,
+                member_overall_score_repo=SQLAlchemyMemberOverallScoreRepository(
+                    session
+                ),
+                membership_repo=MembershipRepository(session),
+                score_weights_repo=OrganizationScoreWeightsRepository(session),
             )
 
             for user in users:

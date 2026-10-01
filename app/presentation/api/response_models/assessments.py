@@ -8,7 +8,7 @@ class AssessmentResultResponse(BaseModel):
     score_name: str
     risk_level: str | None = None
     raw_value: float | None = None
-    normalized_value: float | None = None
+    health_index: float | None = None
     explanation: str | None = None
     contributing_factors: dict[str, Any] = {}
     attention_flags: dict[str, bool] = {}
@@ -18,13 +18,13 @@ class AssessmentResultResponse(BaseModel):
 class AssessmentSessionResponse(BaseModel):
     id: str
     evaluated_at: datetime
-    overall_score: float | None = None
+    overall_health_index: float | None = None
     overall_risk_level: str | None = None
     results: list[AssessmentResultResponse]
 
 
 class AssessmentsResponse(BaseModel):
-    overall_score: float | None = None
+    overall_health_index: float | None = None
     overall_risk_level: str | None = None
     total_sessions: int = 0
     page: int = 1
