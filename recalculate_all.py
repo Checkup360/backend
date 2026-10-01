@@ -18,7 +18,7 @@ from app.infrastructure.persistence.repositories.member_overall_score import (
 )
 from app.infrastructure.persistence.repositories.membership import MembershipRepository
 from app.infrastructure.persistence.repositories.organization_score_weights import (
-    SQLAlchemyOrganizationScoreWeightsRepository,
+    OrganizationScoreWeightsRepository,
 )
 from app.infrastructure.external.engine_api_adapter import HttpEngineScoringAdapter
 from app.infrastructure.config import settings
@@ -59,9 +59,7 @@ async def main():
                     session
                 ),
                 membership_repo=MembershipRepository(session),
-                score_weights_repo=SQLAlchemyOrganizationScoreWeightsRepository(
-                    session
-                ),
+                score_weights_repo=OrganizationScoreWeightsRepository(session),
             )
 
             for user in users:
