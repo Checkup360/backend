@@ -2,6 +2,10 @@
 
 from typing import Sequence
 from app.domain.entities.risk_score import RiskScore
+from app.domain.services.health_index_classification import (
+    MAXIMUM_HEALTH_INDEX,
+    MINIMUM_HEALTH_INDEX,
+)
 from app.domain.services.risk_score_calculator import (
     DEFAULT_SCORE_WEIGHTS,
     normalize_score_key,
@@ -21,11 +25,12 @@ DEFAULT_UNASSESSED_SEVERITY = 0.20
 
 def map_health_index_to_severity(health_index: float | None) -> float:
     """
-    Maps health_index (0.0 to 100.0, where 0 is low risk and 100 is highest risk)
-    to a continuous severity factor [0.0, 1.0].
+    Maps health_index (0.0 to 100.0, where higher is healthier) to a
+    continuous severity factor [0.0, 1.0], where higher is more severe.
     """
     if health_index is not None:
-        severity = max(0.0, min(100.0, float(health_index))) / 100.0
+        clamped = max(MINIMUM_HEALTH_INDEX, min(MAXIMUM_HEALTH_INDEX, health_index))
+        severity = (MAXIMUM_HEALTH_INDEX - clamped) / MAXIMUM_HEALTH_INDEX
         return round(severity, 4)
 
     return DEFAULT_UNASSESSED_SEVERITY

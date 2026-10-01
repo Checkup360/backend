@@ -268,7 +268,7 @@ async def test_recalculate_saves_member_overall_score_when_dependencies_provided
             score_name="FINDRISC",
             risk_level="Low risk",
             raw_value=4.0,
-            health_index=15.0,
+            health_index=85.0,
             explanation=None,
             contributing_factors={},
             attention_flags={},
@@ -280,7 +280,7 @@ async def test_recalculate_saves_member_overall_score_when_dependencies_provided
             score_name="STOP-BANG",
             risk_level="Low risk",
             raw_value=1.0,
-            health_index=12.5,
+            health_index=87.5,
             explanation=None,
             contributing_factors={},
             attention_flags={},
@@ -292,7 +292,7 @@ async def test_recalculate_saves_member_overall_score_when_dependencies_provided
             score_name="PHQ-9",
             risk_level="Low risk",
             raw_value=0.0,
-            health_index=0.0,
+            health_index=100.0,
             explanation=None,
             contributing_factors={},
             attention_flags={},
@@ -338,6 +338,6 @@ async def test_recalculate_saves_member_overall_score_when_dependencies_provided
     assert saved_overall.submission_id == submission_id
     assert saved_overall.score_weights_id == weights_id
     assert (
-        saved_overall.overall_health_index == 9.2
-    )  # round((15*34 + 12.5*33 + 0*33)/100, 1) = 9.2
+        saved_overall.overall_health_index == 90.8
+    )  # round((85*34 + 87.5*33 + 100*33)/100, 1) = 90.8
     assert saved_overall.risk_level == "Low risk"

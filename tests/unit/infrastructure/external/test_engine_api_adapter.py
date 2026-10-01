@@ -51,7 +51,7 @@ async def test_evaluate_single_score_success() -> None:
             "domain": "Diabetes",
             "status": "CALCULATED",
             "raw_value": 12.0,
-            "health_index": None,
+            "health_index": 53.8,
             "risk_level": "Moderate",
             "explanation": "Moderate risk of type 2 diabetes.",
             "contributing_factors": {"age": 2},
@@ -68,6 +68,7 @@ async def test_evaluate_single_score_success() -> None:
 
     assert result.score_id == "findrisc"
     assert result.raw_value == 12.0
+    assert result.health_index == 53.8
     assert result.risk_level == "Moderate"
 
 

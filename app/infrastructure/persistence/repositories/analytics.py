@@ -11,6 +11,7 @@ from app.domain.entities.analytics import (
     OrganizationRiskTrendPoint,
 )
 from app.domain.repositories.analytics import AnalyticsRepository
+from app.domain.services.health_index_classification import needs_attention
 from app.domain.services.risk_score_calculator import calculate_weighted_overall_score
 from app.domain.value_objects.org_role import OrgRole
 from app.infrastructure.persistence.models.department import Department
@@ -265,13 +266,7 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                 if row.user_id not in seen_users:
                     seen_users.add(row.user_id)
                     user_overall_scores.append(float(row.overall_health_index))
-                    if float(row.overall_health_index) > 50.0 or (
-                        row.risk_level
-                        and (
-                            "attention" in row.risk_level.lower()
-                            or "high" in row.risk_level.lower()
-                        )
-                    ):
+                    if needs_attention(float(row.overall_health_index)):
                         high_risk_users.add(row.user_id)
 
             # For any users without a persisted score record, query raw scores as fallback
@@ -295,18 +290,12 @@ class AnalyticsRepositoryImpl(AnalyticsRepository):
                     user_scores_map.setdefault(row.user_id, []).append(row)
 
                 for u_id, u_scores in user_scores_map.items():
-                    u_score, u_risk = calculate_weighted_overall_score(
+                    u_score, _ = calculate_weighted_overall_score(
                         u_scores, weights=score_weights
                     )
                     if u_score is not None:
                         user_overall_scores.append(u_score)
-                        if u_score > 50.0 or (
-                            u_risk
-                            and (
-                                "attention" in u_risk.lower()
-                                or "high" in u_risk.lower()
-                            )
-                        ):
+                        if needs_attention(u_score):
                             high_risk_users.add(u_id)
 
             avg_score = (
