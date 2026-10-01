@@ -1,7 +1,6 @@
 """Domain entities and value objects for health domains and dynamic input modules."""
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -34,24 +33,3 @@ class HealthDomainConfig:
     def __post_init__(self) -> None:
         if self.weight < 0.0 or self.weight > 100.0:
             raise ValueError("Domain weight must be between 0.0 and 100.0")
-
-
-@dataclass(frozen=True)
-class DomainScore:
-    """Phase 1 normalized score for an individual health domain."""
-
-    domain: HealthDomain
-    normalized_score: float | None
-    risk_level: str | None
-    sub_scores: dict[str, float] = field(default_factory=dict)
-    evaluated_at: datetime | None = None
-
-
-@dataclass(frozen=True)
-class GlobalWeightedIndex:
-    """Phase 2 overall weighted index aggregated across active health domains."""
-
-    overall_score: float | None
-    risk_level: str | None
-    domain_scores: dict[HealthDomain, DomainScore] = field(default_factory=dict)
-    evaluated_at: datetime | None = None
