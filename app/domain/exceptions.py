@@ -133,3 +133,9 @@ class InvalidFormTypeError(DomainError):
 
 class CannotRevokeFundamentalConsentError(DomainError):
     pass
+
+
+class HealthTopicsUnavailableError(DomainError):
+    """The scoring catalog that declares health topics could not be loaded."""
+
+    pass

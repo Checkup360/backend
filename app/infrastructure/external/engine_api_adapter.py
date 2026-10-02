@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from app.domain.services.risk_score_calculator import normalize_score_key
 from app.application.dto.risk_scoring import (
     HealthDataDTO,
     ScoreCatalogItemDTO,
@@ -43,6 +44,10 @@ class HttpEngineScoringAdapter(RiskScoringService):
                 score_id=item["score_id"],
                 score_name=item["score_name"],
                 domain=item["domain"],
+                # Engines older than the health topic catalog do not send it
+                topic_key=item.get("topic_key")
+                or normalize_score_key(item["score_name"]),
+                topic_label=item.get("topic_label") or item["domain"],
                 required_fields=item.get("required_fields", []),
                 optional_fields=item.get("optional_fields", []),
             )

@@ -68,5 +68,7 @@ class ScoreCatalogItemDTO:
     score_id: str
     score_name: str
     domain: str
+    topic_key: str
+    topic_label: str
     required_fields: list[str] = field(default_factory=list)
     optional_fields: list[str] = field(default_factory=list)
