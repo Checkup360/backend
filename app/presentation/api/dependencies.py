@@ -465,8 +465,11 @@ def get_list_sysadmins_use_case(
 async def get_member_risk_priorities_use_case(
     risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
     org_repo: OrganizationRepository = Depends(get_organization_repository),
+    risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
 ) -> GetMemberRiskPrioritiesUseCase:
-    return GetMemberRiskPrioritiesUseCase(risk_score_repo, org_repo)
+    return GetMemberRiskPrioritiesUseCase(
+        risk_score_repo, org_repo, risk_scoring_service
+    )
 
 
 def get_file_storage() -> FileStorage:

@@ -1,6 +1,7 @@
 from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
+from app.domain.exceptions import HealthTopicsUnavailableError
 from app.application.dto import AuthenticatedUser
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
@@ -224,7 +225,13 @@ async def get_my_risk_priorities(
     ),
 ) -> MemberRiskPrioritiesResponse:
     org_id = user.membership.organization_id if user.membership else None
-    dto = await use_case.execute(user_id=user.id, organization_id=org_id)
+    try:
+        dto = await use_case.execute(user_id=user.id, organization_id=org_id)
+    except HealthTopicsUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="health_topics_unavailable",
+        )
     return MemberRiskPrioritiesResponse(
         user_id=dto.user_id,
         risk_weights=dto.risk_weights,
