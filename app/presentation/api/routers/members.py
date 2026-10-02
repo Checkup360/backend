@@ -2,6 +2,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
 from app.domain.exceptions import HealthTopicsUnavailableError
+from app.presentation.api.response_models.content_category import (
+    ContentCategoryResponse,
+)
 from app.application.dto import AuthenticatedUser
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
@@ -236,6 +239,12 @@ async def get_my_risk_priorities(
         user_id=dto.user_id,
         risk_weights=dto.risk_weights,
         highest_risk=dto.highest_risk,
+        categories=[
+            ContentCategoryResponse(
+                key=category.key, label=category.label, active=category.active
+            )
+            for category in dto.categories
+        ],
     )
 
 

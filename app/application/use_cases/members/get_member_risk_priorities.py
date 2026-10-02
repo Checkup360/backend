@@ -1,6 +1,6 @@
 import uuid
 
-from app.application.dto import MemberRiskPrioritiesDTO
+from app.application.dto import ContentCategoryDTO, MemberRiskPrioritiesDTO
 from app.application.interfaces.risk_scoring_service import RiskScoringService
 from app.application.use_cases.health_topics.load_health_topics import (
     load_health_topics,
@@ -45,9 +45,16 @@ class GetMemberRiskPrioritiesUseCase:
             if risk_weights
             else None
         )
+        # Weights only contain active topics, so they define the visible categories
+        categories = [
+            ContentCategoryDTO(key=topic.key, label=topic.label, active=True)
+            for topic in topics
+            if topic.key in risk_weights
+        ]
 
         return MemberRiskPrioritiesDTO(
             user_id=user_id,
             risk_weights=risk_weights,
             highest_risk=highest_risk,
+            categories=categories,
         )

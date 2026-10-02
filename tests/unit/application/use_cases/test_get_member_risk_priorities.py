@@ -102,6 +102,33 @@ async def test_get_member_risk_priorities_without_active_risks():
 
 
 @pytest.mark.asyncio
+async def test_get_member_risk_priorities_returns_active_categories_with_labels():
+    org_id = uuid.uuid4()
+    mock_risk_repo = AsyncMock()
+    mock_risk_repo.get_by_user_id.return_value = []
+    mock_org_repo = AsyncMock()
+    mock_org_repo.get.return_value = Organization(
+        id=org_id,
+        name="Acme Corp",
+        slug="acme",
+        score_weights={"diabetes": 50.0, "audit_c": 50.0, "depression": 0.0},
+    )
+    use_case = GetMemberRiskPrioritiesUseCase(
+        risk_score_repo=mock_risk_repo,
+        organization_repo=mock_org_repo,
+        risk_scoring_service=_catalog_service(),
+    )
+
+    result = await use_case.execute(user_id=uuid.uuid4(), organization_id=org_id)
+
+    assert set(result.risk_weights) == {"diabetes", "audit_c"}
+    assert [(c.key, c.label) for c in result.categories] == [
+        ("diabetes", "Diabetes"),
+        ("audit_c", "Alcohol Risk Assessment"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_member_risk_priorities_fails_when_catalog_is_unavailable():
     service = AsyncMock()
     service.get_catalog.side_effect = RuntimeError("engine down")

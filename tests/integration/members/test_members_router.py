@@ -134,6 +134,11 @@ class TestMembersRouter:
         assert "depression" in data["risk_weights"]
         # Default organization weights do not enable alcohol
         assert "audit_c" not in data["risk_weights"]
+        assert {c["key"]: c["label"] for c in data["categories"]} == {
+            "diabetes": "Diabetes",
+            "sleep_apnea": "Sleep Apnea",
+            "depression": "Mood & Well-being",
+        }
 
     @pytest.mark.asyncio
     async def test_get_my_risk_priorities_without_engine_catalog(
