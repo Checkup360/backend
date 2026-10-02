@@ -165,8 +165,8 @@ The audit confirmed the exact health data visible to Organization Admins (`admin
   Will the data controller register the health and employee databases with the National Registry of Databases (AAIP, Art. 21, Argentine Personal Data Protection Act 25.326)?
 - ⚖️ **[DECISION 2] International Data Transfers:**
   Confirm legal basis for third-party services in foreign jurisdictions (Google OAuth, Resend, foreign VPS hosting) via standard clauses or explicit consent.
-- ⚖️ **[DECISION 3] Employer Visibility Level:**
-  Should the employer/organization admin maintain access to **granular raw questionnaire answers** (e.g. PHQ-9, AUDIT-C) or should access be restricted to aggregated indices and high-level risk scores? If granular access remains, employee consent must state this prominently.
+- ✅ **[DECISION 3] Employer Visibility Level (Confirmed):**
+  Organization Admins and authorized occupational health medical staff maintain access to employee assessments, calculated scores, and health form indicators for workplace preventative health management. Informed consent and privacy policy documents explicitly disclose this access scope.
 - ⚖️ **[DECISION 4] Consent Granularity:**
   Confirm the adoption of individual informed consent for each of the 9 health forms (recommended for maximum legal defense with sensitive data) vs. grouped category consents.
 - ⚖️ **[DECISION 5] Revocation & Data Lifecycle:**
