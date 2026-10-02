@@ -57,12 +57,16 @@ async def test_recalculate_filters_incomplete_scores():
             score_id="findrisc",
             score_name="FINDRISC",
             domain="Diabetes",
+            topic_key="diabetes",
+            topic_label="Diabetes",
             required_fields=["age", "sex", "weight", "height", "waist_circumference"],
         ),
         ScoreCatalogItemDTO(
             score_id="stop_bang",
             score_name="STOP-BANG",
             domain="Sleep Apnea",
+            topic_key="sleep_apnea",
+            topic_label="Sleep Apnea",
             required_fields=["snoring", "neck_circumference"],
         ),
     ]
@@ -109,6 +113,8 @@ async def test_recalculate_computes_and_saves_complete_scores():
             score_id="findrisc",
             score_name="FINDRISC",
             domain="Diabetes",
+            topic_key="diabetes",
+            topic_label="Diabetes",
             required_fields=[
                 "age",
                 "sex",
@@ -175,6 +181,8 @@ async def test_recalculate_computes_score2_when_cardiovascular_fields_present():
             score_id="score2",
             score_name="SCORE2",
             domain="Cardiovascular",
+            topic_key="cardiovascular",
+            topic_label="Cardiovascular Risk",
             required_fields=[
                 "age",
                 "sex",

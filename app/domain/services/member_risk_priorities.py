@@ -2,6 +2,7 @@
 
 from typing import Sequence
 from app.domain.entities.risk_score import RiskScore
+from app.domain.services.health_topics import is_topic_active
 from app.domain.services.health_index_classification import (
     MAXIMUM_HEALTH_INDEX,
     MINIMUM_HEALTH_INDEX,
@@ -11,14 +12,6 @@ from app.domain.services.risk_score_calculator import (
     normalize_score_key,
 )
 
-CLINICAL_CATEGORIES: list[str] = [
-    "diabetes",
-    "sleep_apnea",
-    "depression",
-    "metabolic_syndrome",
-    "eoss",
-    "cardiovascular",
-]
 
 DEFAULT_UNASSESSED_SEVERITY = 0.20
 
@@ -36,8 +29,26 @@ def map_health_index_to_severity(health_index: float | None) -> float:
     return DEFAULT_UNASSESSED_SEVERITY
 
 
+def _latest_score_by_category(scores: Sequence[RiskScore]) -> dict[str, RiskScore]:
+    latest_by_key: dict[str, RiskScore] = {}
+    for score in scores:
+        key = normalize_score_key(score.score_name)
+        previous = latest_by_key.get(key)
+        if previous is None:
+            latest_by_key[key] = score
+            continue
+        if (
+            score.evaluated_at
+            and previous.evaluated_at
+            and score.evaluated_at > previous.evaluated_at
+        ):
+            latest_by_key[key] = score
+    return latest_by_key
+
+
 def calculate_member_risk_weights(
     scores: Sequence[RiskScore],
+    topic_keys: Sequence[str],
     org_weights: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """
@@ -45,51 +56,28 @@ def calculate_member_risk_weights(
     Balances the member's clinical risk severity (from health_index)
     with their organization's disease weights.
 
-    Returns a dict mapping clinical disease categories to normalized weights summing to ~1.0.
+    ``topic_keys`` are the health topics in the scoring catalog. Only topics
+    enabled by the organization (weight > 0) are returned, so content about
+    disabled risks is never prioritized. Returns a dict mapping active topics
+    to normalized weights summing to ~1.0, or an empty dict when the
+    organization has no active topic.
     """
-    # 1. Extract latest score per disease
-    latest_by_key: dict[str, RiskScore] = {}
-    for s in scores:
-        key = normalize_score_key(s.score_name)
-        if key not in latest_by_key:
-            latest_by_key[key] = s
-        else:
-            prev = latest_by_key[key]
-            if (
-                s.evaluated_at
-                and prev.evaluated_at
-                and s.evaluated_at > prev.evaluated_at
-            ):
-                latest_by_key[key] = s
+    active_org_weights = org_weights if org_weights else DEFAULT_SCORE_WEIGHTS
+    categories = [key for key in topic_keys if is_topic_active(key, active_org_weights)]
+    if not categories:
+        return {}
 
-    active_org_weights = (
-        org_weights if org_weights and len(org_weights) > 0 else DEFAULT_SCORE_WEIGHTS
-    )
-
-    # 2. Compute severity and raw priority per clinical category
+    latest_by_key = _latest_score_by_category(scores)
     raw_priorities: dict[str, float] = {}
-    for cat in CLINICAL_CATEGORIES:
+    for cat in categories:
         score = latest_by_key.get(cat)
-        if score is not None and score.health_index is not None:
-            severity = map_health_index_to_severity(score.health_index)
-        else:
-            severity = DEFAULT_UNASSESSED_SEVERITY
+        health_index = score.health_index if score is not None else None
+        severity = map_health_index_to_severity(health_index)
+        raw_priorities[cat] = severity * active_org_weights[cat]
 
-        # Base org weight: default to 10.0 if not explicitly defined
-        w_org = active_org_weights.get(cat, 10.0)
-        if w_org <= 0:
-            w_org = 5.0  # minimal baseline so clinical risk is not completely erased
-
-        raw_priorities[cat] = severity * w_org
-
-    # 3. Normalize to sum to 1.0
     total_raw = sum(raw_priorities.values())
     if total_raw <= 0:
-        equal_weight = round(1.0 / len(CLINICAL_CATEGORIES), 4)
-        return {cat: equal_weight for cat in CLINICAL_CATEGORIES}
+        equal_weight = round(1.0 / len(categories), 4)
+        return {cat: equal_weight for cat in categories}
 
-    normalized: dict[str, float] = {}
-    for cat, raw in raw_priorities.items():
-        normalized[cat] = round(raw / total_raw, 4)
-
-    return normalized
+    return {cat: round(raw / total_raw, 4) for cat, raw in raw_priorities.items()}

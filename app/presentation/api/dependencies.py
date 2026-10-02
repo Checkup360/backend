@@ -147,6 +147,9 @@ from app.application.use_cases.organizations import (
     GetOrganizationAnalyticsUseCase,
     UploadOrganizationLogoUseCase,
 )
+from app.application.use_cases.organizations.get_organization_content_categories import (
+    GetOrganizationContentCategoriesUseCase,
+)
 from app.application.use_cases.organizations.recalculate_org_scores import (
     RecalculateOrganizationOverallScoresUseCase,
 )
@@ -465,8 +468,21 @@ def get_list_sysadmins_use_case(
 async def get_member_risk_priorities_use_case(
     risk_score_repo: RiskScoreRepository = Depends(get_risk_score_repository),
     org_repo: OrganizationRepository = Depends(get_organization_repository),
+    risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
 ) -> GetMemberRiskPrioritiesUseCase:
-    return GetMemberRiskPrioritiesUseCase(risk_score_repo, org_repo)
+    return GetMemberRiskPrioritiesUseCase(
+        risk_score_repo, org_repo, risk_scoring_service
+    )
+
+
+async def get_organization_content_categories_use_case(
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    risk_scoring_service: RiskScoringService = Depends(get_risk_scoring_service),
+) -> GetOrganizationContentCategoriesUseCase:
+    return GetOrganizationContentCategoriesUseCase(
+        membership_repo, org_repo, risk_scoring_service
+    )
 
 
 def get_file_storage() -> FileStorage:

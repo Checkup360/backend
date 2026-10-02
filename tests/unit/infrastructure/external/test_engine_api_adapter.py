@@ -35,6 +35,36 @@ async def test_get_catalog_success() -> None:
     assert len(catalog) == 1
     assert catalog[0].score_id == "findrisc"
     assert catalog[0].required_fields == ["age", "sex"]
+    # Engines without the topic catalog fall back to the legacy key mapping
+    assert catalog[0].topic_key == "diabetes"
+    assert catalog[0].topic_label == "Diabetes"
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_reads_health_topics() -> None:
+    engine_url = "http://fake-engine:8000"
+    client = httpx.AsyncClient()
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
+    mock_response = httpx.Response(
+        status_code=200,
+        json=[
+            {
+                "score_id": "audit_c",
+                "score_name": "AUDIT-C Alcohol Risk",
+                "domain": "Alcohol Use",
+                "topic_key": "audit_c",
+                "topic_label": "Alcohol Risk Assessment",
+            }
+        ],
+        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
+    )
+
+    with patch.object(client, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+        catalog = await adapter.get_catalog()
+
+    assert catalog[0].topic_key == "audit_c"
+    assert catalog[0].topic_label == "Alcohol Risk Assessment"
 
 
 @pytest.mark.asyncio

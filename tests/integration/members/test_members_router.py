@@ -1,4 +1,10 @@
+from unittest.mock import AsyncMock
+
 import pytest
+
+from app.application.dto.risk_scoring import ScoreCatalogItemDTO
+from app.presentation.api.dependencies import get_risk_scoring_service
+from app.presentation.main import app
 
 
 class TestMembersRouter:
@@ -97,8 +103,27 @@ class TestMembersRouter:
             email="risk-priorities-user@example.com",
             memberships=None,
         )
-
-        res = client.get("/members/me/risk-priorities")
+        scoring_service = AsyncMock()
+        scoring_service.get_catalog.return_value = [
+            ScoreCatalogItemDTO(
+                score_id=score_id,
+                score_name=score_id.upper(),
+                domain=label,
+                topic_key=key,
+                topic_label=label,
+            )
+            for score_id, key, label in [
+                ("findrisc", "diabetes", "Diabetes"),
+                ("stop_bang", "sleep_apnea", "Sleep Apnea"),
+                ("phq9", "depression", "Mood & Well-being"),
+                ("audit_c", "audit_c", "Alcohol Risk Assessment"),
+            ]
+        ]
+        app.dependency_overrides[get_risk_scoring_service] = lambda: scoring_service
+        try:
+            res = client.get("/members/me/risk-priorities")
+        finally:
+            app.dependency_overrides.pop(get_risk_scoring_service, None)
         assert res.status_code == 200
         data = res.json()
         assert "user_id" in data
@@ -107,3 +132,29 @@ class TestMembersRouter:
         assert "diabetes" in data["risk_weights"]
         assert "sleep_apnea" in data["risk_weights"]
         assert "depression" in data["risk_weights"]
+        # Default organization weights do not enable alcohol
+        assert "audit_c" not in data["risk_weights"]
+        assert {c["key"]: c["label"] for c in data["categories"]} == {
+            "diabetes": "Diabetes",
+            "sleep_apnea": "Sleep Apnea",
+            "depression": "Mood & Well-being",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_my_risk_priorities_without_engine_catalog(
+        self, client, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="risk-priorities-engine-down@example.com",
+            memberships=None,
+        )
+        scoring_service = AsyncMock()
+        scoring_service.get_catalog.side_effect = RuntimeError("engine down")
+        app.dependency_overrides[get_risk_scoring_service] = lambda: scoring_service
+        try:
+            res = client.get("/members/me/risk-priorities")
+        finally:
+            app.dependency_overrides.pop(get_risk_scoring_service, None)
+
+        assert res.status_code == 503
+        assert res.json()["detail"] == "health_topics_unavailable"

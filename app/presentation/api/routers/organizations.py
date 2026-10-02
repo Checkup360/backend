@@ -34,11 +34,15 @@ from app.presentation.api.dependencies import (
     get_vote_superadmin_removal_request_use_case,
     get_list_superadmin_removal_requests_use_case,
     get_recalculate_org_scores_use_case,
+    get_organization_content_categories_use_case,
     get_get_organization_audit_logs_use_case,
     get_get_organization_compliance_summary_use_case,
 )
 from app.application.use_cases.organizations.recalculate_org_scores import (
     RecalculateOrganizationOverallScoresUseCase,
+)
+from app.application.use_cases.organizations.get_organization_content_categories import (
+    GetOrganizationContentCategoriesUseCase,
 )
 from app.domain.repositories.member_overall_score import MemberOverallScoreRepository
 from app.application.use_cases.organizations import (
@@ -72,6 +76,7 @@ from app.domain.exceptions import (
     DepartmentInUseError,
     DepartmentNotFoundError,
     DepartmentSlugAlreadyExists,
+    HealthTopicsUnavailableError,
     InsufficientRolePermissionError,
     MembershipNotFoundError,
     NotOrganizationAdminError,
@@ -142,6 +147,10 @@ from app.presentation.api.response_models.assessment_submissions import (
     AssessmentSubmissionDetailResponse,
     AssessmentSubmissionListResponse,
     AssessmentSubmissionSummaryResponse,
+)
+
+from app.presentation.api.response_models.content_category import (
+    ContentCategoryResponse,
 )
 
 router = APIRouter(prefix="/organizations", tags=["orgs"])
@@ -1198,6 +1207,47 @@ async def get_organization_score_weights(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="forbidden",
         )
+
+
+@router.get(
+    "/{organization_id}/content-categories",
+    response_model=list[ContentCategoryResponse],
+)
+async def list_organization_content_categories(
+    organization_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetOrganizationContentCategoriesUseCase = Depends(
+        get_organization_content_categories_use_case
+    ),
+):
+    """Health topics content can be tagged with, flagging the enabled ones."""
+    try:
+        categories = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except HealthTopicsUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="health_topics_unavailable",
+        )
+    return [
+        ContentCategoryResponse(
+            key=category.key, label=category.label, active=category.active
+        )
+        for category in categories
+    ]
 
 
 @router.put("/{organization_id}/score-weights", response_model=ScoreWeightsResponse)
