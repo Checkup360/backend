@@ -166,3 +166,39 @@ class TestMemberFormsRouter:
         form_types = [f["form_type"] for f in data["active_forms"]]
         assert "biometrics" in form_types
         assert "mood" in form_types
+
+    @pytest.mark.asyncio
+    async def test_put_form_with_normalized_version_consent(
+        self, client, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="version-compat@example.com",
+            memberships=None,
+        )
+
+        client.post(
+            "/consents",
+            json={
+                "consent_type": "HEALTH_DATA_PROCESSING_CONSENT",
+                "document_version": "1.0",
+            },
+        )
+        # Consent accepted with "1.0"
+        client.post(
+            "/consents",
+            json={
+                "consent_type": "FORM_CONSENT",
+                "form_type": "mood",
+                "document_version": "1.0",
+            },
+        )
+
+        res_mood = client.put(
+            "/members/me/forms/mood",
+            json={
+                "little_interest": 1,
+                "feeling_down": 2,
+            },
+        )
+        assert res_mood.status_code == 200
+        assert res_mood.json()["form_type"] == "mood"

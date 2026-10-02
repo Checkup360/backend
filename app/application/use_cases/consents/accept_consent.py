@@ -67,7 +67,7 @@ class AcceptConsentUseCase:
         )
         if (
             existing_active
-            and existing_active.document_version == document_version
+            and existing_active.matches_version(document_version)
             and existing_active.document_hash == document_hash
         ):
             return self._to_dto(existing_active)

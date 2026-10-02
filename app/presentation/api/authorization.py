@@ -186,7 +186,7 @@ async def require_form_consent(
     if (
         not form_consent
         or not form_consent.is_active
-        or form_consent.document_version != current_version
+        or not form_consent.matches_version(current_version)
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

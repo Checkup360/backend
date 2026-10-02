@@ -11,6 +11,19 @@ class ConsentType(str, Enum):
     FORM_CONSENT = "FORM_CONSENT"
 
 
+def normalize_version(version: str | None) -> str:
+    """Normalizes a version string (e.g. '1.0' -> '1', '1.0.0' -> '1', '2.1.0' -> '2.1')."""
+    if not version:
+        return ""
+    v = str(version).strip()
+    parts = v.split(".")
+    if all(p.isdigit() for p in parts):
+        while len(parts) > 1 and parts[-1] == "0":
+            parts.pop()
+        return ".".join(parts)
+    return v
+
+
 @dataclass
 class UserConsent:
     id: uuid.UUID
@@ -29,3 +42,13 @@ class UserConsent:
     def is_active(self) -> bool:
         """Returns True if the consent has not been revoked."""
         return self.revoked_at is None
+
+    def matches_version(self, target_version: str | None) -> bool:
+        """Returns True if the consent's document_version is compatible with target_version."""
+        if not target_version:
+            return False
+        if self.document_version == target_version:
+            return True
+        return normalize_version(self.document_version) == normalize_version(
+            target_version
+        )

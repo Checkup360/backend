@@ -152,3 +152,37 @@ def test_member_health_data_dataclass():
     assert health.family_diabetes == "first_degree"
     assert health.little_interest is None
     assert health.self_harm_thoughts is None
+
+
+def test_user_consent_matches_version_and_normalization():
+    from app.domain.entities.user_consent import (
+        ConsentType,
+        UserConsent,
+        normalize_version,
+    )
+
+    assert normalize_version("1") == "1"
+    assert normalize_version("1.0") == "1"
+    assert normalize_version("1.0.0") == "1"
+    assert normalize_version("2.0") == "2"
+    assert normalize_version("2.1") == "2.1"
+    assert normalize_version("2.1.0") == "2.1"
+    assert normalize_version(None) == ""
+    assert normalize_version("draft-1") == "draft-1"
+
+    now = datetime.now(timezone.utc)
+    consent = UserConsent(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        consent_type=ConsentType.FORM_CONSENT,
+        form_type="mood",
+        document_version="1.0",
+        accepted_at=now,
+    )
+
+    assert consent.is_active is True
+    assert consent.matches_version("1") is True
+    assert consent.matches_version("1.0") is True
+    assert consent.matches_version("1.0.0") is True
+    assert consent.matches_version("2.0") is False
+    assert consent.matches_version(None) is False
