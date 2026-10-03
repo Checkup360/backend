@@ -545,14 +545,16 @@ async def delete_department(
         _map_department_error(exc)
 
 
-def _determine_employee_status(roles: list[OrgRole], onboarded: bool) -> str | None:
-    if not roles:
+def _determine_employee_status(
+    roles: list[OrgRole], onboarded: bool, completed_all_forms: bool
+) -> str:
+    if not roles or OrgRole.MEMBER not in roles:
         return "inactive"
-    if OrgRole.MEMBER not in roles:
-        return None
-    if onboarded:
-        return "active"
-    return "onboarding"
+    if not onboarded:
+        return "onboarding"
+    if completed_all_forms:
+        return "up_to_date"
+    return "pending_assessments"
 
 
 @router.patch(
@@ -579,7 +581,15 @@ async def assign_employee_department(
 
     profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
-    status_val = _determine_employee_status(employee.roles, onboarded)
+    if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
+        completed_all_forms = await member_details_service.has_completed_all_forms(
+            employee.user.id
+        )
+    else:
+        completed_all_forms = False
+    status_val = _determine_employee_status(
+        employee.roles, onboarded, completed_all_forms
+    )
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
@@ -650,7 +660,15 @@ async def update_employee_roles(
 
     profile = await member_details_service.get_profile(employee.user.id)
     onboarded = await member_details_service.is_onboarded(employee.user.id)
-    status_val = _determine_employee_status(employee.roles, onboarded)
+    if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
+        completed_all_forms = await member_details_service.has_completed_all_forms(
+            employee.user.id
+        )
+    else:
+        completed_all_forms = False
+    status_val = _determine_employee_status(
+        employee.roles, onboarded, completed_all_forms
+    )
 
     return OrganizationEmployeeResponse(
         id=employee.user.id,
@@ -916,6 +934,7 @@ async def list_organization_employees(
     status_filter: str | None = Query(default=None, alias="status"),
     score_filter: str | None = Query(default=None, alias="score"),
     search: str | None = Query(default=None),
+    include_inactive: bool = Query(default=False, alias="include_inactive"),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -950,7 +969,17 @@ async def list_organization_employees(
     for employee in employees:
         profile = await member_details_service.get_profile(employee.user.id)
         onboarded = await member_details_service.is_onboarded(employee.user.id)
-        status_val = _determine_employee_status(employee.roles, onboarded)
+
+        if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
+            completed_all_forms = await member_details_service.has_completed_all_forms(
+                employee.user.id
+            )
+        else:
+            completed_all_forms = False
+
+        status_val = _determine_employee_status(
+            employee.roles, onboarded, completed_all_forms
+        )
 
         latest_score = latest_overall_map.get(employee.user.id)
         if latest_score is not None:
@@ -974,6 +1003,8 @@ async def list_organization_employees(
         if status_filter is not None:
             if status_val is None or status_val.lower() != status_filter.lower():
                 continue
+        elif not include_inactive and status_val == "inactive":
+            continue
 
         # Apply score query parameter filter
         if score_filter == "scored" and latest_score is None:

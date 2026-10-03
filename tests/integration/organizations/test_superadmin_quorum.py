@@ -154,7 +154,9 @@ class TestSuperadminQuorum:
 
         # 5. Verify SA3 lost superadmin role
         _switch_user(client, auth_scenario, "sa1@example.com")
-        emp_resp = client.get(f"/organizations/{org.id}/employees")
+        emp_resp = client.get(
+            f"/organizations/{org.id}/employees?include_inactive=true"
+        )
         assert emp_resp.status_code == 200
         employees = emp_resp.json()
         sa3_emp = next(e for e in employees if e["id"] == str(sa3.id))
@@ -218,7 +220,9 @@ class TestSuperadminQuorum:
 
         # Verify SA3 still has superadmin role
         _switch_user(client, auth_scenario, "sa-rej-1@example.com")
-        emp_resp = client.get(f"/organizations/{org.id}/employees")
+        emp_resp = client.get(
+            f"/organizations/{org.id}/employees?include_inactive=true"
+        )
         assert emp_resp.status_code == 200
         employees = emp_resp.json()
         sa3_emp = next(e for e in employees if e["id"] == str(sa3.id))
