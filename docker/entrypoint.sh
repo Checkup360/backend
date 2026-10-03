@@ -18,8 +18,18 @@ cmd="${1:-serve}"
 shift || true
 
 run_migrations() {
-  echo "[entrypoint] alembic upgrade head"
-  alembic upgrade head
+  echo "[entrypoint] running alembic upgrade head"
+  max_retries=10
+  attempt=1
+  while ! alembic upgrade head; do
+    if [ $attempt -ge $max_retries ]; then
+      echo "[entrypoint] Failed to run migrations after $max_retries attempts. Exiting."
+      exit 1
+    fi
+    echo "[entrypoint] Migration failed. Retrying in 1 second... (Attempt $attempt/$max_retries)"
+    sleep 1
+    attempt=$((attempt + 1))
+  done
 }
 
 run_seed_if_configured() {
