@@ -79,10 +79,6 @@ class InsufficientRolePermissionError(DomainError):
     pass
 
 
-class SuperadminDirectRemovalForbiddenError(DomainError):
-    pass
-
-
 class CannotRemoveLastSuperadminError(DomainError):
     pass
 
@@ -90,30 +86,6 @@ class CannotRemoveLastSuperadminError(DomainError):
 class CannotRemoveOwnSuperadminError(DomainError):
     """A superadmin cannot remove their own superadmin role or deactivate themselves."""
 
-    pass
-
-
-class RemovalRequestAlreadyExistsError(DomainError):
-    pass
-
-
-class RemovalRequestNotFoundError(DomainError):
-    pass
-
-
-class RemovalRequestAlreadyResolvedError(DomainError):
-    pass
-
-
-class SelfVotingForbiddenError(DomainError):
-    pass
-
-
-class VoterNotSuperadminError(DomainError):
-    pass
-
-
-class AlreadyVotedError(DomainError):
     pass
 
 

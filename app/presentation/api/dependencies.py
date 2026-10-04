@@ -64,25 +64,10 @@ from app.application.use_cases.members.delete_member_avatar import (
 from app.application.use_cases.memberships.update_employee_roles import (
     UpdateEmployeeRolesUseCase,
 )
-from app.application.use_cases.memberships.create_superadmin_removal_request import (
-    CreateSuperadminRemovalRequestUseCase,
-)
-from app.application.use_cases.memberships.vote_superadmin_removal_request import (
-    VoteSuperadminRemovalRequestUseCase,
-)
-from app.application.use_cases.memberships.list_superadmin_removal_requests import (
-    ListSuperadminRemovalRequestsUseCase,
-)
 from app.application.use_cases.consents import (
     AcceptConsentUseCase,
     GetActiveConsentsUseCase,
     RevokeConsentUseCase,
-)
-from app.domain.repositories.superadmin_removal import (
-    SuperadminRemovalRepository,
-)
-from app.infrastructure.persistence.repositories.superadmin_removal import (
-    SqlAlchemySuperadminRemovalRepository,
 )
 from app.domain.repositories.refresh_token import RefreshTokenRepository
 from app.infrastructure.persistence.repositories.refresh_token import (
@@ -549,56 +534,6 @@ async def get_update_employee_roles_use_case(
         org_repo=org_repo,
         refresh_token_repo=refresh_token_repo,
         audit_log_repo=audit_log_repo,
-    )
-
-
-async def get_superadmin_removal_repository(
-    db: AsyncSession = Depends(get_db),
-) -> SuperadminRemovalRepository:
-    return SqlAlchemySuperadminRemovalRepository(db)
-
-
-async def get_create_superadmin_removal_request_use_case(
-    membership_repo: MembershipRepository = Depends(get_membership_repository),
-    org_repo: OrganizationRepository = Depends(get_organization_repository),
-    removal_repo: SuperadminRemovalRepository = Depends(
-        get_superadmin_removal_repository
-    ),
-    refresh_token_repo: RefreshTokenRepository = Depends(get_refresh_token_repository),
-) -> CreateSuperadminRemovalRequestUseCase:
-    return CreateSuperadminRemovalRequestUseCase(
-        membership_repo=membership_repo,
-        org_repo=org_repo,
-        removal_repo=removal_repo,
-        refresh_token_repo=refresh_token_repo,
-    )
-
-
-async def get_vote_superadmin_removal_request_use_case(
-    membership_repo: MembershipRepository = Depends(get_membership_repository),
-    removal_repo: SuperadminRemovalRepository = Depends(
-        get_superadmin_removal_repository
-    ),
-    refresh_token_repo: RefreshTokenRepository = Depends(get_refresh_token_repository),
-) -> VoteSuperadminRemovalRequestUseCase:
-    return VoteSuperadminRemovalRequestUseCase(
-        membership_repo=membership_repo,
-        removal_repo=removal_repo,
-        refresh_token_repo=refresh_token_repo,
-    )
-
-
-async def get_list_superadmin_removal_requests_use_case(
-    membership_repo: MembershipRepository = Depends(get_membership_repository),
-    org_repo: OrganizationRepository = Depends(get_organization_repository),
-    removal_repo: SuperadminRemovalRepository = Depends(
-        get_superadmin_removal_repository
-    ),
-) -> ListSuperadminRemovalRequestsUseCase:
-    return ListSuperadminRemovalRequestsUseCase(
-        membership_repo=membership_repo,
-        org_repo=org_repo,
-        removal_repo=removal_repo,
     )
 
 

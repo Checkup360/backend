@@ -1,9 +1,8 @@
 import re
 import uuid
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
-from typing import Literal
 
 from app.domain.value_objects import OrgRole
 
@@ -92,11 +91,3 @@ class UpdateOrganizationRequest(BaseModel):
 
 class UpdateEmployeeRolesRequest(BaseModel):
     roles: list[OrgRole]
-
-
-class CreateSuperadminRemovalRequest(BaseModel):
-    reason: str | None = Field(None, max_length=500)
-
-
-class VoteSuperadminRemovalRequest(BaseModel):
-    decision: Literal["approve", "reject"]
