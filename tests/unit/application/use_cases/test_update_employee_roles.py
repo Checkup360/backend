@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.application.use_cases.memberships.update_employee_roles import (
+    SUPERADMIN_ROLE_GRANTED,
+    SUPERADMIN_ROLE_REMOVED,
     UpdateEmployeeRolesUseCase,
 )
 from app.domain.entities.membership import Membership
@@ -42,8 +44,11 @@ def _build(
     org_repo = AsyncMock()
     org_repo.get.return_value = MagicMock(id=ORG_ID)
     refresh_token_repo = AsyncMock()
-    use_case = UpdateEmployeeRolesUseCase(membership_repo, org_repo, refresh_token_repo)
-    return use_case, membership_repo, refresh_token_repo
+    audit_log_repo = AsyncMock()
+    use_case = UpdateEmployeeRolesUseCase(
+        membership_repo, org_repo, refresh_token_repo, audit_log_repo
+    )
+    return use_case, membership_repo, refresh_token_repo, audit_log_repo
 
 
 async def _execute(use_case, new_roles, *, superuser=False, target_id=TARGET_ID):
@@ -92,8 +97,8 @@ async def test_regular_admin_cannot_remove_superadmin():
 
 
 @pytest.mark.asyncio
-async def test_superadmin_removes_another_superadmin():
-    use_case, membership_repo, _ = _build(
+async def test_superadmin_removes_another_superadmin_and_it_is_audited():
+    use_case, membership_repo, _, audit_log_repo = _build(
         [OrgRole.SUPERADMIN, OrgRole.ADMIN],
         actor_roles=[OrgRole.SUPERADMIN, OrgRole.ADMIN],
         superadmin_count=2,
@@ -103,11 +108,16 @@ async def test_superadmin_removes_another_superadmin():
 
     saved = membership_repo.save.call_args.args[0]
     assert saved.roles == [OrgRole.ADMIN]
+    entry = audit_log_repo.log.call_args.args[0]
+    assert entry.action == SUPERADMIN_ROLE_REMOVED
+    assert entry.user_id == ACTOR_ID
+    assert entry.resource_id == str(TARGET_ID)
+    assert entry.organization_id == ORG_ID
 
 
 @pytest.mark.asyncio
 async def test_superadmin_deactivating_another_superadmin_revokes_sessions():
-    use_case, _, refresh_token_repo = _build(
+    use_case, _, refresh_token_repo, audit_log_repo = _build(
         [OrgRole.SUPERADMIN, OrgRole.ADMIN, OrgRole.MEMBER],
         actor_roles=[OrgRole.SUPERADMIN, OrgRole.ADMIN],
         superadmin_count=3,
@@ -116,18 +126,20 @@ async def test_superadmin_deactivating_another_superadmin_revokes_sessions():
     await _execute(use_case, [])
 
     refresh_token_repo.revoke_all_for_user.assert_awaited_once_with(TARGET_ID)
+    assert audit_log_repo.log.call_args.args[0].action == SUPERADMIN_ROLE_REMOVED
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("new_roles", [[OrgRole.ADMIN], []])
 async def test_superadmin_cannot_remove_own_superadmin_role(new_roles):
-    use_case, membership_repo, _ = _build(
+    use_case, membership_repo, _, audit_log_repo = _build(
         [OrgRole.SUPERADMIN, OrgRole.ADMIN], superadmin_count=3, target_id=ACTOR_ID
     )
 
     with pytest.raises(CannotRemoveOwnSuperadminError):
         await _execute(use_case, new_roles, target_id=ACTOR_ID)
     membership_repo.save.assert_not_called()
+    audit_log_repo.log.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -150,3 +162,25 @@ async def test_sysadmin_can_remove_a_superadmin_when_another_remains():
     await _execute(use_case, [OrgRole.ADMIN], superuser=True)
 
     membership_repo.save.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_granting_superadmin_is_audited():
+    use_case, _, _, audit_log_repo = _build(
+        [OrgRole.ADMIN], actor_roles=[OrgRole.SUPERADMIN, OrgRole.ADMIN]
+    )
+
+    await _execute(use_case, [OrgRole.SUPERADMIN, OrgRole.ADMIN])
+
+    assert audit_log_repo.log.call_args.args[0].action == SUPERADMIN_ROLE_GRANTED
+
+
+@pytest.mark.asyncio
+async def test_changes_without_superadmin_are_not_audited():
+    use_case, _, _, audit_log_repo = _build(
+        [OrgRole.MEMBER], actor_roles=[OrgRole.SUPERADMIN, OrgRole.ADMIN]
+    )
+
+    await _execute(use_case, [OrgRole.MEMBER, OrgRole.CONTENT_MANAGER])
+
+    audit_log_repo.log.assert_not_called()

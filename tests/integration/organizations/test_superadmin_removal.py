@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from app.domain.value_objects.org_role import OrgRole
-from app.infrastructure.persistence.models import Organization
+from app.infrastructure.persistence.models import AuditLogModel, Organization
 
 
 async def _organization_id(db_session_maker, slug: str):
@@ -12,6 +12,16 @@ async def _organization_id(db_session_maker, slug: str):
         )
         assert organization is not None
         return organization.id
+
+
+async def _audit_actions(db_session_maker, organization_id) -> list[str]:
+    async with db_session_maker() as session:
+        rows = await session.scalars(
+            select(AuditLogModel.action).where(
+                AuditLogModel.organization_id == organization_id
+            )
+        )
+        return list(rows)
 
 
 class TestSuperadminRemoval:
@@ -36,6 +46,9 @@ class TestSuperadminRemoval:
 
         assert response.status_code == 200
         assert response.json()["roles"] == ["admin"]
+        assert "SUPERADMIN_ROLE_REMOVED" in await _audit_actions(
+            db_session_maker, org_id
+        )
 
     @pytest.mark.asyncio
     async def test_superadmin_deactivates_another_superadmin(

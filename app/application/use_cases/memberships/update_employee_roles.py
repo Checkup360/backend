@@ -1,6 +1,7 @@
 import uuid
 
 from app.domain.entities import Employee
+from app.domain.entities.audit_log import AuditLog
 from app.domain.entities.membership import Membership
 from app.domain.exceptions import (
     InsufficientRolePermissionError,
@@ -13,11 +14,16 @@ from app.domain.repositories import (
     OrganizationRepository,
     RefreshTokenRepository,
 )
+from app.domain.repositories.audit_log import AuditLogRepository
 from app.domain.services.superadmin_policy import (
     ensure_not_self_removal,
     ensure_superadmin_remains,
 )
 from app.domain.value_objects import OrgRole
+
+SUPERADMIN_ROLE_GRANTED = "SUPERADMIN_ROLE_GRANTED"
+SUPERADMIN_ROLE_REMOVED = "SUPERADMIN_ROLE_REMOVED"
+MEMBERSHIP_RESOURCE = "MEMBERSHIP"
 
 
 class UpdateEmployeeRolesUseCase:
@@ -26,10 +32,12 @@ class UpdateEmployeeRolesUseCase:
         membership_repo: MembershipRepository,
         org_repo: OrganizationRepository,
         refresh_token_repo: RefreshTokenRepository,
+        audit_log_repo: AuditLogRepository,
     ):
         self.membership_repo = membership_repo
         self.org_repo = org_repo
         self.refresh_token_repo = refresh_token_repo
+        self.audit_log_repo = audit_log_repo
 
     async def execute(
         self,
@@ -64,6 +72,9 @@ class UpdateEmployeeRolesUseCase:
         )
         target_membership.roles = new_roles
         await self.membership_repo.save(target_membership)
+        await self._record_superadmin_change(
+            actor_user_id, target_membership, previous_roles, new_roles
+        )
 
         employee = await self.membership_repo.get_employee(
             target_user_id, organization_id
@@ -123,6 +134,30 @@ class UpdateEmployeeRolesUseCase:
         losing_member_role = _loses_role(OrgRole.MEMBER, previous_roles, new_roles)
         if losing_member_role or len(new_roles) == 0:
             await self.refresh_token_repo.revoke_all_for_user(target_user_id)
+
+    async def _record_superadmin_change(
+        self,
+        actor_user_id: uuid.UUID,
+        target_membership: Membership,
+        previous_roles: list[OrgRole],
+        new_roles: list[OrgRole],
+    ) -> None:
+        if _loses_role(OrgRole.SUPERADMIN, previous_roles, new_roles):
+            action = SUPERADMIN_ROLE_REMOVED
+        elif _loses_role(OrgRole.SUPERADMIN, new_roles, previous_roles):
+            action = SUPERADMIN_ROLE_GRANTED
+        else:
+            return
+
+        await self.audit_log_repo.log(
+            AuditLog.create(
+                action=action,
+                resource_type=MEMBERSHIP_RESOURCE,
+                user_id=actor_user_id,
+                organization_id=target_membership.organization_id,
+                resource_id=str(target_membership.user_id),
+            )
+        )
 
 
 def _loses_role(

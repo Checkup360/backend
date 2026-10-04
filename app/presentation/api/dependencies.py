@@ -542,11 +542,13 @@ async def get_update_employee_roles_use_case(
     membership_repo: MembershipRepository = Depends(get_membership_repository),
     org_repo: OrganizationRepository = Depends(get_organization_repository),
     refresh_token_repo: RefreshTokenRepository = Depends(get_refresh_token_repository),
+    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
 ) -> UpdateEmployeeRolesUseCase:
     return UpdateEmployeeRolesUseCase(
         membership_repo=membership_repo,
         org_repo=org_repo,
         refresh_token_repo=refresh_token_repo,
+        audit_log_repo=audit_log_repo,
     )
 
 
