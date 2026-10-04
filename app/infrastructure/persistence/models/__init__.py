@@ -17,10 +17,6 @@ from app.infrastructure.persistence.models.organization_score_weights import (
 )
 from app.infrastructure.persistence.models.refresh_token import RefreshToken
 from app.infrastructure.persistence.models.risk_score import RiskScoreModel
-from app.infrastructure.persistence.models.superadmin_removal import (
-    SuperadminRemovalRequestModel,
-    SuperadminRemovalVoteModel,
-)
 from app.infrastructure.persistence.models.user import OAuthAccount, User
 from app.infrastructure.persistence.models.user_consent import UserConsentModel
 
@@ -41,6 +37,4 @@ __all__ = [
     "Membership",
     "RiskScoreModel",
     "RefreshToken",
-    "SuperadminRemovalRequestModel",
-    "SuperadminRemovalVoteModel",
 ]

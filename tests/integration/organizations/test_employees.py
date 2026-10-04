@@ -490,36 +490,6 @@ class TestOrganizationEmployees:
         assert response.json()["roles"] == ["member"]
 
     @pytest.mark.asyncio
-    async def test_superadmin_cannot_remove_superadmin_directly(
-        self,
-        client,
-        db_session_maker,
-        auth_scenario,
-        make_user,
-        make_membership,
-    ):
-        await auth_scenario.register_and_login(
-            email="superadmin-remover@example.com",
-            memberships=[("sa-direct-org", OrgRole.SUPERADMIN)],
-        )
-        organization = await _get_organization_by_slug(
-            db_session_maker, "sa-direct-org"
-        )
-        target_sa = await make_user(email="target-sa@example.com")
-        await make_membership(
-            user_id=target_sa.id,
-            organization_id=organization.id,
-            role="superadmin",
-        )
-
-        response = client.patch(
-            f"/organizations/{organization.id}/employees/{target_sa.id}/roles",
-            json={"roles": ["admin"]},
-        )
-        assert response.status_code == 400
-        assert "quorum" in response.json()["detail"].lower()
-
-    @pytest.mark.asyncio
     async def test_employee_losing_member_role_becomes_inactive_and_loses_member_portal_access(
         self,
         client,
