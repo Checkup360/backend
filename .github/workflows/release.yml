@@ -59,18 +59,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check skip-pr
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "${{ github.ref_name }}" --json body -q .body 2>/dev/null | grep -qiE 'skip-pr|no-pr' && echo "skip=true" >> "$GITHUB_OUTPUT" || true
+
       - name: Checkout infra repo
+        if: steps.check.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/infra
           token: ${{ secrets.REPO_DISPATCH_TOKEN }}
 
       - name: Update backend version in staging.yml
+        if: steps.check.outputs.skip != 'true'
         uses: mikefarah/yq@v4.53.2
         with:
           cmd: yq -i '.backend = "${{ github.ref_name }}"' versions/staging.yml
 
       - name: Create or update PR
+        if: steps.check.outputs.skip != 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.REPO_DISPATCH_TOKEN }}
