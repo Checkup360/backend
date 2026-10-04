@@ -77,14 +77,14 @@ def test_calculate_weighted_overall_score_includes_new_score_weights():
 
 def test_calculate_weighted_overall_score_partial_results():
     # Employee only completed Diabetes (health index 70) with custom weights 60/40
-    # Because sleep_apnea is missing, overall score cannot be computed
+    # Score is proportionally calculated from available completed assessments
     results = [
         DummyScoreResult(score_name="Diabetes", health_index=70.0),
     ]
     weights = {"diabetes": 60.0, "sleep_apnea": 40.0}
     score, level = calculate_weighted_overall_score(results, weights)
-    assert score is None
-    assert level is None
+    assert score == 70.0
+    assert level == "Moderate risk"
 
 
 def test_calculate_weighted_overall_score_zero_weight_for_missing_score():

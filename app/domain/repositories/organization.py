@@ -18,5 +18,8 @@ class OrganizationRepository(Protocol):
     async def update(self, id: uuid.UUID, **kwargs) -> Organization | None: ...
 
     async def update_score_weights(
-        self, id: uuid.UUID, score_weights: dict[str, float]
+        self,
+        id: uuid.UUID,
+        score_weights: dict[str, float],
+        risk_thresholds: dict[str, float] | None = None,
     ) -> Organization | None: ...

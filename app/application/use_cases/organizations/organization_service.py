@@ -10,6 +10,7 @@ from app.domain.repositories import OrganizationRepository
 from app.domain.repositories.organization_score_weights import (
     OrganizationScoreWeightsRepository,
 )
+from app.domain.services.health_index_classification import DEFAULT_RISK_THRESHOLDS
 from app.domain.services.risk_score_calculator import DEFAULT_SCORE_WEIGHTS
 
 
@@ -35,6 +36,7 @@ class OrganizationService:
                 organization_id=org.id,
                 version=1,
                 weights=dict(DEFAULT_SCORE_WEIGHTS),
+                risk_thresholds=dict(DEFAULT_RISK_THRESHOLDS),
                 changed_by_user_id=None,
                 created_at=datetime.now(timezone.utc),
             )
@@ -52,22 +54,40 @@ class OrganizationService:
         return await self.repo.delete(id)
 
     async def get_score_weights(self, id: uuid.UUID) -> dict[str, float]:
+        weights, _ = await self.get_score_weights_and_thresholds(id)
+        return weights
+
+    async def get_score_weights_and_thresholds(
+        self, id: uuid.UUID
+    ) -> tuple[dict[str, float], dict[str, float]]:
         if self.score_weights_repo:
             active = await self.score_weights_repo.get_active_for_organization(id)
             if active and active.weights:
-                return active.weights
+                thresholds = (
+                    active.risk_thresholds
+                    if active.risk_thresholds
+                    else dict(DEFAULT_RISK_THRESHOLDS)
+                )
+                return active.weights, thresholds
 
         org = await self.repo.get(id)
         if not org:
             raise OrganizationNotFoundError()
-        if not org.score_weights:
-            return dict(DEFAULT_SCORE_WEIGHTS)
-        return org.score_weights
+        weights = (
+            org.score_weights if org.score_weights else dict(DEFAULT_SCORE_WEIGHTS)
+        )
+        thresholds = (
+            org.risk_thresholds
+            if org.risk_thresholds
+            else dict(DEFAULT_RISK_THRESHOLDS)
+        )
+        return weights, thresholds
 
     async def update_score_weights(
         self,
         id: uuid.UUID,
         score_weights: dict[str, float],
+        risk_thresholds: dict[str, float] | None = None,
         changed_by_user_id: uuid.UUID | None = None,
     ) -> Organization:
         org = await self.repo.get(id)
@@ -76,18 +96,37 @@ class OrganizationService:
         for k, v in score_weights.items():
             if not isinstance(v, (int, float)) or v < 0:
                 raise ValueError(f"Invalid weight value for '{k}'")
-        updated = await self.repo.update_score_weights(id, score_weights)
+
+        if risk_thresholds is not None:
+            if "low" not in risk_thresholds or "moderate" not in risk_thresholds:
+                raise ValueError("risk_thresholds_must_contain_low_and_moderate")
+            low_val = float(risk_thresholds["low"])
+            mod_val = float(risk_thresholds["moderate"])
+            if not (0.0 <= mod_val < low_val <= 100.0):
+                raise ValueError("invalid_risk_threshold_ranges")
+
+        updated = await self.repo.update_score_weights(
+            id, score_weights, risk_thresholds=risk_thresholds
+        )
         if not updated:
             raise OrganizationNotFoundError()
 
         if self.score_weights_repo:
             latest = await self.score_weights_repo.get_active_for_organization(id)
             next_version = (latest.version + 1) if latest else 1
+            effective_thresholds = (
+                risk_thresholds
+                if risk_thresholds is not None
+                else (
+                    latest.risk_thresholds if latest else dict(DEFAULT_RISK_THRESHOLDS)
+                )
+            )
             weights_entry = OrganizationScoreWeights(
                 id=uuid.uuid4(),
                 organization_id=id,
                 version=next_version,
                 weights=score_weights,
+                risk_thresholds=effective_thresholds,
                 changed_by_user_id=changed_by_user_id,
                 created_at=datetime.now(timezone.utc),
             )

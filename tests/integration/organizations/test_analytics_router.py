@@ -171,7 +171,7 @@ class TestOrganizationAnalyticsRouter:
         assert data[0]["high_risk_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_get_organization_department_analytics_partial_scores_returns_none(
+    async def test_get_organization_department_analytics_partial_scores_calculates_average(
         self,
         client,
         db_session_maker,
@@ -212,10 +212,10 @@ class TestOrganizationAnalyticsRouter:
                     id=uuid.uuid4(),
                     user_id=emp.id,
                     score_name="Diabetes",
-                    risk_level="High",
+                    risk_level="Moderate risk",
                     raw_value=18.0,
                     health_index=50.0,
-                    explanation="High risk",
+                    explanation="Moderate risk",
                     contributing_factors={},
                     evaluated_at=datetime.now(timezone.utc),
                 )
@@ -227,7 +227,7 @@ class TestOrganizationAnalyticsRouter:
         data = res.json()
         assert len(data) == 1
         assert data[0]["name"] == "Marketing"
-        assert data[0]["average_score"] is None
+        assert data[0]["average_score"] == 50.0
         assert data[0]["total_workers"] == 1
         assert data[0]["high_risk_count"] == 0
 

@@ -28,3 +28,13 @@ def test_needs_attention_only_below_moderate_band() -> None:
     assert needs_attention(49.9)
     assert not needs_attention(50.0)
     assert not needs_attention(95.0)
+
+
+def test_custom_risk_thresholds_classification() -> None:
+    custom_thresholds = {"low": 85.0, "moderate": 65.0}
+    assert classify_health_index(86.0, custom_thresholds) == "Low risk"
+    assert classify_health_index(84.0, custom_thresholds) == "Moderate risk"
+    assert classify_health_index(65.0, custom_thresholds) == "Moderate risk"
+    assert classify_health_index(64.9, custom_thresholds) == "Needs attention"
+    assert needs_attention(64.9, custom_thresholds)
+    assert not needs_attention(65.0, custom_thresholds)

@@ -26,6 +26,7 @@ class AssessmentSessionResponse(BaseModel):
 class AssessmentsResponse(BaseModel):
     overall_health_index: float | None = None
     overall_risk_level: str | None = None
+    risk_thresholds: dict[str, float] | None = None
     total_sessions: int = 0
     page: int = 1
     limit: int = 10

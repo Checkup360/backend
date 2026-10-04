@@ -4,7 +4,6 @@ from typing import NoReturn
 
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     File,
     HTTPException,
@@ -1125,7 +1124,10 @@ async def get_employee_assessments(
         for res in results
     ]
 
-    score_weights = await organization_service.get_score_weights(organization_id)
+    (
+        score_weights,
+        risk_thresholds,
+    ) = await organization_service.get_score_weights_and_thresholds(organization_id)
     latest_overall = await member_overall_score_repo.get_latest_by_user_id(user_id)
     persisted_history = await member_overall_score_repo.get_history_by_user_id(user_id)
     return build_assessments_response(
@@ -1133,6 +1135,7 @@ async def get_employee_assessments(
         page=page,
         limit=limit,
         score_weights=score_weights,
+        risk_thresholds=risk_thresholds,
         latest_overall=latest_overall,
         persisted_history=persisted_history,
     )
@@ -1226,8 +1229,14 @@ async def get_organization_score_weights(
             await membership_service.list_employees_for_organization_admin(
                 current_user.id, organization_id
             )
-        weights = await organization_service.get_score_weights(organization_id)
-        return ScoreWeightsResponse(score_weights=weights)
+        (
+            weights,
+            thresholds,
+        ) = await organization_service.get_score_weights_and_thresholds(organization_id)
+        return ScoreWeightsResponse(
+            score_weights=weights,
+            risk_thresholds=thresholds,
+        )
     except OrganizationNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1285,7 +1294,6 @@ async def list_organization_content_categories(
 async def update_organization_score_weights(
     organization_id: uuid.UUID,
     request: ScoreWeightsRequest,
-    background_tasks: BackgroundTasks,
     current_user: AuthenticatedUser = Depends(get_current_user),
     organization_service: OrganizationService = Depends(get_organization_service),
     membership_service: MembershipService = Depends(get_membership_service),
@@ -1301,16 +1309,22 @@ async def update_organization_score_weights(
         updated_org = await organization_service.update_score_weights(
             organization_id,
             request.score_weights,
+            risk_thresholds=request.risk_thresholds,
             changed_by_user_id=current_user.id,
         )
 
-        # Trigger background recalculation for all organization members
-        background_tasks.add_task(
-            recalculate_scores_use_case.execute, organization_id=organization_id
+        # Recalculate immediately for all organization members within active session
+        await recalculate_scores_use_case.execute(organization_id=organization_id)
+
+        effective_thresholds = (
+            updated_org.risk_thresholds
+            if updated_org.risk_thresholds is not None
+            else request.risk_thresholds
         )
 
         return ScoreWeightsResponse(
-            score_weights=updated_org.score_weights or request.score_weights
+            score_weights=updated_org.score_weights or request.score_weights,
+            risk_thresholds=effective_thresholds,
         )
     except OrganizationNotFoundError:
         raise HTTPException(

@@ -25,7 +25,10 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
-from app.domain.services.risk_score_calculator import normalize_score_key
+from app.domain.services.health_index_classification import classify_health_index
+from app.domain.services.risk_score_calculator import (
+    calculate_weighted_overall_score,
+)
 from app.application.dto.risk_scoring import HealthDataDTO
 from app.presentation.api.request_models.assessments import ClinicalAssessmentRequest
 from app.presentation.api.response_models.assessments import (
@@ -82,6 +85,7 @@ def _format_score_display_name(name: str) -> str:
 def build_assessment_sessions(
     results: list[AssessmentResultResponse],
     score_weights: dict[str, float] | None = None,
+    risk_thresholds: dict[str, float] | None = None,
     persisted_history: list[MemberOverallScore] | None = None,
 ) -> list[AssessmentSessionResponse]:
     if not results:
@@ -138,12 +142,23 @@ def build_assessment_sessions(
                     matched_persisted = p
                     break
 
-        if matched_persisted is not None:
+        if (
+            matched_persisted is not None
+            and matched_persisted.overall_health_index is not None
+        ):
             overall_health_index = matched_persisted.overall_health_index
-            overall_risk_level = matched_persisted.risk_level
+            if risk_thresholds is not None:
+                overall_risk_level = classify_health_index(
+                    matched_persisted.overall_health_index, risk_thresholds
+                )
+            else:
+                overall_risk_level = matched_persisted.risk_level
         else:
-            overall_health_index = None
-            overall_risk_level = None
+            calc_score, calc_risk = calculate_weighted_overall_score(
+                session_results, score_weights, risk_thresholds=risk_thresholds
+            )
+            overall_health_index = calc_score
+            overall_risk_level = calc_risk
 
         session_id = f"session_{b_ts}_{idx}"
         sessions.append(
@@ -164,36 +179,60 @@ def build_assessments_response(
     page: int = 1,
     limit: int = 10,
     score_weights: dict[str, float] | None = None,
+    risk_thresholds: dict[str, float] | None = None,
     latest_overall: MemberOverallScore | None = None,
     persisted_history: list[MemberOverallScore] | None = None,
 ) -> AssessmentsResponse:
-    if score_weights is not None:
-        filtered_results = [
-            r
+    if risk_thresholds is not None:
+        normalized_results = [
+            AssessmentResultResponse(
+                score_id=r.score_id,
+                score_name=r.score_name,
+                risk_level=(
+                    classify_health_index(r.health_index, risk_thresholds)
+                    if r.health_index is not None
+                    else r.risk_level
+                ),
+                raw_value=r.raw_value,
+                health_index=r.health_index,
+                explanation=r.explanation,
+                contributing_factors=r.contributing_factors,
+                attention_flags=r.attention_flags,
+                evaluated_at=r.evaluated_at,
+            )
             for r in results
-            if normalize_score_key(r.score_name) not in score_weights
-            or score_weights[normalize_score_key(r.score_name)] > 0
         ]
     else:
-        filtered_results = results
+        normalized_results = results
 
     all_sessions = build_assessment_sessions(
-        filtered_results, score_weights, persisted_history=persisted_history
+        normalized_results,
+        score_weights,
+        risk_thresholds=risk_thresholds,
+        persisted_history=persisted_history,
     )
     total_sessions = len(all_sessions)
 
-    if latest_overall is not None:
+    if latest_overall is not None and latest_overall.overall_health_index is not None:
         current_overall_score = latest_overall.overall_health_index
-        current_overall_risk_level = latest_overall.risk_level
+        if risk_thresholds is not None:
+            current_overall_risk_level = classify_health_index(
+                latest_overall.overall_health_index, risk_thresholds
+            )
+        else:
+            current_overall_risk_level = latest_overall.risk_level
     else:
-        current_overall_score = None
-        current_overall_risk_level = None
+        calc_score, calc_risk = calculate_weighted_overall_score(
+            normalized_results, score_weights, risk_thresholds=risk_thresholds
+        )
+        current_overall_score = calc_score
+        current_overall_risk_level = calc_risk
 
     start = (page - 1) * limit
     paginated_sessions = all_sessions[start : start + limit]
 
     latest_results_map: dict[str, AssessmentResultResponse] = {}
-    for r in filtered_results:
+    for r in normalized_results:
         s_key = r.score_name.lower()
         if s_key not in latest_results_map:
             latest_results_map[s_key] = r
@@ -211,6 +250,7 @@ def build_assessments_response(
     return AssessmentsResponse(
         overall_health_index=current_overall_score,
         overall_risk_level=current_overall_risk_level,
+        risk_thresholds=risk_thresholds,
         total_sessions=total_sessions,
         page=page,
         limit=limit,
@@ -304,16 +344,25 @@ async def evaluate_assessments(
     ]
 
     score_weights = None
+    risk_thresholds = None
     if user.membership and user.membership.organization_id:
         try:
-            score_weights = await organization_service.get_score_weights(
+            (
+                score_weights,
+                risk_thresholds,
+            ) = await organization_service.get_score_weights_and_thresholds(
                 user.membership.organization_id
             )
         except Exception:
             score_weights = None
+            risk_thresholds = None
 
     return build_assessments_response(
-        response_results, page=1, limit=10, score_weights=score_weights
+        response_results,
+        page=1,
+        limit=10,
+        score_weights=score_weights,
+        risk_thresholds=risk_thresholds,
     )
 
 
@@ -351,19 +400,25 @@ async def get_assessments(
     ]
 
     score_weights = None
+    risk_thresholds = None
     if user.membership and user.membership.organization_id:
         try:
-            score_weights = await organization_service.get_score_weights(
+            (
+                score_weights,
+                risk_thresholds,
+            ) = await organization_service.get_score_weights_and_thresholds(
                 user.membership.organization_id
             )
         except Exception:
             score_weights = None
+            risk_thresholds = None
 
     return build_assessments_response(
         response_results,
         page=page,
         limit=limit,
         score_weights=score_weights,
+        risk_thresholds=risk_thresholds,
         latest_overall=latest_overall,
         persisted_history=persisted_history,
     )

@@ -259,20 +259,30 @@ class TestOrganizationsRouter:
             "sleep_apnea": 33.0,
             "depression": 33.0,
         }
+        assert res_get.json()["risk_thresholds"] == {
+            "low": 80.0,
+            "moderate": 50.0,
+        }
 
-        # PUT update weights
+        # PUT update weights and risk thresholds
         new_weights = {"diabetes": 70.0, "sleep_apnea": 30.0}
+        new_thresholds = {"low": 85.0, "moderate": 60.0}
         res_put = client.put(
             f"/organizations/{org.id}/score-weights",
-            json={"score_weights": new_weights},
+            json={
+                "score_weights": new_weights,
+                "risk_thresholds": new_thresholds,
+            },
         )
         assert res_put.status_code == 200
         assert res_put.json()["score_weights"] == new_weights
+        assert res_put.json()["risk_thresholds"] == new_thresholds
 
-        # GET updated weights
+        # GET updated weights and thresholds
         res_get_updated = client.get(f"/organizations/{org.id}/score-weights")
         assert res_get_updated.status_code == 200
         assert res_get_updated.json()["score_weights"] == new_weights
+        assert res_get_updated.json()["risk_thresholds"] == new_thresholds
 
     @pytest.mark.asyncio
     async def test_score_weights_unauthorized_member(

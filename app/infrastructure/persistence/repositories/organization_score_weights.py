@@ -58,6 +58,9 @@ class OrganizationScoreWeightsRepository(
             weights=dict(orm.weights) if orm.weights else {},
             changed_by_user_id=orm.changed_by_user_id,
             created_at=orm.created_at,
+            risk_thresholds=(
+                dict(orm.risk_thresholds) if orm.risk_thresholds else None
+            ),
         )
 
     def _from_domain(self, entity: OrganizationScoreWeights) -> dict:
@@ -68,4 +71,5 @@ class OrganizationScoreWeightsRepository(
             "weights": entity.weights,
             "changed_by_user_id": entity.changed_by_user_id,
             "created_at": entity.created_at,
+            "risk_thresholds": entity.risk_thresholds,
         }

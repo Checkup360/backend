@@ -47,6 +47,7 @@ class AssignDepartmentRequest(BaseModel):
 
 class ScoreWeightsRequest(BaseModel):
     score_weights: dict[str, float]
+    risk_thresholds: dict[str, float] | None = None
 
     @field_validator("score_weights")
     @classmethod
@@ -60,6 +61,21 @@ class ScoreWeightsRequest(BaseModel):
             total += v
         if total <= 0:
             raise ValueError("total_weights_must_be_positive")
+        return value
+
+    @field_validator("risk_thresholds")
+    @classmethod
+    def validate_risk_thresholds(
+        cls, value: dict[str, float] | None
+    ) -> dict[str, float] | None:
+        if value is None:
+            return None
+        if "low" not in value or "moderate" not in value:
+            raise ValueError("risk_thresholds_must_contain_low_and_moderate")
+        low = float(value["low"])
+        moderate = float(value["moderate"])
+        if not (0.0 <= moderate < low <= 100.0):
+            raise ValueError("invalid_risk_threshold_ranges")
         return value
 
 

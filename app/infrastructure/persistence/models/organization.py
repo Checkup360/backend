@@ -17,6 +17,9 @@ class Organization(Base):
     slug: Mapped[str] = mapped_column(String, unique=True, index=True)
     logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     score_weights: Mapped[dict[str, float] | None] = mapped_column(JSON, nullable=True)
+    risk_thresholds: Mapped[dict[str, float] | None] = mapped_column(
+        JSON, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

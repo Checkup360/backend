@@ -75,7 +75,10 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
         return await self.get(id)
 
     async def update_score_weights(
-        self, id: UUID, score_weights: dict[str, float]
+        self,
+        id: UUID,
+        score_weights: dict[str, float],
+        risk_thresholds: dict[str, float] | None = None,
     ) -> Organization | None:
         query = select(self.model).where(self.model.id == id)
         result = await self.db.execute(query)
@@ -83,6 +86,8 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
         if not orm:
             return None
         orm.score_weights = score_weights
+        if risk_thresholds is not None:
+            orm.risk_thresholds = risk_thresholds
         await self.db.commit()
         await self.db.refresh(orm)
         return await self.get(id)
@@ -101,6 +106,7 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             slug=orm.slug,
             collaborators_count=collaborators_count,
             score_weights=orm.score_weights,
+            risk_thresholds=orm.risk_thresholds,
             logo_url=orm.logo_url,
         )
 
@@ -110,5 +116,6 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             "name": entity.name,
             "slug": entity.slug,
             "score_weights": entity.score_weights,
+            "risk_thresholds": entity.risk_thresholds,
             "logo_url": entity.logo_url,
         }

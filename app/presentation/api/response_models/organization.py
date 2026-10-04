@@ -10,11 +10,13 @@ class OrganizationResponse(BaseModel):
     slug: str
     collaborators_count: int
     score_weights: dict[str, float] | None = None
+    risk_thresholds: dict[str, float] | None = None
     logo_url: str | None = None
 
 
 class ScoreWeightsResponse(BaseModel):
     score_weights: dict[str, float]
+    risk_thresholds: dict[str, float] | None = None
 
 
 class OrganizationLogoResponse(BaseModel):

@@ -164,7 +164,7 @@ async def test_update_score_weights_success():
 
     assert result.score_weights == {"diabetes": 70.0, "sleep_apnea": 30.0}
     repo.update_score_weights.assert_awaited_once_with(
-        org_id, {"diabetes": 70.0, "sleep_apnea": 30.0}
+        org_id, {"diabetes": 70.0, "sleep_apnea": 30.0}, risk_thresholds=None
     )
 
 
@@ -206,3 +206,50 @@ async def test_update_score_weights_saves_next_version():
     assert saved_weights.version == 2
     assert saved_weights.weights == {"cardiovascular": 60.0, "diabetes": 40.0}
     assert saved_weights.changed_by_user_id == admin_id
+
+
+@pytest.mark.asyncio
+async def test_update_score_weights_with_custom_risk_thresholds():
+    repo = AsyncMock()
+    weights_repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_mock = MagicMock(id=org_id, score_weights=None)
+    repo.get.return_value = org_mock
+
+    updated_mock = MagicMock(
+        id=org_id,
+        score_weights={"diabetes": 50.0, "sleep_apnea": 50.0},
+        risk_thresholds={"low": 85.0, "moderate": 60.0},
+    )
+    repo.update_score_weights.return_value = updated_mock
+
+    service = OrganizationService(repo, score_weights_repo=weights_repo)
+    await service.update_score_weights(
+        org_id,
+        {"diabetes": 50.0, "sleep_apnea": 50.0},
+        risk_thresholds={"low": 85.0, "moderate": 60.0},
+    )
+
+    repo.update_score_weights.assert_awaited_once_with(
+        org_id,
+        {"diabetes": 50.0, "sleep_apnea": 50.0},
+        risk_thresholds={"low": 85.0, "moderate": 60.0},
+    )
+    saved_weights = weights_repo.save.call_args[0][0]
+    assert saved_weights.risk_thresholds == {"low": 85.0, "moderate": 60.0}
+
+
+@pytest.mark.asyncio
+async def test_update_score_weights_invalid_thresholds_raises_error():
+    repo = AsyncMock()
+    org_id = uuid.uuid4()
+    org_mock = MagicMock(id=org_id)
+    repo.get.return_value = org_mock
+
+    service = OrganizationService(repo)
+    with pytest.raises(ValueError, match="invalid_risk_threshold_ranges"):
+        await service.update_score_weights(
+            org_id,
+            {"diabetes": 100.0},
+            risk_thresholds={"low": 40.0, "moderate": 60.0},
+        )

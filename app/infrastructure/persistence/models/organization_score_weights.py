@@ -22,6 +22,9 @@ class OrganizationScoreWeightsModel(Base):
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     weights: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False)
+    risk_thresholds: Mapped[dict[str, float] | None] = mapped_column(
+        JSON, nullable=True
+    )
     changed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),

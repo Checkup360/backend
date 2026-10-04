@@ -45,6 +45,7 @@ def normalize_score_key(score_name: str) -> str:
 def calculate_weighted_overall_score(
     results: list[Any],
     weights: dict[str, float] | None = None,
+    risk_thresholds: dict[str, float] | None = None,
 ) -> tuple[float | None, str | None]:
     if not results:
         return None, None
@@ -64,16 +65,19 @@ def calculate_weighted_overall_score(
     score_entries: list[tuple[float, float]] = []
     active_weights = weights if weights and len(weights) > 0 else DEFAULT_SCORE_WEIGHTS
 
-    # All diseases configured with weight > 0 are required to compute overall score
     for key, w in active_weights.items():
-        if w > 0:
-            if key not in latest_by_key:
-                return None, None
+        if w > 0 and key in latest_by_key:
             r = latest_by_key[key]
             norm_val = getattr(r, "health_index", None)
-            if norm_val is None:
-                return None, None
-            score_entries.append((float(norm_val), float(w)))
+            if norm_val is not None:
+                score_entries.append((float(norm_val), float(w)))
+
+    # Fallback to any other evaluated score if no active weights matched
+    if not score_entries:
+        for r in latest_by_key.values():
+            norm_val = getattr(r, "health_index", None)
+            if norm_val is not None:
+                score_entries.append((float(norm_val), 1.0))
 
     if not score_entries:
         return None, None
@@ -88,4 +92,6 @@ def calculate_weighted_overall_score(
     else:
         overall_health_index = round(total_weighted_sum / total_weight, 1)
 
-    return overall_health_index, classify_health_index(overall_health_index)
+    return overall_health_index, classify_health_index(
+        overall_health_index, risk_thresholds
+    )

@@ -9,4 +9,5 @@ class Organization:
     slug: str
     collaborators_count: int = 0
     score_weights: dict[str, float] | None = field(default=None)
+    risk_thresholds: dict[str, float] | None = field(default=None)
     logo_url: str | None = field(default=None)

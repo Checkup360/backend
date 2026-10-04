@@ -268,7 +268,9 @@ class RecalculateMemberScoresUseCase:
         if self._member_overall_score_repo and org_id and active_weights_record:
             all_user_scores = await self._risk_score_repo.get_by_user_id(user_id)
             overall_health_index, overall_risk_level = calculate_weighted_overall_score(
-                all_user_scores, active_weights_record.weights
+                all_user_scores,
+                active_weights_record.weights,
+                risk_thresholds=active_weights_record.risk_thresholds,
             )
 
             if overall_health_index is not None and overall_risk_level is not None:

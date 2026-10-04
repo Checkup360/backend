@@ -44,6 +44,7 @@ class RecalculateOrganizationOverallScoresUseCase:
         )
         weights = weights_record.weights if weights_record else DEFAULT_SCORE_WEIGHTS
         weights_record_id = weights_record.id if weights_record else None
+        risk_thresholds = weights_record.risk_thresholds if weights_record else None
 
         # 2. Fetch all members
         employees = await self._membership_repo.list_members_for_organization(
@@ -54,7 +55,7 @@ class RecalculateOrganizationOverallScoresUseCase:
         for employee in employees:
             user_scores = await self._risk_score_repo.get_by_user_id(employee.user.id)
             overall_health_index, risk_level = calculate_weighted_overall_score(
-                user_scores, weights
+                user_scores, weights, risk_thresholds=risk_thresholds
             )
 
             if overall_health_index is not None and risk_level is not None:
