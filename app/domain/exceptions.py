@@ -87,6 +87,12 @@ class CannotRemoveLastSuperadminError(DomainError):
     pass
 
 
+class CannotRemoveOwnSuperadminError(DomainError):
+    """A superadmin cannot remove their own superadmin role or deactivate themselves."""
+
+    pass
+
+
 class RemovalRequestAlreadyExistsError(DomainError):
     pass
 

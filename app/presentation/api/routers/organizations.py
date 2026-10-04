@@ -72,6 +72,7 @@ from app.domain.entities.superadmin_removal import (
 from app.domain.exceptions import (
     AlreadyVotedError,
     CannotRemoveLastSuperadminError,
+    CannotRemoveOwnSuperadminError,
     DepartmentInUseError,
     DepartmentNotFoundError,
     DepartmentSlugAlreadyExists,
@@ -85,7 +86,6 @@ from app.domain.exceptions import (
     RemovalRequestAlreadyResolvedError,
     RemovalRequestNotFoundError,
     SelfVotingForbiddenError,
-    SuperadminDirectRemovalForbiddenError,
     VoterNotSuperadminError,
 )
 from app.application.use_cases.departments.department_service import DepartmentService
@@ -651,10 +651,15 @@ async def update_employee_roles(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         )
-    except SuperadminDirectRemovalForbiddenError as exc:
+    except CannotRemoveOwnSuperadminError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="cannot_remove_own_superadmin",
+        )
+    except CannotRemoveLastSuperadminError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="cannot_remove_last_superadmin",
         )
 
     profile = await member_details_service.get_profile(employee.user.id)
@@ -728,10 +733,15 @@ async def remove_employee(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         )
-    except SuperadminDirectRemovalForbiddenError as exc:
+    except CannotRemoveOwnSuperadminError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="cannot_remove_own_superadmin",
+        )
+    except CannotRemoveLastSuperadminError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="cannot_remove_last_superadmin",
         )
 
 
