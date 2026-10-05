@@ -70,15 +70,15 @@ def _format_score_display_name(name: str) -> str:
     if "metabolic" in lower:
         return "Metabolic Health"
     if "eoss" in lower or "obesity" in lower:
-        return "Obesity-related Health Impact"
+        return "Obesity Impact"
     if "score2" in lower or "cardiovascular" in lower:
-        return "Cardiovascular Risk"
+        return "Cardiovascular"
     if "nordic" in lower or "nmq" in lower or "musculoskeletal" in lower:
-        return "Musculoskeletal Risk"
+        return "Musculoskeletal"
     if "audit" in lower or "alcohol" in lower:
-        return "Alcohol Risk Assessment"
+        return "Alcohol Habits"
     if "pss" in lower or "stress" in lower:
-        return "Perceived Stress & Burnout"
+        return "Stress & Burnout"
     return name
 
 

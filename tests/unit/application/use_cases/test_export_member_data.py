@@ -155,7 +155,7 @@ async def test_export_member_data_success():
     assert result.assessment_history[0].form_type == "biometrics"
     assert result.assessment_history[0].form_name == "Physical Biometrics"
     assert len(result.health_evaluations) == 1
-    assert result.health_evaluations[0].indicator == "Cardiovascular Risk"
+    assert result.health_evaluations[0].indicator == "Cardiovascular"
     assert result.health_evaluations[0].risk_level == "low"
 
     # Verify audit log was recorded
@@ -277,7 +277,7 @@ async def test_export_member_data_preserves_all_historical_evaluations_and_conse
 
     # All evaluations preserved with unique friendly names
     assert len(result.health_evaluations) == 2
-    assert result.health_evaluations[0].indicator == "Cardiovascular Risk"
+    assert result.health_evaluations[0].indicator == "Cardiovascular"
     assert result.health_evaluations[0].risk_level == "moderate"
-    assert result.health_evaluations[1].indicator == "Type 2 Diabetes Risk"
+    assert result.health_evaluations[1].indicator == "Diabetes"
     assert result.health_evaluations[1].risk_level == "low"
