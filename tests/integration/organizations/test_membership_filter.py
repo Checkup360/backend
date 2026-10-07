@@ -88,6 +88,36 @@ class TestMembershipFilter:
         assert emails == {"former-member@example.com", "former-content@example.com"}
 
     @pytest.mark.asyncio
+    async def test_members_list_excludes_deactivated_users(
+        self, client, db_session_maker, auth_scenario, make_user, make_membership
+    ):
+        org_id = await _setup(
+            client, db_session_maker, auth_scenario, make_user, make_membership
+        )
+
+        emails = _emails(client.get(f"/organizations/{org_id}/employees?role=member"))
+
+        assert emails == {"active-member@example.com"}
+
+    @pytest.mark.asyncio
+    async def test_summary_does_not_count_deactivated_users_as_employees(
+        self, client, db_session_maker, auth_scenario, make_user, make_membership
+    ):
+        org_id = await _setup(
+            client, db_session_maker, auth_scenario, make_user, make_membership
+        )
+        # The summary is a backoffice endpoint, reserved to sysadmins
+        client.cookies.clear()
+        await auth_scenario.register_and_login(
+            email="membership-sysadmin@example.com", is_superuser=True
+        )
+
+        response = client.get(f"/organizations/{org_id}/summary")
+
+        assert response.status_code == 200
+        assert response.json()["total_employees"] == 1
+
+    @pytest.mark.asyncio
     async def test_invalid_membership_value_is_rejected(
         self, client, db_session_maker, auth_scenario, make_user, make_membership
     ):

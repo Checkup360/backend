@@ -61,12 +61,9 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         roles: list[OrgRole] | None = None,
         state: MembershipState = MembershipState.ALL,
     ) -> list[Employee]:
-        role_filters = []
-        if roles:
-            for role in roles:
-                role_filters.append(self.model.roles.contains([role]))
-                if role == OrgRole.MEMBER:
-                    role_filters.append(self.model.roles == [])
+        role_filters = (
+            [self.model.roles.contains([role]) for role in roles] if roles else []
+        )
         query = (
             select(self.model)
             .join(UserORM, UserORM.id == self.model.user_id)  # pyright: ignore[reportArgumentType]
@@ -107,12 +104,9 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
     async def count_members_for_organization(
         self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
     ) -> int:
-        role_filters = []
-        if roles:
-            for role in roles:
-                role_filters.append(self.model.roles.contains([role]))
-                if role == OrgRole.MEMBER:
-                    role_filters.append(self.model.roles == [])
+        role_filters = (
+            [self.model.roles.contains([role]) for role in roles] if roles else []
+        )
         query = (
             select(func.count())
             .select_from(self.model)
