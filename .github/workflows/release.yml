@@ -1,11 +1,10 @@
 name: Release image
 
-# Build and push the backend image to GHCR on every git tag like v1.2.3.
+# Build and push the backend image to GHCR on every published release.
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 permissions:
   contents: write
