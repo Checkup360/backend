@@ -61,6 +61,7 @@ from app.presentation.api.response_models.analytics import (
     RiskTrendPointResponse,
 )
 from app.domain.value_objects.membership_state import MembershipState
+from app.domain.services.employee_status import determine_employee_status
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
     CannotRemoveLastSuperadminError,
@@ -518,18 +519,6 @@ async def delete_department(
         _map_department_error(exc)
 
 
-def _determine_employee_status(
-    roles: list[OrgRole], onboarded: bool, completed_all_forms: bool
-) -> str:
-    if not roles or OrgRole.MEMBER not in roles:
-        return "inactive"
-    if not onboarded:
-        return "onboarding"
-    if completed_all_forms:
-        return "up_to_date"
-    return "pending_assessments"
-
-
 @router.patch(
     "/{organization_id}/employees/{user_id}/department",
     response_model=OrganizationEmployeeResponse,
@@ -560,7 +549,7 @@ async def assign_employee_department(
         )
     else:
         completed_all_forms = False
-    status_val = _determine_employee_status(
+    status_val = determine_employee_status(
         employee.roles, onboarded, completed_all_forms
     )
 
@@ -644,7 +633,7 @@ async def update_employee_roles(
         )
     else:
         completed_all_forms = False
-    status_val = _determine_employee_status(
+    status_val = determine_employee_status(
         employee.roles, onboarded, completed_all_forms
     )
 
@@ -777,7 +766,7 @@ async def list_organization_employees(
         else:
             completed_all_forms = False
 
-        status_val = _determine_employee_status(
+        status_val = determine_employee_status(
             employee.roles, onboarded, completed_all_forms
         )
 
