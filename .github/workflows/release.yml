@@ -62,7 +62,16 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release view "${{ github.ref_name }}" --json body -q .body 2>/dev/null | grep -qiE 'skip-pr|no-pr' && echo "skip=true" >> "$GITHUB_OUTPUT" || true
+          GH_REPO: ${{ github.repository }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          BODY="${RELEASE_BODY:-$(gh release view "${{ github.ref_name }}" --repo "$GH_REPO" --json body -q .body 2>/dev/null || true)}"
+          if echo "$BODY" | grep -qiE 'skip-pr|no-pr'; then
+            echo "Release body contains skip-pr/no-pr. Skipping PR creation."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No skip flag found in release body."
+          fi
 
       - name: Checkout infra repo
         if: steps.check.outputs.skip != 'true'
