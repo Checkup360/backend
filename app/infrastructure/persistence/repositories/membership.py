@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.domain.entities import Employee, Membership
 from app.domain.entities.department import Department
+from app.domain.value_objects.membership_state import MembershipState
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.entities.organization import Organization
 from app.domain.entities.user import User
@@ -55,7 +56,10 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         return await self.db.scalar(query)
 
     async def list_members_for_organization(
-        self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
+        self,
+        organization_id: uuid.UUID,
+        roles: list[OrgRole] | None = None,
+        state: MembershipState = MembershipState.ALL,
     ) -> list[Employee]:
         role_filters = []
         if roles:
@@ -72,6 +76,12 @@ class MembershipRepository(BaseRepository[MembershipORM, Membership]):
         )
         if role_filters:
             query = query.where(or_(*role_filters))
+        # A membership is inactive once all its roles were removed
+        role_count = func.coalesce(func.cardinality(self.model.roles), 0)
+        if state == MembershipState.ACTIVE:
+            query = query.where(role_count > 0)
+        elif state == MembershipState.INACTIVE:
+            query = query.where(role_count == 0)
         result = await self.db.scalars(query)
         return [self._to_employee(orm) for orm in result.unique().all()]
 

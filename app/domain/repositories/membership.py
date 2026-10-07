@@ -2,7 +2,7 @@ import uuid
 from typing import Protocol
 
 from app.domain.entities import Employee, Membership
-from app.domain.value_objects import OrgRole
+from app.domain.value_objects import MembershipState, OrgRole
 
 
 class MembershipRepository(Protocol):
@@ -15,7 +15,10 @@ class MembershipRepository(Protocol):
     async def is_admin_of_any(self, user_id: uuid.UUID) -> bool: ...
 
     async def list_members_for_organization(
-        self, organization_id: uuid.UUID, roles: list[OrgRole] | None = None
+        self,
+        organization_id: uuid.UUID,
+        roles: list[OrgRole] | None = None,
+        state: MembershipState = MembershipState.ALL,
     ) -> list[Employee]: ...
 
     async def get_employee(

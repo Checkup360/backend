@@ -1,7 +1,7 @@
 import uuid
 
 from app.domain.entities import Employee, Membership
-from app.domain.value_objects import OrgRole
+from app.domain.value_objects import MembershipState, OrgRole
 from app.domain.exceptions import (
     NotOrganizationAdminError,
     OrganizationNotFoundError,
@@ -48,10 +48,11 @@ class MembershipService:
         user_id: uuid.UUID,
         organization_id: uuid.UUID,
         roles: list[OrgRole] | None = None,
+        state: MembershipState = MembershipState.ALL,
     ) -> list[Employee]:
         await self.get_admin_membership(user_id, organization_id)
         return await self.membership_repo.list_members_for_organization(
-            organization_id, roles=roles
+            organization_id, roles=roles, state=state
         )
 
     async def count_employees_for_organization_admin(

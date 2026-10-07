@@ -60,6 +60,7 @@ from app.presentation.api.response_models.analytics import (
     RegistrationTrendPointResponse,
     RiskTrendPointResponse,
 )
+from app.domain.value_objects.membership_state import MembershipState
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
     CannotRemoveLastSuperadminError,
@@ -729,7 +730,11 @@ async def list_organization_employees(
     status_filter: str | None = Query(default=None, alias="status"),
     score_filter: str | None = Query(default=None, alias="score"),
     search: str | None = Query(default=None),
-    include_inactive: bool = Query(default=False, alias="include_inactive"),
+    membership: MembershipState = Query(
+        default=MembershipState.ALL,
+        description="active: users with at least one role; "
+        "inactive: deactivated users without roles; all: both.",
+    ),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -742,7 +747,7 @@ async def list_organization_employees(
 ):
     try:
         employees = await membership_service.list_employees_for_organization_admin(
-            current_user.id, organization_id, roles=role
+            current_user.id, organization_id, roles=role, state=membership
         )
     except OrganizationNotFoundError:
         raise HTTPException(
@@ -798,8 +803,6 @@ async def list_organization_employees(
         if status_filter is not None:
             if status_val is None or status_val.lower() != status_filter.lower():
                 continue
-        elif not include_inactive and status_val == "inactive":
-            continue
 
         # Apply score query parameter filter
         if score_filter == "scored" and latest_score is None:

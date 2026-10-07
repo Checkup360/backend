@@ -132,7 +132,7 @@ class TestOrganizationEmployees:
             f"/organizations/{organization.id}/employees?role=member"
         )
         admins_response = client.get(
-            f"/organizations/{organization.id}/employees?role=admin&include_inactive=true"
+            f"/organizations/{organization.id}/employees?role=admin"
         )
 
         assert members_response.status_code == 200
@@ -169,7 +169,7 @@ class TestOrganizationEmployees:
         )
 
         response = client.get(
-            f"/organizations/{organization.id}/employees?role=member&role=admin&include_inactive=true"
+            f"/organizations/{organization.id}/employees?role=member&role=admin"
         )
 
         assert response.status_code == 200
@@ -201,9 +201,7 @@ class TestOrganizationEmployees:
             role="member",
         )
 
-        response = client.get(
-            f"/organizations/{organization.id}/employees?include_inactive=true"
-        )
+        response = client.get(f"/organizations/{organization.id}/employees")
 
         assert response.status_code == 200
         assert [employee["email"] for employee in response.json()] == [
@@ -516,9 +514,7 @@ class TestOrganizationEmployees:
         )
         assert delete_resp.status_code == 204
 
-        list_resp = client.get(
-            f"/organizations/{organization.id}/employees?include_inactive=true"
-        )
+        list_resp = client.get(f"/organizations/{organization.id}/employees")
         assert list_resp.status_code == 200
         employees = list_resp.json()
         deactivated = next(e for e in employees if e["id"] == str(employee_user.id))

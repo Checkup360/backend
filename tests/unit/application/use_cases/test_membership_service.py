@@ -2,6 +2,7 @@ import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.application.use_cases.memberships.membership_service import MembershipService
+from app.domain.value_objects.membership_state import MembershipState
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
     NotOrganizationAdminError,
@@ -93,13 +94,13 @@ async def test_list_employees_for_organization_admin_returns_filtered_roles():
 
     service = MembershipService(membership_repo, org_repo)
     result = await service.list_employees_for_organization_admin(
-        user_id, org_id, roles=[OrgRole.MEMBER]
+        user_id, org_id, roles=[OrgRole.MEMBER], state=MembershipState.ACTIVE
     )
 
     assert result == employees
     membership_repo.get_by_user_and_org.assert_awaited_once_with(user_id, org_id)
     membership_repo.list_members_for_organization.assert_awaited_once_with(
-        org_id, roles=[OrgRole.MEMBER]
+        org_id, roles=[OrgRole.MEMBER], state=MembershipState.ACTIVE
     )
 
 
@@ -120,7 +121,7 @@ async def test_list_employees_for_organization_admin_without_role_filter():
     await service.list_employees_for_organization_admin(user_id, org_id)
 
     membership_repo.list_members_for_organization.assert_awaited_once_with(
-        org_id, roles=None
+        org_id, roles=None, state=MembershipState.ALL
     )
 
 
