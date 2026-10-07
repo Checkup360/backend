@@ -520,3 +520,35 @@ class TestOrganizationEmployees:
         deactivated = next(e for e in employees if e["id"] == str(employee_user.id))
         assert deactivated["status"] == "inactive"
         assert deactivated["roles"] == []
+
+    @pytest.mark.asyncio
+    async def test_employee_with_roles_but_not_member_has_no_status(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-non-member@example.com",
+            memberships=[("non-member-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "non-member-org"
+        )
+        content_manager = await make_user(email="content-manager-only@example.com")
+        await make_membership(
+            user_id=content_manager.id,
+            organization_id=organization.id,
+            role="content_manager",
+        )
+
+        response = client.get(f"/organizations/{organization.id}/employees")
+
+        assert response.status_code == 200
+        employee = next(
+            e for e in response.json() if e["id"] == str(content_manager.id)
+        )
+        assert employee["roles"] == ["content_manager"]
+        assert employee["status"] is None
