@@ -29,10 +29,15 @@ from app.presentation.api.dependencies import (
     get_risk_score_repository,
     get_member_overall_score_repository,
     get_update_employee_roles_use_case,
+    get_employee_detail_use_case,
     get_recalculate_org_scores_use_case,
     get_organization_content_categories_use_case,
     get_get_organization_audit_logs_use_case,
     get_get_organization_compliance_summary_use_case,
+)
+from app.application.dto.employee_detail import EmployeeDetailDTO
+from app.application.use_cases.memberships.get_employee_detail import (
+    GetEmployeeDetailUseCase,
 )
 from app.application.use_cases.organizations.recalculate_org_scores import (
     RecalculateOrganizationOverallScoresUseCase,
@@ -61,6 +66,7 @@ from app.presentation.api.response_models.analytics import (
     RiskTrendPointResponse,
 )
 from app.domain.value_objects.membership_state import MembershipState
+from app.domain.services.employee_status import determine_employee_status
 from app.domain.value_objects.org_role import OrgRole
 from app.domain.exceptions import (
     CannotRemoveLastSuperadminError,
@@ -101,6 +107,7 @@ from app.presentation.api.request_models.organization import (
 )
 from app.presentation.api.response_models.organization import (
     DepartmentResponse,
+    EmployeeDetailResponse,
     OrganizationEmployeeResponse,
     OrganizationLogoResponse,
     OrganizationResponse,
@@ -518,18 +525,6 @@ async def delete_department(
         _map_department_error(exc)
 
 
-def _determine_employee_status(
-    roles: list[OrgRole], onboarded: bool, completed_all_forms: bool
-) -> str:
-    if not roles or OrgRole.MEMBER not in roles:
-        return "inactive"
-    if not onboarded:
-        return "onboarding"
-    if completed_all_forms:
-        return "up_to_date"
-    return "pending_assessments"
-
-
 @router.patch(
     "/{organization_id}/employees/{user_id}/department",
     response_model=OrganizationEmployeeResponse,
@@ -560,7 +555,7 @@ async def assign_employee_department(
         )
     else:
         completed_all_forms = False
-    status_val = _determine_employee_status(
+    status_val = determine_employee_status(
         employee.roles, onboarded, completed_all_forms
     )
 
@@ -644,7 +639,7 @@ async def update_employee_roles(
         )
     else:
         completed_all_forms = False
-    status_val = _determine_employee_status(
+    status_val = determine_employee_status(
         employee.roles, onboarded, completed_all_forms
     )
 
@@ -777,7 +772,7 @@ async def list_organization_employees(
         else:
             completed_all_forms = False
 
-        status_val = _determine_employee_status(
+        status_val = determine_employee_status(
             employee.roles, onboarded, completed_all_forms
         )
 
@@ -857,6 +852,68 @@ async def list_organization_employees(
         return res[start : start + page_size]
     response.headers["X-Page"] = "1"
     return res
+
+
+@router.get(
+    "/{organization_id}/employees/{user_id}",
+    response_model=EmployeeDetailResponse,
+)
+async def get_employee_detail(
+    organization_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    use_case: GetEmployeeDetailUseCase = Depends(get_employee_detail_use_case),
+):
+    try:
+        detail = await use_case.execute(
+            actor_user_id=current_user.id,
+            actor_is_superuser=current_user.is_superuser,
+            organization_id=organization_id,
+            target_user_id=user_id,
+        )
+    except OrganizationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="organization_not_found",
+        )
+    except NotOrganizationAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="forbidden",
+        )
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="membership_not_found",
+        )
+    return _to_employee_detail_response(detail)
+
+
+def _to_employee_detail_response(detail: EmployeeDetailDTO) -> EmployeeDetailResponse:
+    employee = detail.employee
+    profile = detail.profile
+    department = employee.department
+    return EmployeeDetailResponse(
+        id=employee.user.id,
+        email=employee.user.email,
+        first_name=profile.first_name or None if profile else None,
+        last_name=profile.last_name or None if profile else None,
+        avatar_url=profile.avatar_url if profile else None,
+        phone_number=profile.phone_number if profile else None,
+        date_of_birth=profile.date_of_birth if profile else None,
+        roles=[role.value for role in employee.roles],
+        status=detail.status,
+        department=(
+            DepartmentResponse(
+                id=department.id,
+                organization_id=department.organization_id,
+                name=department.name,
+                slug=department.slug,
+            )
+            if department
+            else None
+        ),
+    )
 
 
 async def _ensure_employee_access(
