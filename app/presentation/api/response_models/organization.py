@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 import uuid
 
 from pydantic import BaseModel
@@ -52,3 +52,22 @@ class OrganizationEmployeeResponse(BaseModel):
     department: DepartmentResponse | None = None
     last_assessment: datetime | None = None
     overall_health_index: float | None = None
+
+
+class EmployeeDetailResponse(BaseModel):
+    """Single employee as seen by an organization admin.
+
+    Includes the non-medical contact data collected during onboarding, which
+    the employee listing deliberately leaves out.
+    """
+
+    id: uuid.UUID
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_url: str | None = None
+    phone_number: str | None = None
+    date_of_birth: date | None = None
+    roles: list[str]
+    status: str | None = None
+    department: DepartmentResponse | None = None

@@ -1,10 +1,11 @@
 import uuid
+from datetime import date
 
 import pytest
 from sqlalchemy import select
 
 from app.domain.value_objects.org_role import OrgRole
-from app.infrastructure.persistence.models import Organization
+from app.infrastructure.persistence.models import MemberDetails, Organization
 
 
 async def _get_organization_by_slug(db_session_maker, slug: str) -> Organization:
@@ -552,3 +553,176 @@ class TestOrganizationEmployees:
         )
         assert employee["roles"] == ["content_manager"]
         assert employee["status"] is None
+
+    @pytest.mark.asyncio
+    async def test_employee_detail_includes_onboarding_contact_details(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-contact@example.com",
+            memberships=[("contact-details-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "contact-details-org"
+        )
+        member = await make_user(email="member-with-phone@example.com")
+        await make_membership(
+            user_id=member.id,
+            organization_id=organization.id,
+            role="member",
+        )
+        async with db_session_maker() as session:
+            session.add(
+                MemberDetails(
+                    user_id=member.id,
+                    date_of_birth=date(1990, 6, 15),
+                    first_name="Ana",
+                    last_name="Lopez",
+                    phone_number="+541112345678",
+                )
+            )
+            await session.commit()
+
+        response = client.get(f"/organizations/{organization.id}/employees/{member.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "member-with-phone@example.com"
+        assert data["first_name"] == "Ana"
+        assert data["phone_number"] == "+541112345678"
+        assert data["date_of_birth"] == "1990-06-15"
+        assert data["roles"] == ["member"]
+        assert data["status"] == "pending_assessments"
+
+        listing = client.get(f"/organizations/{organization.id}/employees")
+        listed = next(e for e in listing.json() if e["id"] == str(member.id))
+        assert "phone_number" not in listed
+        assert "date_of_birth" not in listed
+
+    @pytest.mark.asyncio
+    async def test_employee_detail_of_non_member_has_no_status(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-detail-cm@example.com",
+            memberships=[("detail-cm-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "detail-cm-org"
+        )
+        content_manager = await make_user(email="detail-cm@example.com")
+        await make_membership(
+            user_id=content_manager.id,
+            organization_id=organization.id,
+            role="content_manager",
+        )
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees/{content_manager.id}"
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] is None
+        assert response.json()["phone_number"] is None
+
+    @pytest.mark.asyncio
+    async def test_employee_detail_returns_404_for_user_outside_organization(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_organization,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-detail-404@example.com",
+            memberships=[("detail-own-org", OrgRole.ADMIN)],
+        )
+        own_organization = await _get_organization_by_slug(
+            db_session_maker, "detail-own-org"
+        )
+        other_organization = await make_organization(
+            name="Detail Other Org", slug="detail-other-org"
+        )
+        outsider = await make_user(email="detail-outsider@example.com")
+        await make_membership(
+            user_id=outsider.id,
+            organization_id=other_organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{own_organization.id}/employees/{outsider.id}"
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "membership_not_found"
+
+    @pytest.mark.asyncio
+    async def test_employee_detail_forbidden_for_admin_of_another_organization(
+        self,
+        client,
+        auth_scenario,
+        make_user,
+        make_organization,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-detail-403@example.com",
+            memberships=[("detail-admin-org", OrgRole.ADMIN)],
+        )
+        other_organization = await make_organization(
+            name="Detail Foreign Org", slug="detail-foreign-org"
+        )
+        foreign_member = await make_user(email="detail-foreign@example.com")
+        await make_membership(
+            user_id=foreign_member.id,
+            organization_id=other_organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{other_organization.id}/employees/{foreign_member.id}"
+        )
+
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_employee_detail_forbidden_for_plain_member(
+        self,
+        client,
+        db_session_maker,
+        auth_scenario,
+        make_user,
+        make_membership,
+    ):
+        await auth_scenario.register_and_login(
+            email="plain-member-detail@example.com",
+            memberships=[("detail-member-org", OrgRole.MEMBER)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "detail-member-org"
+        )
+        coworker = await make_user(email="detail-coworker@example.com")
+        await make_membership(
+            user_id=coworker.id,
+            organization_id=organization.id,
+            role="member",
+        )
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees/{coworker.id}"
+        )
+
+        assert response.status_code == 403

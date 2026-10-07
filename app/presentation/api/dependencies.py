@@ -61,6 +61,9 @@ from app.application.use_cases.members.upload_member_avatar import (
 from app.application.use_cases.members.delete_member_avatar import (
     DeleteMemberAvatarUseCase,
 )
+from app.application.use_cases.memberships.get_employee_detail import (
+    GetEmployeeDetailUseCase,
+)
 from app.application.use_cases.memberships.update_employee_roles import (
     UpdateEmployeeRolesUseCase,
 )
@@ -534,6 +537,18 @@ async def get_update_employee_roles_use_case(
         org_repo=org_repo,
         refresh_token_repo=refresh_token_repo,
         audit_log_repo=audit_log_repo,
+    )
+
+
+async def get_employee_detail_use_case(
+    membership_service: MembershipService = Depends(get_membership_service),
+    membership_repo: MembershipRepository = Depends(get_membership_repository),
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
+) -> GetEmployeeDetailUseCase:
+    return GetEmployeeDetailUseCase(
+        membership_service=membership_service,
+        membership_repo=membership_repo,
+        member_details_service=member_details_service,
     )
 
 
