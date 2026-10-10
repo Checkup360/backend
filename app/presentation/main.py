@@ -13,6 +13,7 @@ from app.infrastructure.authentication.middleware.pending_invite import (
     PendingInviteCookieMiddleware,
 )
 from app.infrastructure.config import settings
+from app.presentation.middleware.proxy_prefix import ProxyPrefixMiddleware
 from app.infrastructure.persistence.database import get_db
 from app.presentation.api.routers import (
     admin,
@@ -36,6 +37,7 @@ app.mount("/media", StaticFiles(directory=str(uploads_path)), name="media")
 
 app.add_middleware(PendingInviteCookieMiddleware)
 app.add_middleware(DBSessionMiddleware)
+app.add_middleware(ProxyPrefixMiddleware)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.add_middleware(
