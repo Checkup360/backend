@@ -77,3 +77,19 @@ class TestProxyPrefixMiddleware:
 
         assert response.status_code == 200
         assert response.json() == {"ok": True}
+
+    def test_mounted_static_files_with_forwarded_prefix(self, tmp_path):
+        from starlette.staticfiles import StaticFiles
+
+        app = build_app()
+        test_file = tmp_path / "avatar.png"
+        test_file.write_bytes(b"avatar-bytes")
+        app.mount("/media", StaticFiles(directory=str(tmp_path)), name="media")
+
+        client = TestClient(app)
+        response = client.get(
+            "/media/avatar.png",
+            headers={"x-forwarded-prefix": "/api"},
+        )
+        assert response.status_code == 200
+        assert response.content == b"avatar-bytes"

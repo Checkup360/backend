@@ -52,8 +52,11 @@ class MemberDetailsCreate(BaseModel):
         if stripped.lower().startswith("data:"):
             raise ValueError("base64_avatar_not_allowed")
         parsed = urlparse(stripped)
-        if parsed.scheme in ("http", "https") and parsed.path.startswith("/media/"):
-            return parsed.path
+        path = parsed.path if parsed.scheme in ("http", "https") else stripped
+        if path.startswith("/api/media/"):
+            return path[4:]
+        if path.startswith("/media/"):
+            return path
         return stripped
 
 
@@ -102,6 +105,9 @@ class MemberProfileUpdate(BaseModel):
         if stripped.lower().startswith("data:"):
             raise ValueError("base64_avatar_not_allowed")
         parsed = urlparse(stripped)
-        if parsed.scheme in ("http", "https") and parsed.path.startswith("/media/"):
-            return parsed.path
+        path = parsed.path if parsed.scheme in ("http", "https") else stripped
+        if path.startswith("/api/media/"):
+            return path[4:]
+        if path.startswith("/media/"):
+            return path
         return stripped
