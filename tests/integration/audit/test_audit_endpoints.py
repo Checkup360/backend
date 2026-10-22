@@ -56,7 +56,7 @@ class TestAuditEndpoints:
         assert summary_data["consent_accepted_count"] >= 1
 
     @pytest.mark.asyncio
-    async def test_system_audit_logs_flow(self, client, auth_scenario):
+    async def test_system_audit_logs_endpoint_removed(self, client, auth_scenario):
         # Register and login as sysadmin
         await auth_scenario.register_and_login(
             email="sysadmin@checkup360.com",
@@ -64,7 +64,4 @@ class TestAuditEndpoints:
         )
 
         logs_res = client.get("/admin/audit-logs")
-        assert logs_res.status_code == 200
-        logs_data = logs_res.json()
-        assert "items" in logs_data
-        assert "total" in logs_data
+        assert logs_res.status_code == 404

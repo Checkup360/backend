@@ -1,5 +1,3 @@
-from datetime import datetime
-import uuid
 from fastapi import (
     APIRouter,
     Depends,
@@ -17,7 +15,6 @@ from app.application.use_cases.invitations import (
     ListInvites,
 )
 from app.application.use_cases.admin.list_sysadmins import ListSysadminsUseCase
-from app.application.use_cases.audit import GetSystemAuditLogsUseCase
 from app.presentation.api.authorization import require_superuser
 from app.presentation.api.dependencies import (
     get_email_sender,
@@ -26,7 +23,6 @@ from app.presentation.api.dependencies import (
     get_invite_url_builder,
     get_list_invites,
     get_list_sysadmins_use_case,
-    get_get_system_audit_logs_use_case,
 )
 from app.domain.services.invite import InviteService
 from app.presentation.api.request_models.admin import (
@@ -39,10 +35,6 @@ from app.presentation.api.response_models.admin import (
     SysadminInviteResponse,
     SysadminStatsResponse,
     SysadminUserResponse,
-)
-from app.presentation.api.response_models.audit_logs import (
-    AuditLogItemResponse,
-    AuditLogListResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -191,50 +183,3 @@ async def list_sysadmins(
         )
         for item in items
     ]
-
-
-@router.get("/audit-logs", response_model=AuditLogListResponse)
-async def list_system_audit_logs(
-    action: str | None = Query(default=None),
-    organization_id: uuid.UUID | None = Query(default=None),
-    user_id: uuid.UUID | None = Query(default=None),
-    from_date: datetime | None = Query(default=None),
-    to_date: datetime | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
-    use_case: GetSystemAuditLogsUseCase = Depends(get_get_system_audit_logs_use_case),
-    current_user: AuthenticatedUser = Depends(require_superuser),
-):
-    """
-    Lista todos los registros de auditoría del sistema para administradores de plataforma.
-    """
-    result = await use_case.execute(
-        action=action,
-        organization_id=organization_id,
-        user_id=user_id,
-        from_date=from_date,
-        to_date=to_date,
-        page=page,
-        page_size=page_size,
-    )
-    return AuditLogListResponse(
-        items=[
-            AuditLogItemResponse(
-                id=item.id,
-                user_id=item.user_id,
-                user_email=item.user_email,
-                user_name=item.user_name,
-                organization_id=item.organization_id,
-                action=item.action,
-                resource_type=item.resource_type,
-                resource_id=item.resource_id,
-                details=item.details,
-                created_at=item.created_at,
-            )
-            for item in result.items
-        ],
-        total=result.total,
-        page=result.page,
-        page_size=result.page_size,
-        has_next=result.has_next,
-    )

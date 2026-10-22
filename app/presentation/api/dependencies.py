@@ -45,7 +45,6 @@ from app.application.use_cases.admin.list_sysadmins import ListSysadminsUseCase
 from app.application.use_cases.audit import (
     GetOrganizationAuditLogsUseCase,
     GetOrganizationComplianceSummaryUseCase,
-    GetSystemAuditLogsUseCase,
 )
 from app.application.use_cases.assessments.recalculate_member_scores import (
     RecalculateMemberScoresUseCase,
@@ -613,20 +612,6 @@ async def get_get_organization_compliance_summary_use_case(
         audit_log_repository=audit_log_repo,
         organization_repository=org_repo,
         membership_repository=membership_repo,
-    )
-
-
-async def get_get_system_audit_logs_use_case(
-    audit_log_repo: AuditLogRepository = Depends(get_audit_log_repository),
-    user_repo: UserRepository = Depends(get_user_repository),
-    member_details_repo: MemberDetailsRepository = Depends(
-        get_member_details_repository
-    ),
-) -> GetSystemAuditLogsUseCase:
-    return GetSystemAuditLogsUseCase(
-        audit_log_repository=audit_log_repo,
-        user_repository=user_repo,
-        member_details_repository=member_details_repo,
     )
 
 

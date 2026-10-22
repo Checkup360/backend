@@ -9,9 +9,6 @@ from app.application.use_cases.audit.get_organization_audit_logs import (
 from app.application.use_cases.audit.get_organization_compliance_summary import (
     GetOrganizationComplianceSummaryUseCase,
 )
-from app.application.use_cases.audit.get_system_audit_logs import (
-    GetSystemAuditLogsUseCase,
-)
 from app.domain.entities.audit_log import AuditLog
 from app.domain.entities.member_details import MemberDetails
 from app.domain.entities.membership import Membership, OrgRole
@@ -328,31 +325,3 @@ async def test_get_organization_compliance_summary() -> None:
     assert summary.consent_revoked_count == 1
     assert summary.data_exported_count == 1
     assert summary.audited_members_count == 2
-
-
-@pytest.mark.asyncio
-async def test_get_system_audit_logs() -> None:
-    audit_repo = InMemoryAuditLogRepository()
-    user_repo = InMemoryUserRepo()
-    details_repo = InMemoryMemberDetailsRepo()
-
-    user_id = uuid.uuid4()
-    user = User(id=user_id, email="admin@system.com")
-    await user_repo.save(user)
-
-    await audit_repo.log(
-        AuditLog.create(
-            action="SYSADMIN_INVITED", resource_type="SYSADMIN", user_id=user_id
-        )
-    )
-
-    use_case = GetSystemAuditLogsUseCase(
-        audit_log_repository=audit_repo,
-        user_repository=user_repo,
-        member_details_repository=details_repo,
-    )
-
-    res = await use_case.execute()
-    assert res.total == 1
-    assert res.items[0].action == "SYSADMIN_INVITED"
-    assert res.items[0].user_email == "admin@system.com"
