@@ -21,6 +21,7 @@ class AssessmentSessionResponse(BaseModel):
     overall_health_index: float | None = None
     overall_risk_level: str | None = None
     results: list[AssessmentResultResponse]
+    lowest_health_index_results: list[AssessmentResultResponse] = []
 
 
 class AssessmentsResponse(BaseModel):
@@ -32,3 +33,4 @@ class AssessmentsResponse(BaseModel):
     limit: int = 10
     sessions: list[AssessmentSessionResponse] = []
     results: list[AssessmentResultResponse] = []
+    lowest_health_index_results: list[AssessmentResultResponse] = []

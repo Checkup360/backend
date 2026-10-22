@@ -25,6 +25,10 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.organizations.organization_service import (
     OrganizationService,
 )
+from app.domain.services.active_score_selection import (
+    filter_active_scores,
+    select_lowest_health_index_scores,
+)
 from app.domain.services.health_index_classification import classify_health_index
 from app.domain.services.risk_score_calculator import (
     calculate_weighted_overall_score,
@@ -174,6 +178,24 @@ def build_assessment_sessions(
     return sessions
 
 
+def _with_score_selection(
+    session: AssessmentSessionResponse,
+    score_weights: dict[str, float] | None,
+    active_scores_only: bool,
+) -> AssessmentSessionResponse:
+    results = session.results
+    if active_scores_only:
+        results = filter_active_scores(results, score_weights)
+    return session.model_copy(
+        update={
+            "results": results,
+            "lowest_health_index_results": select_lowest_health_index_scores(
+                session.results, score_weights
+            ),
+        }
+    )
+
+
 def build_assessments_response(
     results: list[AssessmentResultResponse],
     page: int = 1,
@@ -182,6 +204,7 @@ def build_assessments_response(
     risk_thresholds: dict[str, float] | None = None,
     latest_overall: MemberOverallScore | None = None,
     persisted_history: list[MemberOverallScore] | None = None,
+    active_scores_only: bool = False,
 ) -> AssessmentsResponse:
     if risk_thresholds is not None:
         normalized_results = [
@@ -247,6 +270,16 @@ def build_assessments_response(
                 latest_results_map[s_key] = r
     latest_results = list(latest_results_map.values())
 
+    paginated_sessions = [
+        _with_score_selection(session, score_weights, active_scores_only)
+        for session in paginated_sessions
+    ]
+    lowest_health_index_results = select_lowest_health_index_scores(
+        latest_results, score_weights
+    )
+    if active_scores_only:
+        latest_results = filter_active_scores(latest_results, score_weights)
+
     return AssessmentsResponse(
         overall_health_index=current_overall_score,
         overall_risk_level=current_overall_risk_level,
@@ -256,6 +289,7 @@ def build_assessments_response(
         limit=limit,
         sessions=paginated_sessions,
         results=latest_results,
+        lowest_health_index_results=lowest_health_index_results,
     )
 
 
