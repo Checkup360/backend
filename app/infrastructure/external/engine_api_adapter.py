@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -13,8 +14,15 @@ from app.application.dto.risk_scoring import (
     ScoreResultDTO,
 )
 from app.application.interfaces.risk_scoring_service import RiskScoringService
+from app.infrastructure.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+_catalog_cache: dict[str, tuple[float, list[ScoreCatalogItemDTO]]] = {}
+
+
+def clear_catalog_cache() -> None:
+    _catalog_cache.clear()
 
 
 class HttpEngineScoringAdapter(RiskScoringService):
@@ -23,12 +31,42 @@ class HttpEngineScoringAdapter(RiskScoringService):
     to the external Engine microservice.
     """
 
-    def __init__(self, engine_api_url: str, client: httpx.AsyncClient) -> None:
+    def __init__(
+        self,
+        engine_api_url: str,
+        client: httpx.AsyncClient,
+        catalog_ttl_seconds: int | None = None,
+    ) -> None:
         self._engine_api_url = engine_api_url.rstrip("/")
         self._client = client
+        self._catalog_ttl_seconds = (
+            catalog_ttl_seconds
+            if catalog_ttl_seconds is not None
+            else settings.engine_catalog_cache_ttl_seconds
+        )
+
+    def _cached_catalog(self) -> list[ScoreCatalogItemDTO] | None:
+        entry = _catalog_cache.get(self._engine_api_url)
+        if entry is None:
+            return None
+        expires_at, catalog = entry
+        if time.monotonic() >= expires_at:
+            _catalog_cache.pop(self._engine_api_url, None)
+            return None
+        return catalog
+
+    def _store_catalog(self, catalog: list[ScoreCatalogItemDTO]) -> None:
+        _catalog_cache[self._engine_api_url] = (
+            time.monotonic() + self._catalog_ttl_seconds,
+            catalog,
+        )
 
     async def get_catalog(self) -> list[ScoreCatalogItemDTO]:
         """Fetches catalog of available score calculators from the engine."""
+        cached = self._cached_catalog()
+        if cached is not None:
+            return cached
+
         url = f"{self._engine_api_url}/risk-scores/catalog"
         try:
             response = await self._client.get(url)
@@ -39,7 +77,7 @@ class HttpEngineScoringAdapter(RiskScoringService):
             ) from e
 
         catalog_data: list[Mapping[str, Any]] = response.json()
-        return [
+        catalog = [
             ScoreCatalogItemDTO(
                 score_id=item["score_id"],
                 score_name=item["score_name"],
@@ -53,6 +91,8 @@ class HttpEngineScoringAdapter(RiskScoringService):
             )
             for item in catalog_data
         ]
+        self._store_catalog(catalog)
+        return catalog
 
     @staticmethod
     def _translate_payload(payload: dict[str, Any]) -> dict[str, Any]:

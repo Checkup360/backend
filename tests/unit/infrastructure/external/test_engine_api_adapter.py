@@ -4,7 +4,25 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.application.dto.risk_scoring import HealthDataDTO
-from app.infrastructure.external.engine_api_adapter import HttpEngineScoringAdapter
+from app.infrastructure.external.engine_api_adapter import (
+    HttpEngineScoringAdapter,
+    clear_catalog_cache,
+)
+
+
+@pytest.fixture(autouse=True)
+def _clear_catalog_cache():
+    clear_catalog_cache()
+    yield
+    clear_catalog_cache()
+
+
+def _catalog_response(engine_url: str, payload: list[dict]) -> httpx.Response:
+    return httpx.Response(
+        status_code=200,
+        json=payload,
+        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
+    )
 
 
 @pytest.mark.asyncio
@@ -13,9 +31,9 @@ async def test_get_catalog_success() -> None:
     client = httpx.AsyncClient()
     adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
 
-    mock_response = httpx.Response(
-        status_code=200,
-        json=[
+    mock_response = _catalog_response(
+        engine_url,
+        [
             {
                 "score_id": "findrisc",
                 "score_name": "FINDRISC",
@@ -24,7 +42,6 @@ async def test_get_catalog_success() -> None:
                 "optional_fields": ["smoker"],
             }
         ],
-        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
     )
 
     with patch.object(client, "get", new_callable=AsyncMock) as mock_get:
@@ -45,9 +62,9 @@ async def test_get_catalog_reads_health_topics() -> None:
     engine_url = "http://fake-engine:8000"
     client = httpx.AsyncClient()
     adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
-    mock_response = httpx.Response(
-        status_code=200,
-        json=[
+    mock_response = _catalog_response(
+        engine_url,
+        [
             {
                 "score_id": "audit_c",
                 "score_name": "AUDIT-C Alcohol Risk",
@@ -56,7 +73,6 @@ async def test_get_catalog_reads_health_topics() -> None:
                 "topic_label": "Alcohol Risk Assessment",
             }
         ],
-        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
     )
 
     with patch.object(client, "get", new_callable=AsyncMock) as mock_get:
@@ -65,6 +81,82 @@ async def test_get_catalog_reads_health_topics() -> None:
 
     assert catalog[0].topic_key == "audit_c"
     assert catalog[0].topic_label == "Alcohol Risk Assessment"
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_is_cached_across_adapter_instances() -> None:
+    engine_url = "http://fake-engine:8000"
+    mock_response = _catalog_response(
+        engine_url,
+        [
+            {
+                "score_id": "findrisc",
+                "score_name": "FINDRISC",
+                "domain": "Diabetes",
+            }
+        ],
+    )
+
+    with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+
+        first = await HttpEngineScoringAdapter(
+            engine_api_url=engine_url, client=httpx.AsyncClient()
+        ).get_catalog()
+        second = await HttpEngineScoringAdapter(
+            engine_api_url=engine_url, client=httpx.AsyncClient()
+        ).get_catalog()
+
+    assert mock_get.await_count == 1
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_refetches_after_the_ttl_expires() -> None:
+    engine_url = "http://fake-engine:8000"
+    mock_response = _catalog_response(
+        engine_url,
+        [
+            {
+                "score_id": "findrisc",
+                "score_name": "FINDRISC",
+                "domain": "Diabetes",
+            }
+        ],
+    )
+
+    with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+
+        adapter = HttpEngineScoringAdapter(
+            engine_api_url=engine_url,
+            client=httpx.AsyncClient(),
+            catalog_ttl_seconds=0,
+        )
+        await adapter.get_catalog()
+        await adapter.get_catalog()
+
+    assert mock_get.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_does_not_cache_failures() -> None:
+    engine_url = "http://fake-engine:8000"
+    client = httpx.AsyncClient()
+    adapter = HttpEngineScoringAdapter(engine_api_url=engine_url, client=client)
+
+    mock_response = httpx.Response(
+        status_code=500,
+        request=httpx.Request("GET", f"{engine_url}/risk-scores/catalog"),
+    )
+
+    with patch.object(client, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+
+        with pytest.raises(RuntimeError):
+            await adapter.get_catalog()
+
+    assert mock_get.await_count == 1
 
 
 @pytest.mark.asyncio

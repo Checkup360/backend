@@ -24,6 +24,7 @@ class Settings:
     refresh_token_lifetime_seconds: int = 2592000
     refresh_token_cookie_name: str = "refresh_token"
     upload_dir: str = "uploads"
+    engine_catalog_cache_ttl_seconds: int = 300
 
 
 def _require_env(key: str) -> str:
@@ -92,6 +93,9 @@ def get_settings() -> Settings:
             "REFRESH_TOKEN_COOKIE_NAME", "refresh_token"
         ),
         upload_dir=os.getenv("UPLOAD_DIR", "uploads"),
+        engine_catalog_cache_ttl_seconds=int(
+            os.getenv("ENGINE_CATALOG_CACHE_TTL_SECONDS", "300")
+        ),
     )
 
 
