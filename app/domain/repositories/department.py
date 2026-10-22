@@ -9,6 +9,14 @@ class DepartmentRepository(Protocol):
         self, organization_id: uuid.UUID
     ) -> list[Department]: ...
 
+    async def search_by_organization(
+        self,
+        organization_id: uuid.UUID,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Department], int]: ...
+
     async def get_by_organization(
         self, organization_id: uuid.UUID, department_id: uuid.UUID
     ) -> Department | None: ...

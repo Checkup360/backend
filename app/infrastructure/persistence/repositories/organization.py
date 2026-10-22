@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Organization
@@ -59,6 +59,40 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
         result = await self.db.execute(query)
         await self.db.commit()
         return bool(getattr(result, "rowcount", 0) > 0)
+
+    async def search(
+        self,
+        status: str | None = None,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Organization], int]:
+        """Organizations are ``active`` once they have collaborators, else ``pending``."""
+        query = self._base_query
+        status_value = (status or "").lower()
+        if status_value == "active":
+            query = query.having(func.count(Membership.user_id) > 0)
+        elif status_value:
+            query = query.having(func.count(Membership.user_id) == 0)
+        term = (search or "").strip().lower()
+        if term:
+            query = query.where(
+                or_(
+                    func.lower(self.model.name).contains(term, autoescape=True),
+                    func.lower(self.model.slug).contains(term, autoescape=True),
+                )
+            )
+        total = (
+            await self.db.scalar(select(func.count()).select_from(query.subquery()))
+            or 0
+        )
+        query = query.order_by(self.model.name)
+        if page is not None:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        result = await self.db.execute(query)
+        return [
+            self._to_domain_with_count(orm, count) for orm, count in result.all()
+        ], total
 
     async def list(self) -> list[Organization]:
         result = await self.db.execute(self._base_query)

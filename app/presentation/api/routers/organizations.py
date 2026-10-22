@@ -151,30 +151,12 @@ async def list_organizations(
     service: OrganizationService = Depends(get_organization_service),
     current_user: AuthenticatedUser = Depends(require_superuser),
 ):
-    orgs = await service.list_organizations()
-    if status_filter is not None:
-        status_filter_lower = status_filter.lower()
-        res = []
-        for org in orgs:
-            org_status = "active" if org.collaborators_count > 0 else "pending"
-            if org_status == status_filter_lower:
-                res.append(org)
-        orgs = res
-    if search is not None and search.strip():
-        search_lower = search.strip().lower()
-        orgs = [
-            org
-            for org in orgs
-            if search_lower in org.name.lower() or search_lower in org.slug.lower()
-        ]
-    total = len(orgs)
+    orgs, total = await service.search_organizations(
+        status=status_filter, search=search, page=page, page_size=page_size
+    )
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page-Size"] = str(page_size)
-    if page is not None:
-        response.headers["X-Page"] = str(page)
-        start = (page - 1) * page_size
-        return orgs[start : start + page_size]
-    response.headers["X-Page"] = "1"
+    response.headers["X-Page"] = str(page or 1)
     return orgs
 
 
@@ -444,32 +426,26 @@ async def list_departments(
 ):
     try:
         if current_user.is_superuser:
-            departments = await department_service.list_departments_as_superuser(
-                organization_id
+            (
+                departments,
+                total,
+            ) = await department_service.search_departments_as_superuser(
+                organization_id, search=search, page=page, page_size=page_size
             )
         else:
-            departments = await department_service.list_departments(
-                current_user.id, organization_id
+            departments, total = await department_service.search_departments(
+                current_user.id,
+                organization_id,
+                search=search,
+                page=page,
+                page_size=page_size,
             )
     except Exception as exc:
         _map_department_error(exc)
 
-    if search is not None and search.strip():
-        search_lower = search.strip().lower()
-        departments = [
-            d
-            for d in departments
-            if search_lower in d.name.lower() or search_lower in d.slug.lower()
-        ]
-
-    total = len(departments)
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page-Size"] = str(page_size)
-    if page is not None:
-        response.headers["X-Page"] = str(page)
-        start = (page - 1) * page_size
-        return departments[start : start + page_size]
-    response.headers["X-Page"] = "1"
+    response.headers["X-Page"] = str(page or 1)
     return departments
 
 

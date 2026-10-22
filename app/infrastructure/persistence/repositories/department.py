@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.department import Department
@@ -22,6 +22,32 @@ class DepartmentRepository(BaseRepository[DepartmentORM, Department]):
             .order_by(self.model.name)
         )
         return [self._to_domain(orm) for orm in result.all()]
+
+    async def search_by_organization(
+        self,
+        organization_id: uuid.UUID,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Department], int]:
+        query = select(self.model).where(self.model.organization_id == organization_id)
+        term = (search or "").strip().lower()
+        if term:
+            query = query.where(
+                or_(
+                    func.lower(self.model.name).contains(term, autoescape=True),
+                    func.lower(self.model.slug).contains(term, autoescape=True),
+                )
+            )
+        total = (
+            await self.db.scalar(select(func.count()).select_from(query.subquery()))
+            or 0
+        )
+        query = query.order_by(self.model.name)
+        if page is not None:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        result = await self.db.scalars(query)
+        return [self._to_domain(orm) for orm in result.all()], total
 
     async def get_by_organization(
         self, organization_id: uuid.UUID, department_id: uuid.UUID

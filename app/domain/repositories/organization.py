@@ -11,6 +11,14 @@ class OrganizationRepository(Protocol):
 
     async def create(self, **values) -> Organization: ...
 
+    async def search(
+        self,
+        status: str | None = None,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Organization], int]: ...
+
     async def list(self) -> list[Organization]: ...
 
     async def delete(self, id: uuid.UUID) -> bool: ...

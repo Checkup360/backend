@@ -47,6 +47,17 @@ class OrganizationService:
     async def list_organizations(self) -> list[Organization]:
         return await self.repo.list()
 
+    async def search_organizations(
+        self,
+        status: str | None = None,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Organization], int]:
+        return await self.repo.search(
+            status=status, search=search, page=page, page_size=page_size
+        )
+
     async def get_organization(self, id: uuid.UUID) -> Organization | None:
         return await self.repo.get(id)
 

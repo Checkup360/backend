@@ -34,6 +34,31 @@ class TestOrganizationsRouter:
         assert len(res_page.json()) == 1
 
     @pytest.mark.asyncio
+    async def test_list_organizations_splits_active_and_pending_with_total(
+        self, client, make_organization, make_user, make_membership, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="sysadmin-orgs-status@example.com",
+            is_superuser=True,
+        )
+        active = await make_organization(name="Zeta Active", slug="zeta-active")
+        await make_organization(name="Zeta Pending", slug="zeta-pending")
+        member = await make_user(email="zeta-member@example.com")
+        await make_membership(user_id=member.id, organization_id=active.id)
+
+        res_active = client.get("/organizations/?status=active&search=zeta")
+        res_pending = client.get(
+            "/organizations/?status=pending&search=zeta&page=1&page_size=1"
+        )
+        res_wildcard = client.get("/organizations/?search=%25")
+
+        assert [o["slug"] for o in res_active.json()] == ["zeta-active"]
+        assert res_active.json()[0]["collaborators_count"] == 1
+        assert [o["slug"] for o in res_pending.json()] == ["zeta-pending"]
+        assert res_pending.headers["X-Total-Count"] == "1"
+        assert res_wildcard.json() == []
+
+    @pytest.mark.asyncio
     async def test_create_organization_slug_conflict_and_invalid_name(
         self, client, make_organization, auth_scenario
     ):
@@ -108,6 +133,30 @@ class TestOrganizationsRouter:
         items = res.json()
         assert len(items) == 1
         assert items[0]["name"] == "Cardiology"
+
+    @pytest.mark.asyncio
+    async def test_list_departments_paginates_with_total(
+        self, client, make_department, db_session_maker, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="org-admin-depts-page@example.com",
+            memberships=[("dept-page-org", OrgRole.ADMIN)],
+        )
+        async with db_session_maker() as session:
+            from app.infrastructure.persistence.models import Organization
+            from sqlalchemy import select
+
+            org = await session.scalar(
+                select(Organization).where(Organization.slug == "dept-page-org")
+            )
+        for name in ("Alpha", "Beta", "Gamma"):
+            await make_department(organization_id=org.id, name=name, slug=name.lower())
+
+        res = client.get(f"/organizations/{org.id}/departments?page=2&page_size=2")
+
+        assert [d["name"] for d in res.json()] == ["Gamma"]
+        assert res.headers["X-Total-Count"] == "3"
+        assert res.headers["X-Page"] == "2"
 
     @pytest.mark.asyncio
     async def test_create_department_duplicate_slug_conflict(

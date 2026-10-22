@@ -33,6 +33,30 @@ class DepartmentService:
     ) -> list[Department]:
         return await self.department_repo.list_by_organization(organization_id)
 
+    async def search_departments(
+        self,
+        user_id: uuid.UUID,
+        organization_id: uuid.UUID,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Department], int]:
+        await self.membership_service.get_admin_membership(user_id, organization_id)
+        return await self.department_repo.search_by_organization(
+            organization_id, search=search, page=page, page_size=page_size
+        )
+
+    async def search_departments_as_superuser(
+        self,
+        organization_id: uuid.UUID,
+        search: str | None = None,
+        page: int | None = None,
+        page_size: int = 10,
+    ) -> tuple[list[Department], int]:
+        return await self.department_repo.search_by_organization(
+            organization_id, search=search, page=page, page_size=page_size
+        )
+
     async def create_department(
         self, user_id: uuid.UUID, organization_id: uuid.UUID, name: str
     ) -> Department:
