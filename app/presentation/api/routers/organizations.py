@@ -844,10 +844,10 @@ async def _ensure_employee_access(
 ) -> None:
     if current_user.is_superuser:
         return
-    employees = await membership_service.list_employees_for_organization_admin(
-        current_user.id, organization_id
+    employee = await membership_service.get_employee_for_organization_admin(
+        current_user.id, organization_id, user_id
     )
-    if not any(employee.user.id == user_id for employee in employees):
+    if employee is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
 
 
@@ -1003,7 +1003,7 @@ async def get_organization_score_weights(
 ):
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         (
@@ -1080,7 +1080,7 @@ async def update_organization_score_weights(
 ):
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         updated_org = await organization_service.update_score_weights(
@@ -1136,7 +1136,7 @@ async def get_organization_risk_trends(
 ) -> list[RiskTrendPointResponse]:
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         points = await analytics_use_case.get_trends(
@@ -1183,7 +1183,7 @@ async def get_organization_department_analytics(
 ) -> list[DepartmentAnalyticsSummaryResponse]:
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         summaries = await analytics_use_case.get_departments_summary(organization_id)
@@ -1223,7 +1223,7 @@ async def get_organization_registration_trends(
 ) -> list[RegistrationTrendPointResponse]:
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         points = await analytics_use_case.get_registration_trends(organization_id)
@@ -1268,7 +1268,7 @@ async def get_organization_audit_logs(
 ) -> AuditLogListResponse:
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         result = await use_case.execute(
@@ -1327,7 +1327,7 @@ async def get_organization_compliance_summary(
 ) -> ConsentComplianceSummaryResponse:
     try:
         if not current_user.is_superuser:
-            await membership_service.list_employees_for_organization_admin(
+            await membership_service.get_admin_membership(
                 current_user.id, organization_id
             )
         summary = await use_case.execute(organization_id=organization_id)
