@@ -726,3 +726,43 @@ class TestOrganizationEmployees:
         )
 
         assert response.status_code == 403
+
+
+class TestEmployeeSearchByName:
+    @pytest.mark.asyncio
+    async def test_search_matches_first_name_last_name_and_full_name(
+        self, client, db_session_maker, auth_scenario, make_user, make_membership
+    ):
+        await auth_scenario.register_and_login(
+            email="search-name-admin@example.com",
+            memberships=[("search-name-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "search-name-org"
+        )
+        member = await make_user(email="x1@example.com")
+        await make_membership(
+            user_id=member.id, organization_id=organization.id, role="member"
+        )
+        async with db_session_maker() as session:
+            session.add(
+                MemberDetails(
+                    user_id=member.id,
+                    date_of_birth=date(1990, 6, 15),
+                    first_name="Matías",
+                    last_name="Besmedrisnik",
+                )
+            )
+            await session.commit()
+
+        for term in ("matias", "besmedris", "Matías Besmedrisnik"):
+            response = client.get(
+                f"/organizations/{organization.id}/employees?search={term}"
+            )
+            assert response.status_code == 200
+            assert [e["email"] for e in response.json()] == ["x1@example.com"]
+
+        response = client.get(
+            f"/organizations/{organization.id}/employees?search=nadie"
+        )
+        assert response.json() == []

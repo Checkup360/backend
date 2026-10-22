@@ -26,10 +26,10 @@ from app.presentation.api.dependencies import (
     get_get_assessments_use_case,
     get_organization_analytics_use_case,
     get_assessment_submissions_use_case,
-    get_risk_score_repository,
     get_member_overall_score_repository,
     get_update_employee_roles_use_case,
     get_employee_detail_use_case,
+    get_list_organization_employees_use_case,
     get_recalculate_org_scores_use_case,
     get_organization_content_categories_use_case,
     get_get_organization_audit_logs_use_case,
@@ -65,6 +65,11 @@ from app.presentation.api.response_models.analytics import (
     RegistrationTrendPointResponse,
     RiskTrendPointResponse,
 )
+from app.application.use_cases.memberships.list_organization_employees import (
+    ListOrganizationEmployeesUseCase,
+)
+from app.domain.entities.employee_summary import EmployeeSummary
+from app.domain.value_objects.employee_directory_query import ScoreFilter
 from app.domain.value_objects.membership_state import MembershipState
 from app.domain.services.employee_status import determine_employee_status
 from app.domain.value_objects.org_role import OrgRole
@@ -96,7 +101,6 @@ from app.application.use_cases.assessments.get_assessments import GetAssessments
 from app.application.use_cases.assessments.get_submissions import (
     GetAssessmentSubmissionsUseCase,
 )
-from app.domain.repositories.risk_score import RiskScoreRepository
 from app.presentation.api.request_models.organization import (
     AssignDepartmentRequest,
     CreateOrganizationRequest,
@@ -723,7 +727,7 @@ async def list_organization_employees(
     role: list[OrgRole] | None = Query(default=None),
     department_id: uuid.UUID | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
-    score_filter: str | None = Query(default=None, alias="score"),
+    score_filter: ScoreFilter | None = Query(default=None, alias="score"),
     search: str | None = Query(default=None),
     membership: MembershipState = Query(
         default=MembershipState.ALL,
@@ -733,16 +737,22 @@ async def list_organization_employees(
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
-    membership_service: MembershipService = Depends(get_membership_service),
-    member_details_service: MemberDetailsService = Depends(get_member_details_service),
-    risk_score_repository: RiskScoreRepository = Depends(get_risk_score_repository),
-    member_overall_score_repo: MemberOverallScoreRepository = Depends(
-        get_member_overall_score_repository
+    use_case: ListOrganizationEmployeesUseCase = Depends(
+        get_list_organization_employees_use_case
     ),
 ):
     try:
-        employees = await membership_service.list_employees_for_organization_admin(
-            current_user.id, organization_id, roles=role, state=membership
+        employees, total = await use_case.execute(
+            actor_user_id=current_user.id,
+            organization_id=organization_id,
+            roles=role,
+            state=membership,
+            department_id=department_id,
+            status=status_filter,
+            score_filter=score_filter,
+            search=search,
+            page=page,
+            page_size=page_size,
         )
     except OrganizationNotFoundError:
         raise HTTPException(
@@ -755,106 +765,37 @@ async def list_organization_employees(
             detail="forbidden",
         )
 
-    employee_user_ids = [emp.user.id for emp in employees]
-    latest_overall_map = await member_overall_score_repo.get_latest_by_user_ids(
-        employee_user_ids
-    )
-    required_forms = await member_details_service.get_required_forms_for_organization(
-        organization_id
-    )
-
-    res = []
-    for employee in employees:
-        profile = await member_details_service.get_profile(employee.user.id)
-        onboarded = await member_details_service.is_onboarded(employee.user.id)
-
-        if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
-            completed_all_forms = await member_details_service.has_completed_all_forms(
-                employee.user.id, required_forms=required_forms
-            )
-        else:
-            completed_all_forms = False
-
-        status_val = determine_employee_status(
-            employee.roles, onboarded, completed_all_forms
-        )
-
-        latest_score = latest_overall_map.get(employee.user.id)
-        if latest_score is not None:
-            last_assessment = latest_score.evaluated_at
-        else:
-            # Fallback for legacy users without persisted overall score
-            employee_scores = await risk_score_repository.get_by_user_id(
-                employee.user.id
-            )
-            last_assessment = max(
-                (score.evaluated_at for score in employee_scores if score.evaluated_at),
-                default=None,
-            )
-
-        # Apply department query parameter filter
-        if department_id is not None:
-            if not employee.department or employee.department.id != department_id:
-                continue
-
-        # Apply status query parameter filter
-        if status_filter is not None:
-            if status_val is None or status_val.lower() != status_filter.lower():
-                continue
-
-        # Apply score query parameter filter
-        if score_filter == "scored" and latest_score is None:
-            continue
-        if score_filter == "unscored" and latest_score is not None:
-            continue
-
-        if search is not None and search.strip():
-            search_lower = search.strip().lower()
-            department_name = (
-                employee.department.name if employee.department else "Unassigned"
-            )
-            if (
-                search_lower not in employee.user.email.lower()
-                and search_lower not in department_name.lower()
-            ):
-                continue
-
-        res.append(
-            OrganizationEmployeeResponse(
-                id=employee.user.id,
-                email=employee.user.email,
-                first_name=profile.first_name
-                if profile and profile.first_name
-                else None,
-                last_name=profile.last_name if profile and profile.last_name else None,
-                avatar_url=profile.avatar_url if profile else None,
-                roles=[r.value for r in employee.roles],
-                status=status_val,
-                department=(
-                    DepartmentResponse(
-                        id=employee.department.id,
-                        organization_id=employee.department.organization_id,
-                        name=employee.department.name,
-                        slug=employee.department.slug,
-                    )
-                    if employee.department
-                    else None
-                ),
-                last_assessment=last_assessment,
-                overall_health_index=latest_score.overall_health_index
-                if latest_score
-                else None,
-            )
-        )
-    total = len(res)
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page-Size"] = str(page_size)
-    if page is not None:
-        response.headers["X-Page"] = str(page)
-        start = (page - 1) * page_size
-        return res[start : start + page_size]
-    response.headers["X-Page"] = "1"
-    return res
+    response.headers["X-Page"] = str(page or 1)
+    return [_to_organization_employee_response(employee) for employee in employees]
+
+
+def _to_organization_employee_response(
+    employee: EmployeeSummary,
+) -> OrganizationEmployeeResponse:
+    department = employee.department
+    return OrganizationEmployeeResponse(
+        id=employee.user_id,
+        email=employee.email,
+        first_name=employee.first_name,
+        last_name=employee.last_name,
+        avatar_url=employee.avatar_url,
+        roles=[role.value for role in employee.roles],
+        status=employee.status,
+        department=(
+            DepartmentResponse(
+                id=department.id,
+                organization_id=department.organization_id,
+                name=department.name,
+                slug=department.slug,
+            )
+            if department
+            else None
+        ),
+        last_assessment=employee.last_assessment,
+        overall_health_index=employee.overall_health_index,
+    )
 
 
 @router.get(

@@ -2,6 +2,7 @@ from app.domain.repositories.analytics import AnalyticsRepository
 from app.domain.repositories.assessment_submission import AssessmentSubmissionRepository
 from app.domain.repositories.audit_log import AuditLogRepository
 from app.domain.repositories.department import DepartmentRepository
+from app.domain.repositories.employee_directory import EmployeeDirectoryRepository
 from app.domain.repositories.invite import InviteRepository
 from app.domain.repositories.legal_document import LegalDocumentRepository
 from app.domain.repositories.member_details import MemberDetailsRepository
@@ -22,6 +23,7 @@ __all__ = [
     "AssessmentSubmissionRepository",
     "AuditLogRepository",
     "DepartmentRepository",
+    "EmployeeDirectoryRepository",
     "InviteRepository",
     "LegalDocumentRepository",
     "MemberHealthDataRepository",

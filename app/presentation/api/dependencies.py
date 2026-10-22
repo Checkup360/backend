@@ -60,6 +60,9 @@ from app.application.use_cases.members.upload_member_avatar import (
 from app.application.use_cases.members.delete_member_avatar import (
     DeleteMemberAvatarUseCase,
 )
+from app.application.use_cases.memberships.list_organization_employees import (
+    ListOrganizationEmployeesUseCase,
+)
 from app.application.use_cases.memberships.get_employee_detail import (
     GetEmployeeDetailUseCase,
 )
@@ -81,6 +84,9 @@ from app.infrastructure.persistence.repositories.department import DepartmentRep
 from app.infrastructure.persistence.repositories.invite import InviteRepository
 from app.infrastructure.persistence.repositories.member_details import (
     MemberDetailsRepository,
+)
+from app.infrastructure.persistence.repositories.employee_directory import (
+    SQLAlchemyEmployeeDirectoryRepository,
 )
 from app.infrastructure.persistence.repositories.membership import MembershipRepository
 from app.infrastructure.persistence.repositories.organization import (
@@ -554,6 +560,28 @@ async def get_employee_detail_use_case(
         membership_service=membership_service,
         membership_repo=membership_repo,
         member_details_service=member_details_service,
+    )
+
+
+async def get_employee_directory_repository(
+    db: AsyncSession = Depends(get_db),
+) -> SQLAlchemyEmployeeDirectoryRepository:
+    return SQLAlchemyEmployeeDirectoryRepository(db)
+
+
+async def get_list_organization_employees_use_case(
+    membership_service: MembershipService = Depends(get_membership_service),
+    member_details_service: MemberDetailsService = Depends(get_member_details_service),
+    employee_directory_repo: SQLAlchemyEmployeeDirectoryRepository = Depends(
+        get_employee_directory_repository
+    ),
+    form_registry: FormRegistry = Depends(get_form_registry),
+) -> ListOrganizationEmployeesUseCase:
+    return ListOrganizationEmployeesUseCase(
+        membership_service=membership_service,
+        member_details_service=member_details_service,
+        employee_directory_repo=employee_directory_repo,
+        form_registry=form_registry,
     )
 
 
