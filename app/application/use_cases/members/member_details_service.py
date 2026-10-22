@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Collection
 from datetime import date
 from typing import Protocol
 
@@ -7,9 +8,12 @@ from app.domain.repositories import (
     AssessmentSubmissionRepository,
     MemberDetailsRepository,
     MemberHealthDataRepository,
+    OrganizationRepository,
+    OrganizationScoreWeightsRepository,
 )
 from app.domain.services.form_registry import FormRegistry
 from app.domain.services.member_health_topics import calculate_member_priority_topics
+from app.domain.services.organization_form_policy import OrganizationFormPolicy
 from app.domain.services.time_provider import TimeProvider
 from app.domain.value_objects import OrgRole
 
@@ -33,12 +37,20 @@ class MemberDetailsService:
         health_data_repo: MemberHealthDataRepository | None = None,
         submission_repo: AssessmentSubmissionRepository | None = None,
         form_registry: FormRegistry | None = None,
+        score_weights_repo: OrganizationScoreWeightsRepository | None = None,
+        org_repo: OrganizationRepository | None = None,
+        form_policy: OrganizationFormPolicy | None = None,
     ):
         self.repo = repo
         self.time_provider = time_provider
         self.health_data_repo = health_data_repo
         self.submission_repo = submission_repo
         self.form_registry = form_registry
+        self.score_weights_repo = score_weights_repo
+        self.org_repo = org_repo
+        self.form_policy = form_policy or OrganizationFormPolicy(
+            form_registry=form_registry
+        )
 
     def is_member_user(self, user: MemberUser) -> bool:
         if user.is_superuser:
@@ -56,11 +68,41 @@ class MemberDetailsService:
     async def is_onboarded(self, user_id: uuid.UUID) -> bool:
         return await self.repo.exists_for_user(user_id)
 
-    async def has_completed_all_forms(self, user_id: uuid.UUID) -> bool:
-        if self.form_registry is None:
-            return True
+    async def get_required_forms_for_organization(
+        self, organization_id: uuid.UUID
+    ) -> list[str]:
+        score_weights = None
+        if self.score_weights_repo:
+            active_weights_rec = (
+                await self.score_weights_repo.get_active_for_organization(
+                    organization_id
+                )
+            )
+            if active_weights_rec:
+                score_weights = active_weights_rec.weights
+        if score_weights is None and self.org_repo:
+            org = await self.org_repo.get(organization_id)
+            if org:
+                score_weights = org.score_weights
 
-        required_forms = self.form_registry.get_registered_form_types()
+        return self.form_policy.get_active_form_types(score_weights=score_weights)
+
+    async def has_completed_all_forms(
+        self,
+        user_id: uuid.UUID,
+        required_forms: Collection[str] | None = None,
+        organization_id: uuid.UUID | None = None,
+    ) -> bool:
+        if required_forms is None and organization_id is not None:
+            required_forms = await self.get_required_forms_for_organization(
+                organization_id
+            )
+
+        if required_forms is None:
+            if self.form_registry is None:
+                return True
+            required_forms = self.form_registry.get_registered_form_types()
+
         if not required_forms:
             return True
 
@@ -74,15 +116,19 @@ class MemberDetailsService:
                 if sub.status == "completed":
                     completed_forms.add(sub.form_type)
 
-        if self.health_data_repo is not None and len(completed_forms) < len(
-            required_forms
+        if self.health_data_repo is not None and any(
+            ft not in completed_forms for ft in required_forms
         ):
             health_data = await self.health_data_repo.get_by_user(user_id)
             if health_data:
                 for form_type in required_forms:
                     if form_type in completed_forms:
                         continue
-                    fields = self.form_registry.get_form_fields(form_type)
+                    fields = (
+                        self.form_registry.get_form_fields(form_type)
+                        if self.form_registry
+                        else []
+                    )
                     if fields and any(
                         getattr(health_data, f, None) is not None for f in fields
                     ):

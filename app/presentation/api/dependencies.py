@@ -259,6 +259,12 @@ async def get_assessment_submission_repository(
     return SQLAlchemyAssessmentSubmissionRepository(db)
 
 
+async def get_organization_score_weights_repository(
+    db: AsyncSession = Depends(get_db),
+) -> OrganizationScoreWeightsRepository:
+    return SQLAlchemyOrganizationScoreWeightsRepository(db)
+
+
 async def get_member_details_service(
     repo: MemberDetailsRepository = Depends(get_member_details_repository),
     time_provider: TimeProvider = Depends(get_time_provider),
@@ -269,6 +275,10 @@ async def get_member_details_service(
         get_assessment_submission_repository
     ),
     form_registry: FormRegistry = Depends(get_form_registry),
+    score_weights_repo: OrganizationScoreWeightsRepository = Depends(
+        get_organization_score_weights_repository
+    ),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> MemberDetailsService:
     return MemberDetailsService(
         repo,
@@ -276,6 +286,8 @@ async def get_member_details_service(
         health_data_repo=health_data_repo,
         submission_repo=submission_repo,
         form_registry=form_registry,
+        score_weights_repo=score_weights_repo,
+        org_repo=org_repo,
     )
 
 
@@ -283,12 +295,6 @@ async def get_member_health_data_service(
     repo: MemberHealthDataRepository = Depends(get_member_health_data_repository),
 ) -> MemberHealthDataService:
     return MemberHealthDataService(repo)
-
-
-async def get_organization_score_weights_repository(
-    db: AsyncSession = Depends(get_db),
-) -> OrganizationScoreWeightsRepository:
-    return SQLAlchemyOrganizationScoreWeightsRepository(db)
 
 
 async def get_member_overall_score_repository(

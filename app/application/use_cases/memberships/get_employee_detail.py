@@ -49,7 +49,7 @@ class GetEmployeeDetailUseCase:
             onboarded
             and OrgRole.MEMBER in employee.roles
             and await self.member_details_service.has_completed_all_forms(
-                target_user_id
+                target_user_id, organization_id=organization_id
             )
         )
         status = determine_employee_status(

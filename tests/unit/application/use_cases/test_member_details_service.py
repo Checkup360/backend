@@ -315,3 +315,95 @@ async def test_update_profile_success_and_not_found():
             phone_number=None,
             date_of_birth=date(1995, 2, 2),
         )
+
+
+@pytest.mark.asyncio
+async def test_has_completed_all_forms_with_required_forms_subset():
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    user_id = uuid.uuid4()
+    submission_repo = AsyncMock()
+    # Member only submitted biometrics and habits (which are the required ones)
+    submission_repo.list_by_user.return_value = (
+        [
+            SimpleNamespace(form_type="biometrics", status="completed"),
+            SimpleNamespace(form_type="habits", status="completed"),
+        ],
+        2,
+    )
+
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(form_type="biometrics", fields=["height"]),
+            FormDefinition(form_type="habits", fields=["smoker"]),
+            FormDefinition(form_type="sleep", fields=["snoring"]),
+            FormDefinition(form_type="mood", fields=["phq9_q1"]),
+        ]
+    )
+
+    service = MemberDetailsService(
+        AsyncMock(),
+        FrozenTimeProvider(),
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+
+    # When specifying required_forms as only the subset, it should return True
+    assert (
+        await service.has_completed_all_forms(
+            user_id, required_forms=["biometrics", "habits"]
+        )
+        is True
+    )
+
+    # But if required_forms includes sleep as well, it should return False
+    assert (
+        await service.has_completed_all_forms(
+            user_id, required_forms=["biometrics", "habits", "sleep"]
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_has_completed_all_forms_resolves_organization_id():
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    user_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+
+    submission_repo = AsyncMock()
+    submission_repo.list_by_user.return_value = (
+        [
+            SimpleNamespace(form_type="biometrics", status="completed"),
+            SimpleNamespace(form_type="habits", status="completed"),
+        ],
+        2,
+    )
+
+    score_weights_repo = AsyncMock()
+    # Only diabetes score is enabled (> 0)
+    score_weights_repo.get_active_for_organization.return_value = SimpleNamespace(
+        weights={"diabetes": 1.0, "sleep_apnea": 0.0, "depression": 0.0}
+    )
+
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(form_type="biometrics", fields=["height"]),
+            FormDefinition(form_type="habits", fields=["smoker"]),
+            FormDefinition(form_type="sleep", fields=["snoring"]),
+        ]
+    )
+
+    service = MemberDetailsService(
+        AsyncMock(),
+        FrozenTimeProvider(),
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+        score_weights_repo=score_weights_repo,
+    )
+
+    # Organization only requires biometrics and habits for diabetes
+    assert (
+        await service.has_completed_all_forms(user_id, organization_id=org_id) is True
+    )

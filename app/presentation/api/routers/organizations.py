@@ -551,7 +551,7 @@ async def assign_employee_department(
     onboarded = await member_details_service.is_onboarded(employee.user.id)
     if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
         completed_all_forms = await member_details_service.has_completed_all_forms(
-            employee.user.id
+            employee.user.id, organization_id=organization_id
         )
     else:
         completed_all_forms = False
@@ -635,7 +635,7 @@ async def update_employee_roles(
     onboarded = await member_details_service.is_onboarded(employee.user.id)
     if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
         completed_all_forms = await member_details_service.has_completed_all_forms(
-            employee.user.id
+            employee.user.id, organization_id=organization_id
         )
     else:
         completed_all_forms = False
@@ -759,6 +759,9 @@ async def list_organization_employees(
     latest_overall_map = await member_overall_score_repo.get_latest_by_user_ids(
         employee_user_ids
     )
+    required_forms = await member_details_service.get_required_forms_for_organization(
+        organization_id
+    )
 
     res = []
     for employee in employees:
@@ -767,7 +770,7 @@ async def list_organization_employees(
 
         if onboarded and employee.roles and OrgRole.MEMBER in employee.roles:
             completed_all_forms = await member_details_service.has_completed_all_forms(
-                employee.user.id
+                employee.user.id, required_forms=required_forms
             )
         else:
             completed_all_forms = False
