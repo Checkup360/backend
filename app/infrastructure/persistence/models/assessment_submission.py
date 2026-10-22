@@ -53,6 +53,8 @@ class AssessmentSubmissionModel(Base):
     glucose_lowering_medication: Mapped[bool | None] = mapped_column(
         Boolean, nullable=True
     )
+    statins: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    lab_study_date: Mapped[str | None] = mapped_column(String, nullable=True)
     smoker: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     daily_physical_activity: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     fruits_vegetables: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

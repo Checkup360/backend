@@ -58,6 +58,8 @@ class FormRegistry:
                         "diastolic_blood_pressure",
                         "fasting_glucose",
                         "glucose_lowering_medication",
+                        "statins",
+                        "lab_study_date",
                     ],
                 ),
                 FormDefinition(

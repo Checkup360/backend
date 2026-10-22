@@ -35,6 +35,8 @@ class AssessmentSubmissionAnswersResponse(BaseModel):
     triglycerides: float | None = None
     fasting_glucose: float | None = None
     glucose_lowering_medication: bool | None = None
+    statins: bool | None = None
+    lab_study_date: str | None = None
     smoker: bool | None = None
     daily_physical_activity: bool | None = None
     fruits_vegetables: bool | None = None

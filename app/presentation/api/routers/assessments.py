@@ -455,6 +455,7 @@ async def get_assessments(
         risk_thresholds=risk_thresholds,
         latest_overall=latest_overall,
         persisted_history=persisted_history,
+        active_scores_only=True,
     )
 
 
