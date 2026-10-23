@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy import select
 
+from app.domain.value_objects.name_limits import MAX_DEPARTMENT_NAME_LENGTH
 from app.domain.value_objects.org_role import OrgRole
 from app.infrastructure.persistence.models import InviteToken, Membership, Organization
 
@@ -49,6 +50,27 @@ class TestOrganizationDepartments:
         )
         assert rename_response.status_code == 200
         assert rename_response.json()["slug"] == "clinical-team"
+
+    @pytest.mark.asyncio
+    async def test_department_name_longer_than_the_limit_is_rejected(
+        self, client, db_session_maker, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="departments-limit@example.com",
+            memberships=[("departments-limit-org", OrgRole.ADMIN)],
+        )
+        organization = await _get_organization_by_slug(
+            db_session_maker, "departments-limit-org"
+        )
+        url = f"/organizations/{organization.id}/departments"
+
+        at_limit = client.post(url, json={"name": "a" * MAX_DEPARTMENT_NAME_LENGTH})
+        too_long = client.post(
+            url, json={"name": "b" * (MAX_DEPARTMENT_NAME_LENGTH + 1)}
+        )
+
+        assert at_limit.status_code == 201
+        assert too_long.status_code == 422
 
     @pytest.mark.asyncio
     async def test_org_admin_cannot_create_duplicate_department_slug(

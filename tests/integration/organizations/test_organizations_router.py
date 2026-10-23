@@ -1,6 +1,7 @@
 import uuid
 import pytest
 
+from app.domain.value_objects.name_limits import MAX_ORGANIZATION_NAME_LENGTH
 from app.domain.value_objects.org_role import OrgRole
 
 
@@ -106,6 +107,15 @@ class TestOrganizationsRouter:
             json={"name": "   ", "slug": "invalid-name"},
         )
         assert res_invalid.status_code in (400, 422)
+
+        res_too_long = client.post(
+            "/organizations/",
+            json={
+                "name": "x" * (MAX_ORGANIZATION_NAME_LENGTH + 1),
+                "slug": "too-long-name",
+            },
+        )
+        assert res_too_long.status_code == 422
 
     @pytest.mark.asyncio
     async def test_get_organization_summary_not_found(self, client, auth_scenario):

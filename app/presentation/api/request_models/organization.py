@@ -5,6 +5,10 @@ from pydantic import BaseModel, field_validator
 
 
 from app.domain.value_objects import OrgRole
+from app.domain.value_objects.name_limits import (
+    MAX_DEPARTMENT_NAME_LENGTH,
+    MAX_ORGANIZATION_NAME_LENGTH,
+)
 
 
 class CreateOrganizationRequest(BaseModel):
@@ -26,7 +30,10 @@ class CreateOrganizationRequest(BaseModel):
     def validate_name(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("name_required")
-        return value.strip()
+        value = value.strip()
+        if len(value) > MAX_ORGANIZATION_NAME_LENGTH:
+            raise ValueError("name_too_long")
+        return value
 
 
 class DepartmentRequest(BaseModel):
@@ -37,7 +44,10 @@ class DepartmentRequest(BaseModel):
     def validate_department_name(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("department_name_required")
-        return value.strip()
+        value = value.strip()
+        if len(value) > MAX_DEPARTMENT_NAME_LENGTH:
+            raise ValueError("department_name_too_long")
+        return value
 
 
 class AssignDepartmentRequest(BaseModel):
@@ -86,7 +96,10 @@ class UpdateOrganizationRequest(BaseModel):
     def validate_name(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("name_required")
-        return value.strip()
+        value = value.strip()
+        if len(value) > MAX_ORGANIZATION_NAME_LENGTH:
+            raise ValueError("name_too_long")
+        return value
 
 
 class UpdateEmployeeRolesRequest(BaseModel):
