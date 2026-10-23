@@ -7,6 +7,7 @@ from app.domain.repositories.audit_log import AuditLogRepository
 from app.domain.repositories.member_details import MemberDetailsRepository
 from app.domain.repositories.organization import OrganizationRepository
 from app.domain.repositories.user import UserRepository
+from app.domain.value_objects import AuditLogSortField, SortDirection
 
 
 class GetOrganizationAuditLogsUseCase:
@@ -31,6 +32,8 @@ class GetOrganizationAuditLogsUseCase:
         user_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        sort_by: AuditLogSortField | None = None,
+        sort_direction: SortDirection = SortDirection.DESC,
         page: int = 1,
         page_size: int = 50,
     ) -> AuditLogListDTO:
@@ -50,6 +53,8 @@ class GetOrganizationAuditLogsUseCase:
             to_date=to_date,
             limit=page_size,
             offset=offset,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
         )
 
         # Collect unique user IDs to batch-enrich user details

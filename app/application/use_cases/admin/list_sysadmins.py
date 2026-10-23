@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app.domain.entities import MemberDetails, User
 from app.domain.repositories import InviteRepository, UserRepository
+from app.domain.value_objects import SortDirection, SysadminSortField
 
 
 @dataclass
@@ -26,12 +27,16 @@ class ListSysadminsUseCase:
         self,
         search: str | None = None,
         is_active: bool | None = None,
+        sort_by: SysadminSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[SysadminItemDTO], int]:
         rows, total = await self._user_repo.list_sysadmins(
             search=search,
             is_active=is_active,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )

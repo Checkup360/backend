@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.audit_log import AuditLog
 from app.domain.repositories.audit_log import AuditLogRepository
+from app.domain.value_objects import AuditLogSortField, SortDirection
 from app.infrastructure.persistence.models.audit_log import AuditLogModel
 from app.infrastructure.persistence.models.membership import Membership
 
@@ -94,6 +95,8 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         to_date: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
+        sort_by: AuditLogSortField | None = None,
+        sort_direction: SortDirection = SortDirection.DESC,
     ) -> tuple[list[AuditLog], int]:
         org_filter = or_(
             AuditLogModel.organization_id == organization_id,
@@ -122,7 +125,10 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         items_query = (
             select(AuditLogModel)
             .where(*filters)
-            .order_by(AuditLogModel.created_at.desc())
+            .order_by(
+                *self._ordering(sort_by, sort_direction),
+                AuditLogModel.created_at.desc(),
+            )
             .limit(limit)
             .offset(offset)
         )
@@ -130,6 +136,16 @@ class SQLAlchemyAuditLogRepository(AuditLogRepository):
         models = items_res.scalars().all()
 
         return [self._to_entity(m) for m in models], total
+
+    @staticmethod
+    def _ordering(sort_by: AuditLogSortField | None, direction: SortDirection) -> list:
+        if sort_by is None:
+            return []
+        column = {
+            AuditLogSortField.ACTION: AuditLogModel.action,
+            AuditLogSortField.CREATED_AT: AuditLogModel.created_at,
+        }[sort_by]
+        return [column.desc() if direction == SortDirection.DESC else column.asc()]
 
     async def list_all(
         self,

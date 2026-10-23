@@ -73,7 +73,11 @@ from app.domain.value_objects.employee_directory_query import (
     EmployeeSortField,
     ScoreFilter,
 )
-from app.domain.value_objects.sorting import SortDirection
+from app.domain.value_objects.sorting import (
+    AuditLogSortField,
+    OrganizationSortField,
+    SortDirection,
+)
 from app.domain.value_objects.membership_state import MembershipState
 from app.domain.services.employee_status import determine_employee_status
 from app.domain.value_objects.org_role import OrgRole
@@ -150,13 +154,20 @@ async def list_organizations(
     response: Response,
     status_filter: str | None = Query(default=None, alias="status"),
     search: str | None = Query(default=None),
+    sort_by: OrganizationSortField | None = Query(default=None),
+    sort_direction: SortDirection = Query(default=SortDirection.ASC),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     service: OrganizationService = Depends(get_organization_service),
     current_user: AuthenticatedUser = Depends(require_superuser),
 ):
     orgs, total = await service.search_organizations(
-        status=status_filter, search=search, page=page, page_size=page_size
+        status=status_filter,
+        search=search,
+        sort_by=sort_by,
+        sort_direction=sort_direction,
+        page=page,
+        page_size=page_size,
     )
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page-Size"] = str(page_size)
@@ -1266,6 +1277,8 @@ async def get_organization_audit_logs(
     user_id: uuid.UUID | None = Query(default=None),
     from_date: datetime | None = Query(default=None),
     to_date: datetime | None = Query(default=None),
+    sort_by: AuditLogSortField | None = Query(default=None),
+    sort_direction: SortDirection = Query(default=SortDirection.DESC),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -1285,6 +1298,8 @@ async def get_organization_audit_logs(
             user_id=user_id,
             from_date=from_date,
             to_date=to_date,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )

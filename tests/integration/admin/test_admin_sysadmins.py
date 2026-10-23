@@ -40,3 +40,29 @@ class TestAdminSysadminsEndpoints:
         assert len(data) >= 1
         assert any(item["email"] == admin_email for item in data)
         assert res.headers.get("X-Total-Count") is not None
+
+    @pytest.mark.asyncio
+    async def test_sysadmins_can_be_sorted_by_name_in_both_directions(
+        self, client, auth_scenario, make_user
+    ):
+        await auth_scenario.register_and_login(
+            email="m-sorter@example.com",
+            is_superuser=True,
+        )
+        await make_user(email="a-sorter@example.com", is_superuser=True)
+        await make_user(email="z-sorter@example.com", is_superuser=True)
+        base = "/admin/sysadmins?search=sorter&sort_by=name"
+
+        ascending = client.get(base + "&sort_direction=asc")
+        descending = client.get(base + "&sort_direction=desc")
+
+        assert [s["email"] for s in ascending.json()] == [
+            "a-sorter@example.com",
+            "m-sorter@example.com",
+            "z-sorter@example.com",
+        ]
+        assert [s["email"] for s in descending.json()] == [
+            "z-sorter@example.com",
+            "m-sorter@example.com",
+            "a-sorter@example.com",
+        ]

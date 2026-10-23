@@ -2,6 +2,7 @@ from sqlalchemy import select, func, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Organization
+from app.domain.value_objects import OrganizationSortField, SortDirection
 from app.infrastructure.persistence.models.organization import (
     Organization as OrganizationORM,
 )
@@ -64,6 +65,8 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
         self,
         status: str | None = None,
         search: str | None = None,
+        sort_by: OrganizationSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[Organization], int]:
@@ -86,13 +89,29 @@ class OrganizationRepository(BaseRepository[OrganizationORM, Organization]):
             await self.db.scalar(select(func.count()).select_from(query.subquery()))
             or 0
         )
-        query = query.order_by(self.model.name)
+        query = query.order_by(
+            *self._ordering(sort_by, sort_direction), self.model.name
+        )
         if page is not None:
             query = query.offset((page - 1) * page_size).limit(page_size)
         result = await self.db.execute(query)
         return [
             self._to_domain_with_count(orm, count) for orm, count in result.all()
         ], total
+
+    def _ordering(
+        self, sort_by: OrganizationSortField | None, direction: SortDirection
+    ) -> list:
+        if sort_by is None:
+            return []
+        sort_columns = {
+            OrganizationSortField.NAME: func.lower(self.model.name),
+            OrganizationSortField.COLLABORATORS: func.count(Membership.user_id),
+            # "active" organizations have collaborators; "pending" have none
+            OrganizationSortField.STATUS: func.count(Membership.user_id) > 0,
+        }
+        column = sort_columns[sort_by]
+        return [column.desc() if direction == SortDirection.DESC else column.asc()]
 
     async def list(self) -> list[Organization]:
         result = await self.db.execute(self._base_query)

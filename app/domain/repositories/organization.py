@@ -2,6 +2,7 @@ import uuid
 from typing import Protocol
 
 from app.domain.entities import Organization
+from app.domain.value_objects import OrganizationSortField, SortDirection
 
 
 class OrganizationRepository(Protocol):
@@ -15,6 +16,8 @@ class OrganizationRepository(Protocol):
         self,
         status: str | None = None,
         search: str | None = None,
+        sort_by: OrganizationSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[Organization], int]: ...

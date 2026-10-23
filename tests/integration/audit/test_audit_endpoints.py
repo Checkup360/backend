@@ -56,6 +56,31 @@ class TestAuditEndpoints:
         assert summary_data["consent_accepted_count"] >= 1
 
     @pytest.mark.asyncio
+    async def test_organization_audit_logs_can_be_sorted_by_date(
+        self, client, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="sorter@acme-corp.com",
+            memberships=[("acme-corp", OrgRole.ADMIN)],
+        )
+        org_id = client.get("/auth/me").json()["membership"]["organization_id"]
+        for version in ("1.0", "2.0"):
+            client.post(
+                "/consents",
+                json={
+                    "consent_type": "TERMS_AND_CONDITIONS",
+                    "document_version": version,
+                },
+            )
+        url = f"/organizations/{org_id}/audit-logs?sort_by=created_at"
+
+        ascending = client.get(url + "&sort_direction=asc").json()["items"]
+        descending = client.get(url + "&sort_direction=desc").json()["items"]
+
+        assert [i["id"] for i in ascending] == [i["id"] for i in reversed(descending)]
+        assert client.get(url + "&sort_by=unknown").status_code == 422
+
+    @pytest.mark.asyncio
     async def test_system_audit_logs_endpoint_removed(self, client, auth_scenario):
         # Register and login as sysadmin
         await auth_scenario.register_and_login(

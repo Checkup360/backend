@@ -53,6 +53,8 @@ class InMemoryAuditLogRepository(AuditLogRepository):
         to_date: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
+        sort_by=None,
+        sort_direction=None,
     ) -> tuple[list[AuditLog], int]:
         filtered = [
             entry for entry in self.logs if entry.organization_id == organization_id

@@ -59,6 +59,30 @@ class TestOrganizationsRouter:
         assert res_wildcard.json() == []
 
     @pytest.mark.asyncio
+    async def test_list_organizations_sorts_by_collaborators_in_both_directions(
+        self, client, make_organization, make_user, make_membership, auth_scenario
+    ):
+        await auth_scenario.register_and_login(
+            email="sysadmin-orgs-sort@example.com",
+            is_superuser=True,
+        )
+        busy = await make_organization(name="Sort Busy", slug="sort-busy")
+        await make_organization(name="Sort Empty", slug="sort-empty")
+        member = await make_user(email="sort-member@example.com")
+        await make_membership(user_id=member.id, organization_id=busy.id)
+        base = "/organizations/?search=sort-&sort_by=collaborators"
+
+        descending = client.get(base + "&sort_direction=desc")
+        ascending = client.get(base + "&sort_direction=asc")
+        by_name = client.get(
+            "/organizations/?search=sort-&sort_by=name&sort_direction=desc"
+        )
+
+        assert [o["slug"] for o in descending.json()] == ["sort-busy", "sort-empty"]
+        assert [o["slug"] for o in ascending.json()] == ["sort-empty", "sort-busy"]
+        assert [o["slug"] for o in by_name.json()] == ["sort-empty", "sort-busy"]
+
+    @pytest.mark.asyncio
     async def test_create_organization_slug_conflict_and_invalid_name(
         self, client, make_organization, auth_scenario
     ):

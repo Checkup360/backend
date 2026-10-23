@@ -2,6 +2,7 @@ import uuid
 from typing import Protocol
 
 from app.domain.entities import MemberDetails, User
+from app.domain.value_objects import SortDirection, SysadminSortField
 
 
 class UserRepository(Protocol):
@@ -13,6 +14,8 @@ class UserRepository(Protocol):
         self,
         search: str | None = None,
         is_active: bool | None = None,
+        sort_by: SysadminSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[tuple[User, MemberDetails | None]], int]: ...

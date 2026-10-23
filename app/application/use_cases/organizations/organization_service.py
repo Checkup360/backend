@@ -10,6 +10,7 @@ from app.domain.repositories import OrganizationRepository
 from app.domain.repositories.organization_score_weights import (
     OrganizationScoreWeightsRepository,
 )
+from app.domain.value_objects import OrganizationSortField, SortDirection
 from app.domain.services.health_index_classification import DEFAULT_RISK_THRESHOLDS
 from app.domain.services.risk_score_calculator import DEFAULT_SCORE_WEIGHTS
 
@@ -51,11 +52,18 @@ class OrganizationService:
         self,
         status: str | None = None,
         search: str | None = None,
+        sort_by: OrganizationSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[Organization], int]:
         return await self.repo.search(
-            status=status, search=search, page=page, page_size=page_size
+            status=status,
+            search=search,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
+            page=page,
+            page_size=page_size,
         )
 
     async def get_organization(self, id: uuid.UUID) -> Organization | None:

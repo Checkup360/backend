@@ -4,6 +4,7 @@ from typing import Any
 import uuid
 
 from app.domain.entities.audit_log import AuditLog
+from app.domain.value_objects import AuditLogSortField, SortDirection
 
 
 class AuditLogRepository(ABC):
@@ -42,6 +43,8 @@ class AuditLogRepository(ABC):
         to_date: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
+        sort_by: AuditLogSortField | None = None,
+        sort_direction: SortDirection = SortDirection.DESC,
     ) -> tuple[list[AuditLog], int]:
         """Lists audit entries for an organization with optional filters and total count."""
         ...

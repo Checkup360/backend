@@ -2,6 +2,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import MemberDetails, User
+from app.domain.value_objects import SortDirection, SysadminSortField
 from app.infrastructure.persistence.models.member_details import (
     MemberDetails as MemberDetailsORM,
 )
@@ -34,6 +35,8 @@ class UserRepository(BaseRepository[UserORM, User]):
         self,
         search: str | None = None,
         is_active: bool | None = None,
+        sort_by: SysadminSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[tuple[User, MemberDetails | None]], int]:
@@ -61,8 +64,9 @@ class UserRepository(BaseRepository[UserORM, User]):
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
 
-        # Order by creation/email
-        query = query.order_by(UserORM.email.asc())
+        query = query.order_by(
+            *self._sysadmin_ordering(sort_by, sort_direction), UserORM.email.asc()
+        )
 
         if page is not None and page > 0:
             query = query.offset((page - 1) * page_size).limit(page_size)
@@ -88,6 +92,21 @@ class UserRepository(BaseRepository[UserORM, User]):
             items.append((user, details))
 
         return items, total
+
+    @staticmethod
+    def _sysadmin_ordering(
+        sort_by: SysadminSortField | None, direction: SortDirection
+    ) -> list:
+        if sort_by is None:
+            return []
+        sort_columns = {
+            SysadminSortField.NAME: func.lower(
+                func.coalesce(MemberDetailsORM.first_name, UserORM.email)
+            ),
+            SysadminSortField.STATUS: UserORM.is_active,
+        }
+        column = sort_columns[sort_by]
+        return [column.desc() if direction == SortDirection.DESC else column.asc()]
 
     async def count_sysadmins(self, is_active: bool | None = None) -> int:
         query = select(func.count(UserORM.id)).where(UserORM.is_superuser.is_(True))

@@ -25,6 +25,7 @@ from app.presentation.api.dependencies import (
     get_list_sysadmins_use_case,
 )
 from app.domain.services.invite import InviteService
+from app.domain.value_objects import SortDirection, SysadminSortField
 from app.presentation.api.request_models.admin import (
     CreateSysadminInviteRequest,
     DeleteInvitesRequest,
@@ -157,6 +158,8 @@ async def list_sysadmins(
     response: Response,
     search: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    sort_by: SysadminSortField | None = Query(default=None),
+    sort_direction: SortDirection = Query(default=SortDirection.ASC),
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     use_case: ListSysadminsUseCase = Depends(get_list_sysadmins_use_case),
@@ -165,6 +168,8 @@ async def list_sysadmins(
     items, total = await use_case.list_sysadmins(
         search=search,
         is_active=is_active,
+        sort_by=sort_by,
+        sort_direction=sort_direction,
         page=page,
         page_size=page_size,
     )
