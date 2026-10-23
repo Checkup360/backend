@@ -193,6 +193,42 @@ class TestEmployeeDirectoryQuery:
         assert set(unscored) == {"b-pending@example.com", "c-onboarding@example.com"}
 
     @pytest.mark.asyncio
+    async def test_sorting_by_score_orders_across_pages_with_unscored_last(
+        self, client, directory
+    ):
+        organization, _ = directory
+        base = (
+            f"/organizations/{organization.id}/employees"
+            "?role=member&sort_by=score&page_size=2"
+        )
+
+        descending = client.get(base + "&sort_direction=desc&page=1")
+        ascending = client.get(base + "&sort_direction=asc&page=1")
+
+        assert descending.json()[0]["email"] == "a-up@example.com"
+        assert ascending.json()[0]["email"] == "a-up@example.com"
+        assert descending.headers["X-Total-Count"] == "3"
+
+    @pytest.mark.asyncio
+    async def test_sorting_by_name_respects_direction(self, client, directory):
+        organization, _ = directory
+        base = f"/organizations/{organization.id}/employees?role=member&sort_by=name"
+
+        ascending = client.get(base + "&sort_direction=asc")
+        descending = client.get(base + "&sort_direction=desc")
+
+        assert [e["email"] for e in ascending.json()] == [
+            "b-pending@example.com",
+            "c-onboarding@example.com",
+            "a-up@example.com",
+        ]
+        assert [e["email"] for e in descending.json()] == [
+            "a-up@example.com",
+            "c-onboarding@example.com",
+            "b-pending@example.com",
+        ]
+
+    @pytest.mark.asyncio
     async def test_search_ignores_accents_and_treats_wildcards_literally(
         self, client, directory
     ):

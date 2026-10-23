@@ -9,9 +9,11 @@ from app.domain.repositories import EmployeeDirectoryRepository
 from app.domain.services.form_registry import FormRegistry
 from app.domain.value_objects import (
     EmployeeDirectoryQuery,
+    EmployeeSortField,
     MembershipState,
     OrgRole,
     ScoreFilter,
+    SortDirection,
 )
 
 
@@ -38,6 +40,8 @@ class ListOrganizationEmployeesUseCase:
         status: str | None = None,
         score_filter: ScoreFilter | None = None,
         search: str | None = None,
+        sort_by: EmployeeSortField | None = None,
+        sort_direction: SortDirection = SortDirection.ASC,
         page: int | None = None,
         page_size: int = 10,
     ) -> tuple[list[EmployeeSummary], int]:
@@ -57,6 +61,8 @@ class ListOrganizationEmployeesUseCase:
             status=status,
             score_filter=score_filter,
             search=search,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
             required_form_fields={
                 form_type: form_fields.get(form_type, [])
                 for form_type in required_forms

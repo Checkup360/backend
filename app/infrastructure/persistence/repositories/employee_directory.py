@@ -28,9 +28,11 @@ from app.domain.services.employee_status import (
 )
 from app.domain.value_objects import (
     EmployeeDirectoryQuery,
+    EmployeeSortField,
     MembershipState,
     OrgRole,
     ScoreFilter,
+    SortDirection,
 )
 from app.infrastructure.persistence.models.assessment_submission import (
     AssessmentSubmissionModel,
@@ -96,6 +98,10 @@ class SQLAlchemyEmployeeDirectoryRepository:
         if total == 0:
             return [], 0
 
+        status_column = self._status(query.required_form_fields)
+        last_assessment = func.coalesce(
+            scores.c.evaluated_at, risk_scores.c.evaluated_at
+        )
         statement = self._filtered(
             organization_id,
             query,
@@ -104,22 +110,49 @@ class SQLAlchemyEmployeeDirectoryRepository:
             MembershipORM.user_id,
             UserORM.email,
             MembershipORM.roles,
-            self._status(query.required_form_fields).label("status"),
+            status_column.label("status"),
             MemberDetailsORM.first_name,
             MemberDetailsORM.last_name,
             MemberDetailsORM.avatar_url,
             DepartmentORM,
             scores.c.overall_health_index,
-            func.coalesce(scores.c.evaluated_at, risk_scores.c.evaluated_at).label(
-                "last_assessment"
-            ),
-        ).order_by(UserORM.email, MembershipORM.user_id)
+            last_assessment.label("last_assessment"),
+        ).order_by(
+            *self._ordering(query, scores, status_column, last_assessment),
+            UserORM.email,
+            MembershipORM.user_id,
+        )
         if query.page is not None:
             statement = statement.offset((query.page - 1) * query.page_size).limit(
                 query.page_size
             )
         result = await self.db.execute(statement)
         return [self._to_summary(row) for row in result.all()], total
+
+    @staticmethod
+    def _ordering(
+        query: EmployeeDirectoryQuery,
+        scores,
+        status_column: ColumnElement,
+        last_assessment: ColumnElement,
+    ) -> list[ColumnElement]:
+        """Requested sort; empty values always go last, whatever the direction."""
+        if query.sort_by is None:
+            return []
+        sort_columns = {
+            EmployeeSortField.NAME: func.lower(
+                func.coalesce(MemberDetailsORM.first_name, UserORM.email)
+            ),
+            EmployeeSortField.ROLES: MembershipORM.roles,
+            EmployeeSortField.DEPARTMENT: func.lower(DepartmentORM.name),
+            EmployeeSortField.SCORE: scores.c.overall_health_index,
+            EmployeeSortField.STATUS: status_column,
+            EmployeeSortField.LAST_ASSESSMENT: last_assessment,
+        }
+        column = sort_columns[query.sort_by]
+        if query.sort_direction == SortDirection.DESC:
+            return [column.desc().nulls_last()]
+        return [column.asc().nulls_last()]
 
     def _filtered(
         self,

@@ -69,7 +69,11 @@ from app.application.use_cases.memberships.list_organization_employees import (
     ListOrganizationEmployeesUseCase,
 )
 from app.domain.entities.employee_summary import EmployeeSummary
-from app.domain.value_objects.employee_directory_query import ScoreFilter
+from app.domain.value_objects.employee_directory_query import (
+    EmployeeSortField,
+    ScoreFilter,
+)
+from app.domain.value_objects.sorting import SortDirection
 from app.domain.value_objects.membership_state import MembershipState
 from app.domain.services.employee_status import determine_employee_status
 from app.domain.value_objects.org_role import OrgRole
@@ -705,6 +709,8 @@ async def list_organization_employees(
     status_filter: str | None = Query(default=None, alias="status"),
     score_filter: ScoreFilter | None = Query(default=None, alias="score"),
     search: str | None = Query(default=None),
+    sort_by: EmployeeSortField | None = Query(default=None),
+    sort_direction: SortDirection = Query(default=SortDirection.ASC),
     membership: MembershipState = Query(
         default=MembershipState.ALL,
         description="active: users with at least one role; "
@@ -727,6 +733,8 @@ async def list_organization_employees(
             status=status_filter,
             score_filter=score_filter,
             search=search,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )
