@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 from app.domain.value_objects import OrgRole
 from app.domain.value_objects.name_limits import (
     MAX_DEPARTMENT_NAME_LENGTH,
+    MAX_ORGANIZATION_SLUG_LENGTH,
     MAX_ORGANIZATION_NAME_LENGTH,
 )
 
@@ -21,6 +22,8 @@ class CreateOrganizationRequest(BaseModel):
         if not value or not value.strip():
             raise ValueError("slug_required")
         value = value.strip()
+        if len(value) > MAX_ORGANIZATION_SLUG_LENGTH:
+            raise ValueError("slug_too_long")
         if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", value):
             raise ValueError("invalid_slug_format")
         return value

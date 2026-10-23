@@ -1,7 +1,10 @@
 import uuid
 import pytest
 
-from app.domain.value_objects.name_limits import MAX_ORGANIZATION_NAME_LENGTH
+from app.domain.value_objects.name_limits import (
+    MAX_ORGANIZATION_NAME_LENGTH,
+    MAX_ORGANIZATION_SLUG_LENGTH,
+)
 from app.domain.value_objects.org_role import OrgRole
 
 
@@ -116,6 +119,15 @@ class TestOrganizationsRouter:
             },
         )
         assert res_too_long.status_code == 422
+
+        res_slug_too_long = client.post(
+            "/organizations/",
+            json={
+                "name": "Slug Limit",
+                "slug": "s" * (MAX_ORGANIZATION_SLUG_LENGTH + 1),
+            },
+        )
+        assert res_slug_too_long.status_code == 422
 
     @pytest.mark.asyncio
     async def test_get_organization_summary_not_found(self, client, auth_scenario):
