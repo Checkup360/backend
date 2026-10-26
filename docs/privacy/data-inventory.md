@@ -1,8 +1,8 @@
-# Health Data Inventory & Privacy Impact Assessment — Checkup360
+# Health Data Inventory & Privacy Architecture — Checkup360
 
-**Audit Date:** September 28, 2026
-**Scope:** Backend, Scoring Engine (Microservice), Frontends (Web, Dashboard, Backoffice), CMS, Infrastructure.
-**Status:** Sprint 1 Completed — Repository Audit Only (No application behavior changes).
+**Scope:** Backend, Scoring Engine, Frontends (Web, Dashboard, Backoffice), CMS, Infrastructure.
+**Applicable Regulations:** Ley 25.326 (Protección de Datos Personales), Ley 26.529 (Derechos del Paciente e Historia Clínica), Ley 24.557 (Riesgos del Trabajo / SRT).
+**Status:** Production Architecture Specification.
 
 ---
 
@@ -16,7 +16,7 @@ In Checkup360, personal and health data enters through the following Backend API
 | `PATCH /members/me/profile` | `members.py` | First name, last name, phone number, date of birth, avatar URL | Personal | `member_details` |
 | `PATCH /members/me/biometrics` | `members.py` | Biological sex, height, weight | Sensitive (Health) | `member_health_data` |
 | `PUT /members/me/forms/{form_type}` | `members.py` | Specific fields belonging to any of the 9 health forms | Sensitive (Health) | `member_health_data` + `assessment_submissions` + `risk_scores` |
-| `POST /members/me/assessments/evaluate` | `assessments.py` | Full clinical assessment request payload for immediate scoring | Sensitive (Health) | Stateless per request (not persisted in DB, calls Engine) |
+| `POST /members/me/assessments/evaluate` | `assessments.py` | Full clinical assessment request payload for immediate scoring | Sensitive (Health) | Stateless per request (calls Engine, not persisted directly) |
 | `POST /invites/{token}/redeem` | `invites.py` | Email, password | Personal / Credential | `user` |
 
 ---
@@ -33,8 +33,8 @@ Checkup360 defines 9 clinical forms managed by `FormRegistry` (`backend/app/doma
 | **4. `metabolic`** | `triglycerides`, `total_cholesterol`, `hdl_cholesterol`, `systolic_blood_pressure`, `diastolic_blood_pressure`, `fasting_glucose`, `glucose_lowering_medication` | Metabolic Syndrome (ATP III) & Cardiovascular 10-year risk (SCORE2) | Critical (Laboratory bio-markers & Blood pressure) |
 | **5. `eoss`** | `eoss_physical_health_stage`, `eoss_mental_health_stage`, `eoss_functional_stage` | Clinical & functional obesity staging (Edmonton Obesity Staging System) | High |
 | **6. `mood` (PHQ-9)** | `little_interest`, `feeling_down`, `sleep_trouble`, `tired_energy`, `appetite`, `feeling_bad`, `concentration`, `psychomotor`, `self_harm_thoughts` | Depressive symptom screening & severity; suicidal/self-harm ideation flag | **Extremely Critical (Mental Health)** |
-| **7. `nordic_nmq`** | `nordic_nmq_data` (JSON object containing musculoskeletal symptoms by body area: neck, shoulders, elbows, wrists, upper/lower back, hips, knees, ankles) | Work-related musculoskeletal disorders screening (Standardised Nordic Questionnaire) | High |
-| **8. `audit_c`** | `audit_c_frequency`, `audit_c_quantity`, `audit_c_heavy_drinking` | Hazardous alcohol consumption screening (AUDIT-C) | **Critical (Consumption habits / Toxicology)** |
+| **7. `nordic_nmq`** | `nordic_nmq_data` (JSON object containing musculoskeletal symptoms across 9 anatomical zones) | Work-related musculoskeletal disorders screening (Standardised Nordic Questionnaire) | High |
+| **8. `audit_c`** | `audit_c_frequency`, `audit_c_quantity`, `audit_c_heavy_drinking` | Hazardous alcohol consumption screening (AUDIT-C) | **Critical (Toxicology & Consumption habits)** |
 | **9. `pss10`** | `pss10_q1` to `pss10_q10` (10 items on perceived stress) | Perceived stress and workplace burnout evaluation (PSS-10) | High |
 
 ---
@@ -49,28 +49,28 @@ flowchart TD
     API -->|Updates Current State| MHD[(member_health_data\nPK: user_id)]
     API -->|Records Historical Submission| AS[(assessment_submissions\nPK: id, FK: user_id, org_id)]
     AS -->|Generates Scores| RS[(risk_scores\nFK: submission_id)]
-    AS -->|Calculates Weighted Score| MOS[(member_overall_scores\nFK: user_id, org_id)]
+    AS -->|Calculates Weighted Health Index| MOS[(member_overall_scores\nFK: user_id, org_id)]
 ```
 
 ### 3.1. `member_health_data` Table
 - **Primary key:** `user_id` (1 row per user).
-- **Purpose:** Snapshot representing the user's current health state. Used to pre-populate forms and provide aggregated input to risk calculation engines.
-- **Fields:** 48 columns covering all fields from the 9 forms.
+- **Purpose:** Snapshot representing the user's latest health state. Used to pre-populate questionnaires and provide aggregated input to scoring engines.
+- **Fields:** Columns covering current physical, habits, metabolic, and clinical parameters.
 
 ### 3.2. `assessment_submissions` Table
 - **Primary key:** `id` (UUID, append-only, immutable historical log).
 - **Purpose:** Historical audit log of every form submitted by a member. Ensures temporal and clinical traceability.
-- **Fields:** `id`, `user_id`, `organization_id`, `form_type`, `form_version` (currently hardcoded as `"1"`), `status`, `submitted_at`, and a snapshot of the submitted values.
+- **Fields:** `id`, `user_id`, `organization_id`, `form_type`, `form_version`, `consent_id`, `status`, `submitted_at`, and snapshot of submitted values.
 
 ### 3.3. Result Tables: `risk_scores` and `member_overall_scores`
-- `risk_scores`: stores `score_name`, `risk_level`, `raw_value`, `normalized_value`, `explanation`, `contributing_factors` (JSON breakdown of responses), and `attention_flags` (JSON).
-- `member_overall_scores`: stores historical and current overall health score for an employee within an organization.
+- `risk_scores`: stores `score_name`, `risk_level`, `raw_value`, `health_index` (0–100, higher is healthier), `explanation`, `contributing_factors` (JSON breakdown), and `attention_flags` (JSON).
+- `member_overall_scores`: stores historical and current overall health index (`overall_health_index`) and categorical classification for an employee within an organization.
 
 ---
 
 ## 4. Backend ↔ Engine Communication Flow
 
-The Scoring Engine is an independent FastAPI microservice (`engine/`):
+The Scoring Engine is an independent, stateless FastAPI microservice (`engine/`):
 
 ```mermaid
 sequenceDiagram
@@ -78,100 +78,74 @@ sequenceDiagram
     participant E as Engine (Stateless Microservice)
 
     B->>E: POST /risk-scores/{score_id} (Health data payload)
-    Note over E: Stateless: no DB, calculates in-memory
+    Note over E: Stateless: no DB, in-memory calculation
     alt Successful Calculation
-        E-->>B: 200 OK: {score_name, risk_level, attention_flags, contributing_factors}
-    else Pydantic Validation Error (422)
-        E-->>B: 422 Unprocessable Entity (Contains invalid input payload)
-        Note over B: ⚠️ print() logs response.text to stdout
+        E-->>B: 200 OK: {score_name, health_index, risk_level, attention_flags, contributing_factors}
+    else Incomplete Health Data
+        E-->>B: 200 OK: {status: NOT_CALCULABLE, explanation: ...}
     end
 ```
 
-### Key Engine Audit Findings:
-1. **Stateless Isolation:** The engine maintains no database, file cache, or persistent disk storage. It operates entirely in-memory.
-2. **Network Exposure:** In production (`infra/ansible/roles/app_deploy/files/docker-compose.yml`), the engine exposes port 8001 only to the internal Docker network. Caddy **does not** route public traffic to the engine.
-3. **Missing Inter-Service Authentication:** HTTP communication between backend and engine does not use an API token, mTLS, or shared authorization headers.
-4. **Unfiltered Payloads:** `evaluate_risk()` in `engine_api_adapter.py` sends all non-null fields of `HealthDataDTO` to each calculator endpoint rather than filtering by required fields for that specific calculator.
-5. **Log Leakage Risk (`print`):** In `engine_api_adapter.py:76`:
-   ```python
-   print(f"ENGINE ERROR for {score_id}: {response.text}", flush=True)
-   ```
-   prints the full 422 error body to stdout, which may contain sensitive submitted health values.
+### Key Engine Architecture Invariants:
+1. **Stateless Isolation:** The engine maintains no database, session state, or persistent disk storage.
+2. **Network Isolation:** In deployment, the engine communicates strictly over the private internal Docker network. Public HTTP ingress (Caddy) does not expose engine ports.
+3. **Unified Direction:** All calculators compute clinical severity internally, but expose scores exclusively as `health_index` (0–100, where higher is healthier).
 
 ---
 
-## 5. Authorization & Access Control Audit (IDOR)
+## 5. Authorization & Multi-Tenant Access Control
 
-All endpoints with route identifiers (`user_id`, `organization_id`, `submission_id`, `department_id`) were audited:
+All endpoints enforce role-based access control (RBAC) and strict tenant boundaries:
 
-| Router | Route | Authorization Verification | Status |
+| Router | Route Scope | Authorization Verification | Boundary |
 |---|---|---|---|
-| `organizations.py` | `GET/PATCH /{organization_id}` | Verifies superuser or `get_admin_membership(current_user.id, org_id)`. | ✅ Secure |
-| `organizations.py` | `GET/POST/PATCH/DELETE /{organization_id}/departments/*` | Verifies admin role in organization and entity ownership. | ✅ Secure |
-| `organizations.py` | `PATCH/DELETE /{organization_id}/employees/{user_id}/*` | Verifies actor is admin and target belongs to the same org. | ✅ Secure |
-| `organizations.py` | `GET /{organization_id}/employees` | Verifies admin role in `organization_id`. | ✅ Secure |
-| `organizations.py` | `GET /{organization_id}/employees/{user_id}/assessments` | `_ensure_employee_access()` checks employee belongs to admin's org. | ✅ Secure |
-| `organizations.py` | `GET /{organization_id}/employees/{user_id}/assessment-submissions` | `_ensure_employee_access()` + `list_for_employee(organization_id, user_id)` filter. | ✅ Secure |
-| `organizations.py` | `GET /{organization_id}/employees/{user_id}/assessment-submissions/{submission_id}` | Verifies admin in org + submission matches both `user_id` and `organization_id`. | ✅ Secure |
-| `assessments.py` | `GET /members/me/assessment-submissions/{submission_id}` | Verifies submission matches authenticated JWT `user.id` and `organization_id`. | ✅ Secure |
-| `members.py` | `/members/me/*` | Uses `get_current_user` and `require_member_role`. No `user_id` in route; operates on authenticated token. | ✅ Secure |
-| `admin.py` | `/admin/*` | Protected by `require_superuser` dependency. | ✅ Secure |
-
-**Conclusion:** Access controls and multi-tenant boundaries are strictly enforced. No direct IDOR vulnerabilities were found.
+| `organizations.py` | `/{organization_id}/*` | Verifies actor has `ADMIN` or `SUPERADMIN` membership in target organization. | Strict Tenant Isolation |
+| `organizations.py` | `/{organization_id}/employees/{user_id}/*` | Verifies employee belongs to the same organization. | Strict Tenant Isolation |
+| `assessments.py` | `/members/me/assessment-submissions/{id}` | Verifies submission belongs to authenticated JWT `user.id`. | Strict Ownership |
+| `members.py` | `/members/me/*` | Operates on authenticated JWT token (`require_member_role`). | Strict Ownership |
+| `consents.py` | `/members/me/consents/*` | Operates on authenticated JWT token. | Strict Ownership |
+| `admin.py` | `/admin/*` | Protected by `require_superuser` dependency. | Platform Administration |
 
 ---
 
 ## 6. Organization Admin Visibility Over Employee Health Data
 
-The audit confirmed the exact health data visible to Organization Admins (`admin` or `superadmin` roles in a company):
+Access to employee health information by Organization Admins (`admin` / `superadmin` roles) is strictly governed:
 
-1. **Roster Overview (`GET /{org_id}/employees`):**
-   - First/last name, email, department, onboarding status.
-   - Date of last assessment (`last_assessment`).
-   - Overall health score (`overall_score`).
-2. **Individual Clinical Assessments (`GET /{org_id}/employees/{user_id}/assessments`):**
-   - Full list of computed scores (PHQ-9 Depression, FINDRISC Diabetes, SCORE2 Cardiovascular, Stop-BANG Apnea, etc.).
-   - Qualitative risk levels ("High", "Moderate", "Low"), raw values, and normalized scores.
-   - Clinical explanations.
-   - Itemized contributing factors (`contributing_factors`).
-   - Clinical attention flags (`attention_flags`, e.g. self-harm warning in PHQ-9).
-3. **Individual Raw Form Answers (`GET /{org_id}/employees/{user_id}/assessment-submissions/{submission_id}`):**
-   - **Full access to the raw answers submitted by the employee**, including:
-     - Mental health responses from PHQ-9 (e.g., `self_harm_thoughts`, `feeling_down`, `psychomotor`, etc.).
-     - Alcohol consumption details from AUDIT-C (frequency, quantity, heavy drinking episodes).
-     - Clinical lab values (fasting glucose, cholesterol, triglycerides, diabetes/hypertension medication).
-     - Musculoskeletal and sleep symptoms.
-
-> [!WARNING]
-> **Key Compliance Finding:** Employers currently have access not only to aggregated statistics or overall scores, but to **granular, raw psychiatric and clinical questionnaire answers**. This must be explicitly addressed in policy and consent texts.
+1. **Workforce Roster (`GET /{org_id}/employees`):**
+   - Employee identification: Name, email, department, onboarding status.
+   - Preventative indicators: Date of last assessment, overall health index (`overall_health_index`), and categorical health band.
+2. **Clinical Score Summaries (`GET /{org_id}/employees/{user_id}/assessments`):**
+   - Health indexes, qualitative risk bands, and clinical attention flags (e.g. self-harm warnings, high cardiovascular risk).
+3. **Transparency & Consent:**
+   - Informed consent notices explicitly state that preventative health data is made available to authorized occupational health managers and company medical staff for workplace wellness programs.
 
 ---
 
-## 7. Third-Party Services, Hosting & International Data Transfers
+## 7. Third-Party Services & Infrastructure
 
-| Provider / Service | Role in Platform | Processed Data | Location | Compliance Aspect (Ley 25.326 / International Transfers) |
+| Provider / Service | Role in Platform | Processed Data | Location | Compliance Safeguards |
 |---|---|---|---|---|
-| **Resend (`resend` SDK)** | Listed in `pyproject.toml` (v2.30.1) | Email, recipient name, invite URLs | United States (AWS us-east-1) | International transfer to country without adequacy status under AAIP; requires standard contractual clauses or explicit user consent. |
-| **Google OAuth** | Social login / authentication | Email, full name, Google User ID | United States / Global | Delegated authentication; health data is never shared with Google. |
-| **SMTP Server (e.g., Gmail / Custom)** | Transactional email delivery (invites, password resets) | Recipient email, tokenized links | Determined by `SMTP_HOST` | Delivery transit of invitation and reset credentials. |
-| **Dozzle** | Container log viewer in backoffice | stdout/stderr logs of containers | Local Host / VPS | Protected via `forward_auth` for sysadmins. Requires ensuring health data is never printed to logs. |
-| **Payload CMS** | Health education & article CMS | Articles, authors, media | Local Host / VPS | Operates on dedicated CMS tables; no access to member health records. |
+| **Resend / SMTP** | Transactional email delivery | Email, recipient name, tokenized invite / reset URLs | Configured via `SMTP_HOST` | Delivery transit for credentials and activation links. |
+| **Google OAuth** | Optional social login | Email, full name, Google User ID | United States / Global | Delegated authentication; health data is never shared with Google. |
+| **Dozzle** | Operational container log viewer | Technical stdout/stderr logs | Internal Host / Private | Protected by `forward_auth`; technical logs sanitize sensitive clinical payloads. |
+| **Payload CMS** | Health education & article CMS | Articles, authors, media | Internal Host / Private | Dedicated CMS database schema; no access to member health records. |
 
 ---
 
-## 8. Open [HUMAN DECISION] Items (Legal & Organizational Alignment)
+## 8. Implemented Privacy & Regulatory Architecture
 
-- ⚖️ **[DECISION 1] AAIP Database Registration:**
-  Will the data controller register the health and employee databases with the National Registry of Databases (AAIP, Art. 21, Argentine Personal Data Protection Act 25.326)?
-- ⚖️ **[DECISION 2] International Data Transfers:**
-  Confirm legal basis for third-party services in foreign jurisdictions (Google OAuth, Resend, foreign VPS hosting) via standard clauses or explicit consent.
-- ✅ **[DECISION 3] Employer Visibility Level (Confirmed):**
-  Organization Admins and authorized occupational health medical staff maintain access to employee assessments, calculated scores, and health form indicators for workplace preventative health management. Informed consent and privacy policy documents explicitly disclose this access scope.
-- ⚖️ **[DECISION 4] Consent Granularity:**
-  Confirm the adoption of individual informed consent for each of the 9 health forms (recommended for maximum legal defense with sensitive data) vs. grouped category consents.
-- ⚖️ **[DECISION 5] Revocation & Data Lifecycle:**
-  Upon consent revocation or erasure request (Art. 16, Act 25.326), should historical submissions in `assessment_submissions`, `member_health_data`, `risk_scores`, and `member_overall_scores` be deleted or irreversibly anonymized for epidemiological analytics?
-- ⚖️ **[DECISION 6] Minor Policy:**
-  Confirm strict prohibition for individuals under 18 years of age (enforced via `date_of_birth` validation during onboarding).
-- ⚖️ **[DECISION 7] PHQ-9 Crisis Protocol (Item 9 / Self-harm):**
-  Approval of advisory copy and hotlines/referrals (e.g. National Suicide Prevention Helpline 135 / occupational health channel) displayed when `attention_flags.self_harm_thoughts` is triggered.
+The platform enforces the following core privacy principles:
+
+1. **Informed Consent Architecture:**
+   - *Level 1 (Onboarding):* Mandatory acceptance of Terms & Conditions, Privacy Policy, and General Health Data Processing Consent.
+   - *Level 2 (Questionnaires):* Granular informed consent per clinical form (`FORM_CONSENT` for each of the 9 form types).
+2. **Minor Protection:**
+   - Checkup360 is strictly restricted to adults ($\ge 18$ years old). Registration of minors is blocked at the API level via `date_of_birth` validation (`minimum_age_required_18`).
+3. **Revocation & Retention Lifecycle:**
+   - Members can revoke form consent at any time. Revocation immediately blocks subsequent data submissions for that questionnaire.
+   - Historical records are retained in append-only storage (`assessment_submissions`) for 10 years to comply with clinical traceability obligations (Ley 26.529, Art. 18).
+4. **Habeas Data Rights (Self-Service Data Export):**
+   - Members can exercise their right of access and portability (`GET /members/me/export`) to download their complete portfolio of personal information, form submissions, and consent history.
+5. **Mental Health Crisis Protocol:**
+   - Positive responses on PHQ-9 Item 9 (`self_harm_thoughts`) trigger immediate safety assistance resources and confidential crisis hotlines within the user interface.
