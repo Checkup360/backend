@@ -88,3 +88,29 @@ def test_biometrics_neck_circumference_included_when_sleep_apnea_active():
     active_defs = policy.get_active_form_definitions(score_weights=weights)
     bio_def = next(form for form in active_defs if form.form_type == "biometrics")
     assert "neck_circumference" in bio_def.fields
+
+
+def test_sleep_apnea_requires_habits_for_blood_pressure_medication():
+    policy = OrganizationFormPolicy()
+
+    for weights in ({"sleep_apnea": 100.0}, {"stop_bang": 100.0}):
+        active_forms = policy.get_active_form_types(score_weights=weights)
+        assert set(active_forms) == {"biometrics", "sleep", "habits"}
+
+
+def test_fatigue_sleep_domain_requires_habits_for_sleep_apnea():
+    policy = OrganizationFormPolicy()
+
+    active_forms = policy.get_active_form_types(score_weights={"fatigue_sleep": 100.0})
+
+    assert "habits" in active_forms
+
+
+def test_metabolic_syndrome_requires_habits_for_blood_pressure_medication():
+    policy = OrganizationFormPolicy()
+
+    active_forms = policy.get_active_form_types(
+        score_weights={"metabolic_syndrome": 100.0}
+    )
+
+    assert set(active_forms) == {"biometrics", "habits", "metabolic"}

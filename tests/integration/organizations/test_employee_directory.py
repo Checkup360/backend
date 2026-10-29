@@ -254,7 +254,15 @@ class TestEmployeeDirectoryQuery:
                 .where(OrganizationScoreWeightsModel.organization_id == organization.id)
                 .values(weights={"diabetes": 0.0})
             )
-            session.add(MemberHealthData(user_id=users["pending"].id, height=170.0))
+            session.add(
+                MemberHealthData(
+                    user_id=users["pending"].id,
+                    biological_sex="male",
+                    height=170.0,
+                    weight=70.0,
+                    waist_circumference=85.0,
+                )
+            )
             await session.commit()
 
         employees = _by_email(
@@ -263,3 +271,32 @@ class TestEmployeeDirectoryQuery:
 
         assert employees["b-pending@example.com"]["status"] == "up_to_date"
         assert employees["c-onboarding@example.com"]["status"] == "onboarding"
+
+    @pytest.mark.asyncio
+    async def test_field_shared_between_forms_does_not_complete_the_other_form(
+        self, client, db_session_maker, directory
+    ):
+        organization, users = directory
+        async with db_session_maker() as session:
+            await session.execute(
+                update(OrganizationScoreWeightsModel)
+                .where(OrganizationScoreWeightsModel.organization_id == organization.id)
+                .values(weights={"sleep_apnea": 100.0})
+            )
+            session.add(
+                MemberHealthData(
+                    user_id=users["pending"].id,
+                    biological_sex="male",
+                    height=170.0,
+                    weight=70.0,
+                    waist_circumference=85.0,
+                    neck_circumference=38.0,
+                )
+            )
+            await session.commit()
+
+        employees = _by_email(
+            client.get(f"/organizations/{organization.id}/employees?role=member")
+        )
+
+        assert employees["b-pending@example.com"]["status"] == "pending_assessments"

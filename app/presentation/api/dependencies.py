@@ -575,13 +575,11 @@ async def get_list_organization_employees_use_case(
     employee_directory_repo: SQLAlchemyEmployeeDirectoryRepository = Depends(
         get_employee_directory_repository
     ),
-    form_registry: FormRegistry = Depends(get_form_registry),
 ) -> ListOrganizationEmployeesUseCase:
     return ListOrganizationEmployeesUseCase(
         membership_service=membership_service,
         member_details_service=member_details_service,
         employee_directory_repo=employee_directory_repo,
-        form_registry=form_registry,
     )
 
 

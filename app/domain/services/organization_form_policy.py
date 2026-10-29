@@ -8,11 +8,13 @@ from app.domain.services.form_registry import FormDefinition, FormRegistry
 SCORE_REQUIRED_FORMS: dict[str, list[str]] = {
     "diabetes": ["biometrics", "habits"],
     "findrisc": ["biometrics", "habits"],
-    "sleep_apnea": ["biometrics", "sleep"],
-    "stop_bang": ["biometrics", "sleep"],
+    # STOP-Bang also asks about blood pressure medication, which lives in habits
+    "sleep_apnea": ["biometrics", "sleep", "habits"],
+    "stop_bang": ["biometrics", "sleep", "habits"],
     "depression": ["biometrics", "mood"],
     "phq9": ["biometrics", "mood"],
-    "metabolic_syndrome": ["biometrics", "metabolic"],
+    # The blood pressure criterion also uses the medication question from habits
+    "metabolic_syndrome": ["biometrics", "habits", "metabolic"],
     "cardiovascular": ["biometrics", "habits", "metabolic"],
     "score2": ["biometrics", "habits", "metabolic"],
     "eoss": ["biometrics", "eoss"],
@@ -23,7 +25,7 @@ SCORE_REQUIRED_FORMS: dict[str, list[str]] = {
 
 DOMAIN_REQUIRED_FORMS: dict[HealthDomain, list[str]] = {
     HealthDomain.CARDIOMETABOLIC: ["biometrics", "habits", "metabolic"],
-    HealthDomain.FATIGUE_SLEEP: ["biometrics", "sleep", "nordic_nmq"],
+    HealthDomain.FATIGUE_SLEEP: ["biometrics", "sleep", "habits", "nordic_nmq"],
     HealthDomain.MENTAL_HEALTH: ["biometrics", "mood", "eoss", "pss10"],
 }
 

@@ -11,6 +11,7 @@ from app.domain.repositories import (
     OrganizationRepository,
     OrganizationScoreWeightsRepository,
 )
+from app.domain.services.form_completion import is_form_completed
 from app.domain.services.form_registry import FormRegistry
 from app.domain.services.member_health_topics import calculate_member_priority_topics
 from app.domain.services.organization_form_policy import OrganizationFormPolicy
@@ -68,10 +69,9 @@ class MemberDetailsService:
     async def is_onboarded(self, user_id: uuid.UUID) -> bool:
         return await self.repo.exists_for_user(user_id)
 
-    async def get_required_forms_for_organization(
+    async def _score_weights_for_organization(
         self, organization_id: uuid.UUID
-    ) -> list[str]:
-        score_weights = None
+    ) -> dict[str, float] | None:
         if self.score_weights_repo:
             active_weights_rec = (
                 await self.score_weights_repo.get_active_for_organization(
@@ -79,13 +79,58 @@ class MemberDetailsService:
                 )
             )
             if active_weights_rec:
-                score_weights = active_weights_rec.weights
-        if score_weights is None and self.org_repo:
+                return active_weights_rec.weights
+        if self.org_repo:
             org = await self.org_repo.get(organization_id)
             if org:
-                score_weights = org.score_weights
+                return org.score_weights
+        return None
 
+    async def get_required_forms_for_organization(
+        self, organization_id: uuid.UUID
+    ) -> list[str]:
+        score_weights = await self._score_weights_for_organization(organization_id)
         return self.form_policy.get_active_form_types(score_weights=score_weights)
+
+    async def get_required_form_fields_for_organization(
+        self, organization_id: uuid.UUID
+    ) -> dict[str, list[str]]:
+        """Fields each required form asks the member, as the member sees them."""
+        score_weights = await self._score_weights_for_organization(organization_id)
+        definitions = self.form_policy.get_active_form_definitions(
+            score_weights=score_weights
+        )
+        return {
+            definition.form_type: list(definition.fields) for definition in definitions
+        }
+
+    async def _required_form_fields(
+        self,
+        required_forms: Collection[str] | None,
+        organization_id: uuid.UUID | None,
+    ) -> dict[str, list[str]]:
+        if required_forms is None and organization_id is not None:
+            return await self.get_required_form_fields_for_organization(organization_id)
+        if self.form_registry is None:
+            return {}
+        if required_forms is None:
+            required_forms = self.form_registry.get_registered_form_types()
+        return {
+            form_type: self.form_registry.get_form_fields(form_type)
+            for form_type in required_forms
+        }
+
+    async def _completed_submission_form_types(self, user_id: uuid.UUID) -> set[str]:
+        if self.submission_repo is None:
+            return set()
+        submissions, _ = await self.submission_repo.list_by_user(
+            user_id, offset=0, limit=100
+        )
+        return {
+            submission.form_type
+            for submission in submissions
+            if submission.status == "completed"
+        }
 
     async def has_completed_all_forms(
         self,
@@ -93,48 +138,27 @@ class MemberDetailsService:
         required_forms: Collection[str] | None = None,
         organization_id: uuid.UUID | None = None,
     ) -> bool:
-        if required_forms is None and organization_id is not None:
-            required_forms = await self.get_required_forms_for_organization(
-                organization_id
-            )
-
-        if required_forms is None:
-            if self.form_registry is None:
-                return True
-            required_forms = self.form_registry.get_registered_form_types()
-
-        if not required_forms:
+        required_fields = await self._required_form_fields(
+            required_forms, organization_id
+        )
+        if not required_fields:
             return True
 
-        completed_forms: set[str] = set()
-
-        if self.submission_repo is not None:
-            submissions, _ = await self.submission_repo.list_by_user(
-                user_id, offset=0, limit=100
-            )
-            for sub in submissions:
-                if sub.status == "completed":
-                    completed_forms.add(sub.form_type)
-
+        completed_submissions = await self._completed_submission_form_types(user_id)
+        health_data = None
         if self.health_data_repo is not None and any(
-            ft not in completed_forms for ft in required_forms
+            form_type not in completed_submissions for form_type in required_fields
         ):
             health_data = await self.health_data_repo.get_by_user(user_id)
-            if health_data:
-                for form_type in required_forms:
-                    if form_type in completed_forms:
-                        continue
-                    fields = (
-                        self.form_registry.get_form_fields(form_type)
-                        if self.form_registry
-                        else []
-                    )
-                    if fields and any(
-                        getattr(health_data, f, None) is not None for f in fields
-                    ):
-                        completed_forms.add(form_type)
 
-        return all(ft in completed_forms for ft in required_forms)
+        return all(
+            is_form_completed(
+                fields,
+                {name: getattr(health_data, name, None) for name in fields},
+                has_completed_submission=form_type in completed_submissions,
+            )
+            for form_type, fields in required_fields.items()
+        )
 
     async def get_profile(self, user_id: uuid.UUID) -> MemberDetails | None:
         return await self.repo.get_by_user(user_id)

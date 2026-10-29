@@ -39,6 +39,7 @@ from app.presentation.api.dependencies import (
     get_upload_member_avatar_use_case,
 )
 from app.domain.services.time_provider import TimeProvider
+from app.domain.services.form_completion import is_form_completed
 from app.domain.services.form_registry import FormRegistry
 from app.presentation.api.dependencies import get_time_provider
 from app.application.use_cases.members.member_details_service import (
@@ -318,14 +319,10 @@ async def get_my_active_forms(
 
     response_items = []
     for f in active_defs:
-        is_completed = False
-        if health_data:
-            is_completed = True
-            for field in f.fields:
-                val = getattr(health_data, field, None)
-                if val is None or (isinstance(val, dict) and not val):
-                    is_completed = False
-                    break
+        is_completed = is_form_completed(
+            f.fields,
+            {name: getattr(health_data, name, None) for name in f.fields},
+        )
         response_items.append(
             ActiveFormDefinitionResponse(
                 form_type=f.form_type,

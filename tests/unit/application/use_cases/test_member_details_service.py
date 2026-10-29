@@ -233,6 +233,77 @@ async def test_has_completed_all_forms_dynamically_requires_new_forms():
 
 
 @pytest.mark.asyncio
+async def test_has_completed_all_forms_ignores_fields_shared_with_another_form():
+    from types import SimpleNamespace as Row
+
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    repo = AsyncMock()
+    submission_repo = AsyncMock()
+    submission_repo.list_by_user.return_value = ([], 0)
+    # Only the neck circumference, which biometrics and sleep share
+    health_data_repo = AsyncMock()
+    health_data_repo.get_by_user.return_value = Row(
+        height=170.0, neck_circumference=38.0, snoring=None, tired=None
+    )
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(
+                form_type="biometrics", fields=["height", "neck_circumference"]
+            ),
+            FormDefinition(
+                form_type="sleep",
+                fields=["snoring", "tired", "neck_circumference"],
+            ),
+        ]
+    )
+    service = MemberDetailsService(
+        repo,
+        FrozenTimeProvider(),
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+
+    assert await service.has_completed_all_forms(uuid.uuid4()) is False
+
+
+@pytest.mark.asyncio
+async def test_has_completed_all_forms_is_true_when_every_field_has_a_value():
+    from types import SimpleNamespace as Row
+
+    from app.domain.services.form_registry import FormDefinition, FormRegistry
+
+    repo = AsyncMock()
+    submission_repo = AsyncMock()
+    submission_repo.list_by_user.return_value = ([], 0)
+    health_data_repo = AsyncMock()
+    health_data_repo.get_by_user.return_value = Row(
+        height=170.0, neck_circumference=38.0, snoring=False, tired=True
+    )
+    form_registry = FormRegistry(
+        forms=[
+            FormDefinition(
+                form_type="biometrics", fields=["height", "neck_circumference"]
+            ),
+            FormDefinition(
+                form_type="sleep",
+                fields=["snoring", "tired", "neck_circumference"],
+            ),
+        ]
+    )
+    service = MemberDetailsService(
+        repo,
+        FrozenTimeProvider(),
+        health_data_repo=health_data_repo,
+        submission_repo=submission_repo,
+        form_registry=form_registry,
+    )
+
+    assert await service.has_completed_all_forms(uuid.uuid4()) is True
+
+
+@pytest.mark.asyncio
 async def test_complete_onboarding_success():
     repo = AsyncMock()
     user = make_user()

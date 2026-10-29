@@ -6,7 +6,6 @@ from sqlalchemy import (
     String,
     and_,
     case,
-    false,
     func,
     literal,
     null,
@@ -260,19 +259,14 @@ class SQLAlchemyEmployeeDirectoryRepository:
             .correlate(MembershipORM)
             .exists()
         )
-        columns = [
-            getattr(MemberHealthData, name)
-            for name in fields
-            if hasattr(MemberHealthData, name)
-        ]
-        if not columns:
-            return or_(submitted, false())
+        if not fields or not all(hasattr(MemberHealthData, name) for name in fields):
+            return submitted
         filled = (
             select(1)
             .select_from(MemberHealthData)
             .where(
                 MemberHealthData.user_id == MembershipORM.user_id,
-                or_(*[column.is_not(None) for column in columns]),
+                *[getattr(MemberHealthData, name).is_not(None) for name in fields],
             )
             .correlate(MembershipORM)
             .exists()

@@ -6,7 +6,6 @@ from app.application.use_cases.members.member_details_service import (
 from app.application.use_cases.memberships.membership_service import MembershipService
 from app.domain.entities.employee_summary import EmployeeSummary
 from app.domain.repositories import EmployeeDirectoryRepository
-from app.domain.services.form_registry import FormRegistry
 from app.domain.value_objects import (
     EmployeeDirectoryQuery,
     EmployeeSortField,
@@ -23,12 +22,10 @@ class ListOrganizationEmployeesUseCase:
         membership_service: MembershipService,
         member_details_service: MemberDetailsService,
         employee_directory_repo: EmployeeDirectoryRepository,
-        form_registry: FormRegistry,
     ):
         self._membership_service = membership_service
         self._member_details_service = member_details_service
         self._employee_directory_repo = employee_directory_repo
-        self._form_registry = form_registry
 
     async def execute(
         self,
@@ -48,12 +45,9 @@ class ListOrganizationEmployeesUseCase:
         await self._membership_service.get_admin_membership(
             actor_user_id, organization_id
         )
-        required_forms = (
-            await self._member_details_service.get_required_forms_for_organization(
-                organization_id
-            )
+        required_form_fields = await self._member_details_service.get_required_form_fields_for_organization(
+            organization_id
         )
-        form_fields = self._form_registry.get_form_fields_map()
         query = EmployeeDirectoryQuery(
             roles=roles,
             state=state,
@@ -63,10 +57,7 @@ class ListOrganizationEmployeesUseCase:
             search=search,
             sort_by=sort_by,
             sort_direction=sort_direction,
-            required_form_fields={
-                form_type: form_fields.get(form_type, [])
-                for form_type in required_forms
-            },
+            required_form_fields=required_form_fields,
             page=page,
             page_size=page_size,
         )
